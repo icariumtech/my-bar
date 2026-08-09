@@ -94,39 +94,39 @@ Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INV-01 | TBD | Pending |
-| INV-02 | TBD | Pending |
-| INV-03 | TBD | Pending |
-| INV-04 | TBD | Pending |
-| INV-05 | TBD | Pending |
-| MATCH-01 | TBD | Pending |
-| MATCH-02 | TBD | Pending |
-| MATCH-03 | TBD | Pending |
-| MATCH-04 | TBD | Pending |
-| RECIPE-01 | TBD | Pending |
-| RECIPE-02 | TBD | Pending |
-| PATR-01 | TBD | Pending |
-| PATR-02 | TBD | Pending |
-| PATR-03 | TBD | Pending |
-| PATR-04 | TBD | Pending |
-| PATR-05 | TBD | Pending |
-| PATR-06 | TBD | Pending |
-| PATR-07 | TBD | Pending |
-| PATR-08 | TBD | Pending |
-| BART-01 | TBD | Pending |
-| BART-02 | TBD | Pending |
-| BART-03 | TBD | Pending |
-| BART-04 | TBD | Pending |
-| BART-05 | TBD | Pending |
-| BART-06 | TBD | Pending |
-| SYNC-01 | TBD | Pending |
-| SYNC-02 | TBD | Pending |
+| INV-01 | Phase 1 | Pending |
+| INV-02 | Phase 1 | Pending |
+| INV-03 | Phase 1 | Pending |
+| INV-04 | Phase 1 | Pending |
+| INV-05 | Phase 1 | Pending |
+| MATCH-01 | Phase 2 | Pending |
+| MATCH-02 | Phase 2 | Pending |
+| MATCH-03 | Phase 2 | Pending |
+| MATCH-04 | Phase 2 | Pending |
+| RECIPE-01 | Phase 2 | Pending |
+| RECIPE-02 | Phase 2 | Pending |
+| PATR-01 | Phase 3 | Pending |
+| PATR-02 | Phase 3 | Pending |
+| PATR-03 | Phase 3 | Pending |
+| PATR-04 | Phase 3 | Pending |
+| PATR-05 | Phase 4 | Pending |
+| PATR-06 | Phase 3 | Pending |
+| PATR-07 | Phase 4 | Pending |
+| PATR-08 | Phase 4 | Pending |
+| BART-01 | Phase 4 | Pending |
+| BART-02 | Phase 4 | Pending |
+| BART-03 | Phase 4 | Pending |
+| BART-04 | Phase 4 | Pending |
+| BART-05 | Phase 4 | Pending |
+| BART-06 | Phase 4 | Pending |
+| SYNC-01 | Phase 3 | Pending |
+| SYNC-02 | Phase 4 | Pending |
 
 **Coverage:**
-- v1 requirements: 26 total
-- Mapped to phases: 0
-- Unmapped: 26 ⚠️ (roadmap creation will assign phases)
+- v1 requirements: 27 total
+- Mapped to phases: 27
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-08-09*
-*Last updated: 2026-08-09 after initial definition*
+*Last updated: 2026-08-09 after roadmap creation (traceability populated)*
