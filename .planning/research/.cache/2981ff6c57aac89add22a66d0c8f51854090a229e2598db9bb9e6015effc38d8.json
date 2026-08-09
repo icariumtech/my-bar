@@ -1,0 +1,1 @@
+{"content":"For multi-client apps needing bidirectional real-time sync (server pushes stock changes, clients send orders), WebSockets are the standard choice over SSE despite added connection-management complexity; SSE is simpler but one-way only.","source":"web","provider":"websearch","confidence":"MEDIUM","fetched_at":"2026-08-09T18:05:32.909Z","ttl":86400000,"kind":"web"}

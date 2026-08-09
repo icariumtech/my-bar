@@ -1,0 +1,1 @@
+{"content":"SQLite in WAL mode allows concurrent reads with a single writer at a time; production apps must set a busy_timeout (3-5s+) or use BEGIN IMMEDIATE and a single-writer queue to avoid SQLITE_BUSY errors under concurrent multi-client writes.","source":"web","provider":"websearch","confidence":"MEDIUM","fetched_at":"2026-08-09T18:05:32.767Z","ttl":86400000,"kind":"web"}
