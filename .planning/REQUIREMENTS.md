@@ -1,0 +1,132 @@
+# Requirements: My Bar
+
+**Defined:** 2026-08-09
+**Core Value:** The inventory must be the single source of truth: at any moment, the Patron and Bartender screens must correctly show which drinks are makeable right now, and which are missing ingredients.
+
+## v1 Requirements
+
+Requirements for initial release. Each maps to roadmap phases.
+
+### Inventory (Barback)
+
+- [ ] **INV-01**: Barback can add a new ingredient/bottle with name and category
+- [ ] **INV-02**: Barback can edit an existing ingredient's name/category
+- [ ] **INV-03**: Barback can toggle an ingredient in-stock / out-of-stock
+- [ ] **INV-04**: Barback can search/filter the inventory list by name or category
+- [ ] **INV-05**: Barback interface is mobile-first responsive (usable one-handed on a phone)
+
+### Makeable Logic (Shared)
+
+- [ ] **MATCH-01**: System computes makeable/not-makeable per recipe from boolean ingredient presence (server-side, single source of truth)
+- [ ] **MATCH-02**: System computes and exposes which specific ingredient(s) are missing for a not-makeable recipe
+- [ ] **MATCH-03**: Ingredients are modeled with categories (e.g. "orange liqueur") so recipes can match against any in-stock bottle in the right category, not just an exact brand
+- [ ] **MATCH-04**: Recipe ingredient quantities are stored in a canonical unit and converted for display (oz/dash/etc.) without affecting makeable-check logic (which stays presence-based, not volume-based)
+
+### Recipes
+
+- [ ] **RECIPE-01**: Owner can manually create a recipe with name, ingredients (with quantity/unit and category reference), method, glassware, and garnish
+- [ ] **RECIPE-02**: Owner can edit or delete an existing recipe
+
+### Patron Interface
+
+- [ ] **PATR-01**: Patron can browse drinks by category (icon rail / tabs)
+- [ ] **PATR-02**: Patron can view a drink detail screen (photo, description, flavor tags)
+- [ ] **PATR-03**: Every drink card/detail shows a clear makeable / not-makeable indicator
+- [ ] **PATR-04**: Not-makeable drinks show which specific ingredient(s) are missing
+- [ ] **PATR-05**: Patron can submit an order (with an optional free-text "who's this for" field) to the bartender queue
+- [ ] **PATR-06**: Patron can browse/view recipes without being forced to submit an order
+- [ ] **PATR-07**: Patron screen runs in a kiosk-locked/fullscreen mode appropriate for an unauthenticated wall-mounted tablet
+- [ ] **PATR-08**: Patron screen returns to the browse/home view after a period of inactivity
+
+### Bartender Interface
+
+- [ ] **BART-01**: Bartender can view full recipe detail (ingredients + quantities, method, glassware, garnish)
+- [ ] **BART-02**: New patron orders appear in a live queue without manual refresh
+- [ ] **BART-03**: Bartender can move a ticket through a status lifecycle (new → in progress → done)
+- [ ] **BART-04**: Each ticket shows elapsed time since submission
+- [ ] **BART-05**: Bartender can search/filter recipes by name or base spirit
+- [ ] **BART-06**: Bartender's recipe list reflects the same live makeable/not-makeable state as the Patron screen
+
+### Sync Infrastructure
+
+- [ ] **SYNC-01**: Inventory changes made on the Barback screen propagate to Patron and Bartender screens without manual refresh
+- [ ] **SYNC-02**: Order status changes propagate live between Patron and Bartender screens
+
+## v2 Requirements
+
+Deferred to a v1.x fast-follow phase, built once core manual/deterministic flows (above) are proven trustworthy.
+
+### AI Features
+
+- **AI-01**: When a patron's desired drink can't be made, AI suggests a makeable alternative from current stock
+- **AI-02**: When a recipe is missing an ingredient, AI suggests a flavor-appropriate substitution from current stock
+- **AI-03**: Owner can photograph or screenshot a recipe; AI extracts structured recipe data (name, ingredients, method, glass, garnish) for review and confirmation before saving
+
+### Barcode Scanning
+
+- **SCAN-01**: Barback can scan a bottle's UPC barcode via device camera to look up and prefill ingredient details
+- **SCAN-02**: If a UPC isn't recognized, Barback falls back to manual entry without losing the scan attempt
+
+### Future Consideration
+
+- **STOCK-01**: Coarse fractional stock level (full/¾/½/¼/empty) per ingredient, decoupled from makeable-check logic
+- **STOCK-02**: Auto-generated low-stock shopping list based on fractional stock levels
+- **PATR-09**: Flavor-profile tag browsing/filtering on the Patron screen
+
+## Out of Scope
+
+Explicitly excluded. Documented to prevent scope creep.
+
+| Feature | Reason |
+|---------|--------|
+| User accounts / login / authentication | Home network, trusted friends/family use only; adds friction with no benefit — the "who's this for" free-text field on orders covers identification without login |
+| Payments / tabs / pricing / checkout | Not a commercial bar — no transaction exists to support |
+| Precise volumetric pour-depletion tracking | Requires hardware (scales/flow meters) or perfect manual logging discipline this home setting doesn't have; informal units (dash, splash) have no fixed volume even professionally — boolean in/out is the correct scope |
+| Seeded/imported cocktail database (e.g. TheCocktailDB) | Owner wants a curated personal recipe collection; a large generic seed set would pollute makeable-logic with mostly-unmakeable drinks |
+| Dedicated physical barcode scanner hardware | In-browser camera scanning is fast enough at this bottle count; avoids extra hardware cost/setup |
+| Multi-station KDS routing / course timing / expo screen | Only one station (the bartender) exists — none of the coordination problems multi-station KDS solves apply here |
+| Full POS/supplier integration, invoicing, COGS/margin reporting | No commercial purchasing or margin exists in a home bar context |
+| Allergen filtering / dietary-preference profiles | Closed trusted audience who already know each other's allergies; a plain-text recipe note is sufficient if ever needed |
+
+## Traceability
+
+Populated during roadmap creation.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| INV-01 | TBD | Pending |
+| INV-02 | TBD | Pending |
+| INV-03 | TBD | Pending |
+| INV-04 | TBD | Pending |
+| INV-05 | TBD | Pending |
+| MATCH-01 | TBD | Pending |
+| MATCH-02 | TBD | Pending |
+| MATCH-03 | TBD | Pending |
+| MATCH-04 | TBD | Pending |
+| RECIPE-01 | TBD | Pending |
+| RECIPE-02 | TBD | Pending |
+| PATR-01 | TBD | Pending |
+| PATR-02 | TBD | Pending |
+| PATR-03 | TBD | Pending |
+| PATR-04 | TBD | Pending |
+| PATR-05 | TBD | Pending |
+| PATR-06 | TBD | Pending |
+| PATR-07 | TBD | Pending |
+| PATR-08 | TBD | Pending |
+| BART-01 | TBD | Pending |
+| BART-02 | TBD | Pending |
+| BART-03 | TBD | Pending |
+| BART-04 | TBD | Pending |
+| BART-05 | TBD | Pending |
+| BART-06 | TBD | Pending |
+| SYNC-01 | TBD | Pending |
+| SYNC-02 | TBD | Pending |
+
+**Coverage:**
+- v1 requirements: 26 total
+- Mapped to phases: 0
+- Unmapped: 26 ⚠️ (roadmap creation will assign phases)
+
+---
+*Requirements defined: 2026-08-09*
+*Last updated: 2026-08-09 after initial definition*
