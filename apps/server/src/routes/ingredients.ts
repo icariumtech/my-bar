@@ -2,7 +2,7 @@ import type { FastifyPluginAsync, FastifyPluginOptions } from 'fastify'
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { ingredient, ingredientInput, stockPatch } from '@my-bar/shared'
+import { ingredient, ingredientInput, ingredientPatch, stockPatch } from '@my-bar/shared'
 import { db as defaultDb } from '../db/client.js'
 import { categories, ingredients } from '../db/schema.js'
 
@@ -105,6 +105,72 @@ export const ingredientsRoutes: FastifyPluginAsync<IngredientsRoutesOptions> = a
         .all()
 
       return reply.status(201).send(created)
+    },
+  )
+
+  // PATCH /api/ingredients/:id — the owner-edit path (INV-02). `schema.body`
+  // is the shared `ingredientPatch` contract (a partial of ingredientInput
+  // that rejects an empty object), and `schema.params` constrains `id` to a
+  // uuid string, matching the pattern the stock-toggle route below already
+  // established. Only the fields present in the body are written; stock is
+  // never touched here, since editing must never change stock state (D-08).
+  app.withTypeProvider<ZodTypeProvider>().patch(
+    '/:id',
+    {
+      schema: {
+        params: z.object({ id: z.string().uuid() }),
+        body: ingredientPatch,
+        response: {
+          200: ingredient,
+          400: z.object({ error: z.string() }),
+          404: z.object({ error: z.string() }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params
+      const patch = request.body
+
+      try {
+        db.update(ingredients)
+          .set({
+            ...(patch.name !== undefined && { name: patch.name }),
+            ...(patch.categoryId !== undefined && { categoryId: patch.categoryId }),
+            ...(patch.note !== undefined && { note: patch.note }),
+          })
+          .where(eq(ingredients.id, id))
+          .run()
+      } catch (err) {
+        // T-01-10 (extended to edits): an unknown categoryId trips the FK
+        // constraint — translate to 400 rather than a raw 500.
+        if (err instanceof Error && /FOREIGN KEY constraint failed/i.test(err.message)) {
+          return reply.status(400).send({ error: 'Unknown category' })
+        }
+        throw err
+      }
+
+      const [updated] = db
+        .select({
+          id: ingredients.id,
+          name: ingredients.name,
+          categoryId: ingredients.categoryId,
+          categoryName: categories.name,
+          note: ingredients.note,
+          inStock: ingredients.inStock,
+        })
+        .from(ingredients)
+        .innerJoin(categories, eq(ingredients.categoryId, categories.id))
+        .where(eq(ingredients.id, id))
+        .all()
+
+      // An unknown id matches zero rows on the UPDATE above (a no-op, not an
+      // error) — the empty SELECT here is what turns that into a 404 rather
+      // than a false-success 200.
+      if (!updated) {
+        return reply.status(404).send({ error: 'Ingredient not found' })
+      }
+
+      return reply.status(200).send(updated)
     },
   )
 
