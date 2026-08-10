@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 01-barback-inventory-foundation
 source: 01-01-SUMMARY.md, 01-02-SUMMARY.md, 01-03-SUMMARY.md, 01-04-SUMMARY.md, 01-05-SUMMARY.md
 started: 2026-08-10T18:20:00Z
@@ -171,13 +171,27 @@ blocked: 0
   reason: "User reported: out-of-stock items are highlighted green (the reveal div's ternary defaults to bg-bar-accent when swipeOffset===0, and out-of-stock rows' opacity-60 lets it bleed through) — should be greyed out, not green."
   severity: major
   test: 5
-  artifacts: []
-  missing: []
+  root_cause: "apps/barback/src/components/IngredientRow.tsx:123 — revealColorClass = swipeOffset < 0 ? 'bg-bar-destructive' : 'bg-bar-accent'. At rest (swipeOffset === 0, the common case), the ternary's false branch fires, defaulting the always-rendered reveal div (line 129) to bg-bar-accent (#22c55e green — the reserved in-stock/CTA color per 01-UI-SPEC.md's Color table). Out-of-stock rows render at 60% opacity (line 131-132: displayedInStock ? '' : 'opacity-60'), which lets that green reveal layer bleed through visibly behind the semi-transparent row. In-stock rows are fully opaque, so the same bleed-through is invisible there — explaining why only out-of-stock rows appeared tinted."
+  artifacts:
+    - path: "apps/barback/src/components/IngredientRow.tsx"
+      issue: "revealColorClass ternary has no neutral/hidden state for swipeOffset === 0 — it always resolves to a color, defaulting to accent green"
+  missing:
+    - "Give the reveal div a neutral state (transparent, or bg-bar-surface matching the row's own resting background) whenever swipeOffset === 0 and no toggle is pending/mid-grace-period, so it only shows destructive/accent color while actively swiping or during the undo-visible window"
+    - "Out-of-stock resting-state styling should not rely on opacity alone bleeding through an always-colored layer underneath — grey/dim the row via its own background or a dedicated out-of-stock treatment, independent of the swipe-reveal layer's color"
+  debug_session: ""
 - gap_id: G-01-5b
   truth: "Swipe interaction: after releasing a swipe, the row holds in the revealed position with Undo shown inside the revealed color area (not a separate floating button). If Undo isn't tapped within the grace period, the row slides back and the new state takes effect — commit fires only at that point, not immediately on release."
   status: failed
-  reason: "User requested a different swipe-hold/undo-placement mechanic than what was implemented: current implementation flips the row instantly on release (swipeOffset resets to 0 immediately) with Undo as a separate button element, rather than holding the revealed state with Undo inside the colored reveal area."
+  reason: "User requested a different swipe-hold/undo-placement mechanic than what was implemented: current implementation flips the row instantly on release (swipeOffset resets to 0 immediately via onSwiped, line 114) with Undo as a separate floating Button element (line 144-148) placed among the row's trailing controls, rather than holding the revealed state with Undo inside the colored reveal area."
   severity: major
   test: 5
-  artifacts: []
-  missing: []
+  root_cause: "Not a bug — a deliberate interaction-model change. Current implementation (react-swipeable's onSwiped immediately zeroes swipeOffset, decoupling the visual swipe position from the pending/grace-period state which is tracked separately via `pending`/`canUndo`). The requested design instead ties the swipe-held visual position to the pending/grace-period lifecycle: the row should stay translated to its revealed position (matching the swiped direction's reveal color) for the duration of the grace period, with the Undo control rendered inside that revealed area, then animate back to rest (triggering the commit) only when the grace period elapses without an Undo tap."
+  artifacts:
+    - path: "apps/barback/src/components/IngredientRow.tsx"
+      issue: "onSwiped resets swipeOffset to 0 immediately on release instead of holding it at a fixed revealed offset for the grace-period duration; Undo button is rendered among the row's trailing controls rather than inside the reveal div"
+  missing:
+    - "Replace the immediate onSwiped reset with logic that snaps swipeOffset to a fixed 'revealed' value (matching swipe direction) once a swipe crosses the toggle threshold, and holds it there for the grace period"
+    - "Move the Undo control into the reveal div (the colored background layer) so it appears inside the red/green revealed area rather than as a separate row-trailing button"
+    - "On grace-period elapse (no Undo tap), animate/transition swipeOffset back to 0 as the visual cue that the commit is taking effect, coordinated with the existing commit-timer logic in startToggle"
+    - "Preserve existing invariants: no network request on undo (D-10), no blocking confirmation dialog (D-10), swipe direction mapping unchanged (D-08)"
+  debug_session: ""
