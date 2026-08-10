@@ -26,25 +26,74 @@ export function IngredientRow({ ingredient, onCommitToggle, onEdit }: Ingredient
   // The target stock state a swipe is currently pending toward, or null
   // when no toggle is in flight.
   const [pending, setPending] = useState<boolean | null>(null)
+  // Whether the current pending toggle is still inside its 3s undo grace
+  // window (WR-01/WR-02). Tracked separately from `pending`: `pending`
+  // keeps rendering the optimistic value through the async commit
+  // round-trip, while `canUndo` only reflects whether the timer has fired.
+  const [canUndo, setCanUndo] = useState(false)
   const [swipeOffset, setSwipeOffset] = useState(0)
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
-  // Clear the pending timer on unmount so a row scrolled out of the list
-  // mid-window cannot fire onCommitToggle against an unmounted component.
+  // Refs kept current every render so the unmount cleanup effect (which
+  // has an empty dependency array and therefore a closure frozen at mount)
+  // can still see the latest pending toggle when it fires.
+  const pendingRef = useRef(pending)
+  const canUndoRef = useRef(canUndo)
+  const ingredientIdRef = useRef(ingredient.id)
+  const onCommitToggleRef = useRef(onCommitToggle)
+  useEffect(() => {
+    pendingRef.current = pending
+    canUndoRef.current = canUndo
+    ingredientIdRef.current = ingredient.id
+    onCommitToggleRef.current = onCommitToggle
+  })
+
+  // WR-02: flush, don't discard, a still-undoable pending toggle when the
+  // row unmounts (e.g. filtered out of view) before the grace period
+  // elapses. `onCommitToggle` is owned by `IngredientList` and persists
+  // independently of this row, so firing it here is safe even though the
+  // row that initiated the toggle is gone. A toggle whose grace period had
+  // already elapsed (canUndo already false, commit already dispatched) is
+  // left alone — clearing the timer is a no-op in that case.
   useEffect(() => {
     return () => {
       clearTimeout(timerRef.current)
+      if (canUndoRef.current && pendingRef.current !== null) {
+        onCommitToggleRef.current(ingredientIdRef.current, pendingRef.current)
+      }
     }
   }, [])
+
+  // WR-01: once the grace-period timer fires and the commit dispatches,
+  // `pending` keeps rendering the optimistic value instead of instantly
+  // reverting to the (still stale) `ingredient.inStock` prop. This effect
+  // is what finally releases the optimistic override, once the
+  // server-sourced prop actually catches up to the committed value (after
+  // `useToggleStock`'s `onSettled` query invalidation refetches it).
+  // Gating on `!canUndo` prevents this from firing during the still-
+  // undoable grace window, where `pending` could coincidentally already
+  // equal `ingredient.inStock` (e.g. swiping right on an already-in-stock
+  // row).
+  useEffect(() => {
+    if (!canUndo && pending !== null && ingredient.inStock === pending) {
+      setPending(null)
+    }
+  }, [canUndo, pending, ingredient.inStock])
 
   function startToggle(nextInStock: boolean) {
     // A mid-window re-swipe (e.g. left then right before the timer fires)
     // must not stack two pending commits — clear any existing timer first.
     clearTimeout(timerRef.current)
     setPending(nextInStock)
+    setCanUndo(true)
     timerRef.current = setTimeout(() => {
       onCommitToggle(ingredient.id, nextInStock)
-      setPending(null)
+      // Do not clear `pending` here (WR-01) — it keeps driving
+      // `displayedInStock` through the commit's async round-trip. Only
+      // the grace period itself has elapsed, so flip `canUndo` off; the
+      // ingredient.inStock-watching effect above clears `pending` once
+      // the committed value actually lands.
+      setCanUndo(false)
     }, UNDO_GRACE_PERIOD_MS)
   }
 
@@ -53,6 +102,7 @@ export function IngredientRow({ ingredient, onCommitToggle, onEdit }: Ingredient
     // timer here is the entire safety net (D-10), not a compensating call.
     clearTimeout(timerRef.current)
     setPending(null)
+    setCanUndo(false)
   }
 
   const handlers = useSwipeable({
@@ -91,7 +141,7 @@ export function IngredientRow({ ingredient, onCommitToggle, onEdit }: Ingredient
         </div>
 
         <div className="flex items-center gap-sm shrink-0">
-          {pending !== null && (
+          {canUndo && (
             <Button onClick={undo} style={{ minHeight: 48, minWidth: 48 }}>
               Undo
             </Button>
