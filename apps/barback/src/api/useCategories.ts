@@ -1,20 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { Ingredient, IngredientInput } from '@my-bar/shared'
+import type { Category, CategoryInput } from '@my-bar/shared'
 import { apiFetch } from './client.js'
 
-export function useIngredients() {
+export function useCategories() {
   return useQuery({
-    queryKey: ['ingredients'],
-    queryFn: () => apiFetch<Ingredient[]>('/ingredients'),
+    queryKey: ['categories'],
+    queryFn: () => apiFetch<Category[]>('/categories'),
   })
 }
 
-export function useCreateIngredient() {
+export function useCreateCategory() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (input: IngredientInput) =>
-      apiFetch<Ingredient>('/ingredients', {
+    mutationFn: (input: CategoryInput) =>
+      apiFetch<Category>('/categories', {
         method: 'POST',
         body: JSON.stringify(input),
       }),
@@ -22,7 +22,7 @@ export function useCreateIngredient() {
     // server truth on failure too, or the inventory stops being
     // trustworthy (01-RESEARCH.md Pitfall 4).
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['ingredients'] })
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
     },
   })
 }
