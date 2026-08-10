@@ -1,9 +1,9 @@
 ---
-status: diagnosed
+status: complete
 phase: 01-barback-inventory-foundation
-source: 01-01-SUMMARY.md, 01-02-SUMMARY.md, 01-03-SUMMARY.md, 01-04-SUMMARY.md, 01-05-SUMMARY.md
+source: 01-01-SUMMARY.md, 01-02-SUMMARY.md, 01-03-SUMMARY.md, 01-04-SUMMARY.md, 01-05-SUMMARY.md, 01-06-SUMMARY.md
 started: 2026-08-10T18:20:00Z
-updated: 2026-08-10T19:10:00Z
+updated: 2026-08-10T22:25:00Z
 ---
 
 ## Current Test
@@ -30,9 +30,16 @@ result: pass
 
 ### 5. Swipe a bottle to toggle stock (INV-03)
 expected: Swiping a row left marks it out-of-stock; swiping right marks it in-stock. The row responds immediately to the swipe (feels responsive, not laggy), and a brief "Undo" affordance appears before the change commits.
-result: issue
+result: issue (original finding — see retest below)
 reported: "The swipe works but out-of-stock items are highlighted green — should be greyed out instead (or otherwise not green, since green is the in-stock/accent color). Also: when swiping left or right I would like the swipe to hold in place when I remove my finger, with Undo shown inside the revealed green/red area (not a separate floating button). If I don't tap Undo, the row should slide back and the new state take effect; only then does the commit fire."
 severity: major
+
+### 5-retest. Swipe a bottle to toggle stock — retest (G-01-5, G-01-5b, undo-button restyle)
+expected: |
+  Swiping a row left holds it in place, revealed with a DESTRUCTIVE RED background (not green); swiping right holds it revealed with the accent GREEN background. At rest (no active swipe, no pending undo), the row shows no reveal color at all — an out-of-stock row is instead visually greyed via its own background/text, independent of the reveal layer.
+  While held in the revealed position, an "Undo" control appears as plain centered text sitting directly inside that red/green area (no separate floating button, no border/background box around just the Undo text).
+  If Undo is not tapped, the row animates back to rest after the grace period and the stock change commits at that point (not immediately on release). Tapping Undo cancels with no network request and returns the row to rest immediately.
+result: pass
 
 ### 6. Undo a swipe within the grace window (D-08, D-10)
 expected: After swiping, tapping "Undo" within the grace window cancels the change — no network request happens, the row's state stays exactly as it was, and no confirmation dialog interrupts the gesture.
@@ -156,18 +163,22 @@ coverage_id: D6
 
 ## Summary
 
-total: 28
-passed: 27
+total: 29
+passed: 28
 issues: 1
 pending: 0
 skipped: 0
 blocked: 0
 
+Note: the 1 "issue" is Test 5's original finding (G-01-5/G-01-5b), reconciled below as resolved and confirmed via the 5-retest entry passing.
+
 ## Gaps
 
 - gap_id: G-01-5
   truth: "Out-of-stock rows are visually distinguished without using the reserved in-stock/accent green; the swipe reveal background only shows while actively swiping or pending undo, not at rest."
-  status: failed
+  status: resolved
+  resolved_by: 01-06-PLAN.md
+  resolved_at: 2026-08-10
   reason: "User reported: out-of-stock items are highlighted green (the reveal div's ternary defaults to bg-bar-accent when swipeOffset===0, and out-of-stock rows' opacity-60 lets it bleed through) — should be greyed out, not green."
   severity: major
   test: 5
@@ -181,7 +192,9 @@ blocked: 0
   debug_session: ""
 - gap_id: G-01-5b
   truth: "Swipe interaction: after releasing a swipe, the row holds in the revealed position with Undo shown inside the revealed color area (not a separate floating button). If Undo isn't tapped within the grace period, the row slides back and the new state takes effect — commit fires only at that point, not immediately on release."
-  status: failed
+  status: resolved
+  resolved_by: 01-06-PLAN.md
+  resolved_at: 2026-08-10
   reason: "User requested a different swipe-hold/undo-placement mechanic than what was implemented: current implementation flips the row instantly on release (swipeOffset resets to 0 immediately via onSwiped, line 114) with Undo as a separate floating Button element (line 144-148) placed among the row's trailing controls, rather than holding the revealed state with Undo inside the colored reveal area."
   severity: major
   test: 5
