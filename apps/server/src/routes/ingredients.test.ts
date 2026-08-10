@@ -176,3 +176,144 @@ describe('POST /api/ingredients', () => {
     expect(res.statusCode).toBe(400)
   })
 })
+
+describe('PATCH /api/ingredients/:id/stock', () => {
+  let testDb: ReturnType<typeof createTestDb>
+
+  beforeEach(() => {
+    testDb = createTestDb()
+  })
+
+  afterEach(() => {
+    testDb.cleanup()
+  })
+
+  function buildTestApp() {
+    const app = Fastify()
+    app.setValidatorCompiler(validatorCompiler)
+    app.setSerializerCompiler(serializerCompiler)
+    app.register(ingredientsRoutes, { prefix: '/api/ingredients', db: testDb.db })
+    return app
+  }
+
+  function seedIngredient() {
+    const categoryId = crypto.randomUUID()
+    testDb.db.insert(categories).values({ id: categoryId, name: 'Dry Gin' }).run()
+
+    const ingredientId = crypto.randomUUID()
+    testDb.db
+      .insert(ingredients)
+      .values({
+        id: ingredientId,
+        name: 'Bombay Sapphire Gin',
+        categoryId,
+        note: '750ml',
+      })
+      .run()
+
+    return { ingredientId, categoryId }
+  }
+
+  it('toggles a seeded in-stock ingredient to false and persists it', async () => {
+    const { ingredientId } = seedIngredient()
+    const app = buildTestApp()
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/ingredients/${ingredientId}/stock`,
+      payload: { inStock: false },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toMatchObject({ id: ingredientId, inStock: false })
+
+    const [row] = testDb.db
+      .select()
+      .from(ingredients)
+      .where(eq(ingredients.id, ingredientId))
+      .all()
+    expect(row?.inStock).toBe(false)
+  })
+
+  it('toggles it back to true and persists it', async () => {
+    const { ingredientId } = seedIngredient()
+    const app = buildTestApp()
+
+    await app.inject({
+      method: 'PATCH',
+      url: `/api/ingredients/${ingredientId}/stock`,
+      payload: { inStock: false },
+    })
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/ingredients/${ingredientId}/stock`,
+      payload: { inStock: true },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toMatchObject({ id: ingredientId, inStock: true })
+
+    const [row] = testDb.db
+      .select()
+      .from(ingredients)
+      .where(eq(ingredients.id, ingredientId))
+      .all()
+    expect(row?.inStock).toBe(true)
+  })
+
+  it('leaves name, categoryId and note unchanged by a stock toggle', async () => {
+    const { ingredientId, categoryId } = seedIngredient()
+    const app = buildTestApp()
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/ingredients/${ingredientId}/stock`,
+      payload: { inStock: false },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json()).toMatchObject({
+      name: 'Bombay Sapphire Gin',
+      categoryId,
+      note: '750ml',
+    })
+  })
+
+  it('returns 400 when the body omits inStock', async () => {
+    const { ingredientId } = seedIngredient()
+    const app = buildTestApp()
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/ingredients/${ingredientId}/stock`,
+      payload: {},
+    })
+
+    expect(res.statusCode).toBe(400)
+  })
+
+  it('returns 400 when inStock is a string rather than a boolean', async () => {
+    const { ingredientId } = seedIngredient()
+    const app = buildTestApp()
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/ingredients/${ingredientId}/stock`,
+      payload: { inStock: 'false' },
+    })
+
+    expect(res.statusCode).toBe(400)
+  })
+
+  it('returns 404 when the id does not match any ingredient', async () => {
+    const app = buildTestApp()
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/ingredients/${crypto.randomUUID()}/stock`,
+      payload: { inStock: false },
+    })
+
+    expect(res.statusCode).toBe(404)
+  })
+})
