@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+/* D-11/D-12: Barback's own distinct, utilitarian dark palette — NOT the
+   dark-neon Patron branding. Tokens match 01-UI-SPEC.md exactly. */
+@theme {
+  --color-bar-bg: #18181b;
+  --color-bar-surface: #27272a;
+  --color-bar-accent: #22c55e;
+  --color-bar-destructive: #ef4444;
+
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  --spacing-3xl: 64px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: #18181b;
+}

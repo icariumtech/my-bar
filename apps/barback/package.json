@@ -1,0 +1,28 @@
+{
+  "name": "@my-bar/barback",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "pnpm --filter @my-bar/shared build && tsc -p tsconfig.json --noEmit && vite build",
+    "test": "echo \"no tests in apps/barback yet\""
+  },
+  "dependencies": {
+    "@ant-design/icons": "6.3.2",
+    "@my-bar/shared": "workspace:*",
+    "@tanstack/react-query": "5.101.4",
+    "antd": "6.5.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "@vitejs/plugin-react": "6.0.5",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3",
+    "vite": "8.2.1"
+  }
+}

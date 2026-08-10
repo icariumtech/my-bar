@@ -13,7 +13,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **INV-02**: Barback can edit an existing ingredient's name/category
 - [ ] **INV-03**: Barback can toggle an ingredient in-stock / out-of-stock
 - [ ] **INV-04**: Barback can search/filter the inventory list by name or category
-- [ ] **INV-05**: Barback interface is mobile-first responsive (usable one-handed on a phone)
+- [x] **INV-05**: Barback interface is mobile-first responsive (usable one-handed on a phone)
 
 ### Makeable Logic (Shared)
 
@@ -98,7 +98,7 @@ Populated during roadmap creation.
 | INV-02 | Phase 1 | Pending |
 | INV-03 | Phase 1 | Pending |
 | INV-04 | Phase 1 | Pending |
-| INV-05 | Phase 1 | Pending |
+| INV-05 | Phase 1 | Complete |
 | MATCH-01 | Phase 2 | Pending |
 | MATCH-02 | Phase 2 | Pending |
 | MATCH-03 | Phase 2 | Pending |
@@ -123,6 +123,7 @@ Populated during roadmap creation.
 | SYNC-02 | Phase 4 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 27 total
 - Mapped to phases: 27
 - Unmapped: 0 ✓

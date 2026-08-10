@@ -1,0 +1,13 @@
+{
+  "name": "my-bar",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter server dev\" \"pnpm --filter barback dev\"",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "concurrently": "10.0.4",
+    "typescript": "5.9.3"
+  }
+}
