@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-09)
 Phase: 01 (Barback Inventory Foundation) — EXECUTING
 Plan: 1 of 5
 Status: Executing Phase 01
-Last activity: 2026-08-09 — Phase 01 execution started
+Last activity: 2026-08-10 - Completed quick task 260810-g1w: Fix WR-01/WR-02 swipe-toggle race conditions in IngredientRow
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -72,6 +72,12 @@ None yet.
 ### Blockers/Concerns
 
 None yet.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260810-g1w | Fix WR-01/WR-02 swipe-toggle race conditions in IngredientRow | 2026-08-10 | ec01784 | [260810-g1w-fix-wr-01-wr-02-swipe-toggle-race-condit](./quick/260810-g1w-fix-wr-01-wr-02-swipe-toggle-race-condit/) |
 
 ## Deferred Items
 
