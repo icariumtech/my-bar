@@ -167,13 +167,13 @@ export function IngredientRow({ ingredient, onCommitToggle, onEdit }: Ingredient
           (G-01-5b: Undo lives inside the revealed color area, not among
           the row's trailing controls). */}
       <div
-        className={`absolute inset-0 rounded-lg flex items-center px-md ${revealColorClass} ${
+        className={`absolute inset-0 rounded-lg flex items-center ${revealColorClass} ${
           swipeOffset > 0 ? 'justify-start' : 'justify-end'
         }`}
         aria-hidden={!revealIsInteractive}
       >
         {canUndo && (
-          <Button onClick={undo} style={{ minHeight: 48, minWidth: 48 }}>
+          <Button type="text" onClick={undo} style={{ minHeight: 48, width: REVEAL_OFFSET }}>
             Undo
           </Button>
         )}
