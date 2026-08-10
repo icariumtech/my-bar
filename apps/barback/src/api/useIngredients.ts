@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { message } from 'antd'
-import type { Ingredient, IngredientInput } from '@my-bar/shared'
+import type { Ingredient, IngredientInput, IngredientPatch } from '@my-bar/shared'
 import { apiFetch } from './client.js'
 
 export function useIngredients() {
@@ -24,6 +24,27 @@ export function useCreateIngredient() {
     // trustworthy (01-RESEARCH.md Pitfall 4).
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['ingredients'] })
+    },
+  })
+}
+
+// INV-02: the owner-edit mutation. Invalidates BOTH ['ingredients'] and
+// ['categories'] in onSettled — a rename elsewhere in the app changes a
+// category's own row too, and this mutation can itself move an ingredient
+// between categories, so both caches must resync to server truth either
+// way (never onSuccess-only, 01-RESEARCH.md Pitfall 4).
+export function useUpdateIngredient() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: IngredientPatch }) =>
+      apiFetch<Ingredient>(`/ingredients/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      }),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['ingredients'] })
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
     },
   })
 }
