@@ -1,9 +1,9 @@
 ---
 status: complete
 phase: 01-barback-inventory-foundation
-source: 01-01-SUMMARY.md, 01-02-SUMMARY.md, 01-03-SUMMARY.md, 01-04-SUMMARY.md, 01-05-SUMMARY.md, 01-06-SUMMARY.md
+source: 01-01-SUMMARY.md, 01-02-SUMMARY.md, 01-03-SUMMARY.md, 01-04-SUMMARY.md, 01-05-SUMMARY.md, 01-06-SUMMARY.md, 01-VERIFICATION.md
 started: 2026-08-10T18:20:00Z
-updated: 2026-08-10T22:25:00Z
+updated: 2026-08-10T22:45:00Z
 ---
 
 ## Current Test
@@ -161,10 +161,18 @@ result: pass
 source: automated
 coverage_id: D6
 
+### 29. WR-02 regression guard: pending toggle survives being filtered out mid-grace-period
+expected: Swipe a row to start a stock toggle, then within the 3s grace window type a search query or tap a category chip that filters the row out of the visible list before the timer fires. The toggle still commits (confirm with a page refresh) rather than being silently dropped.
+result: pass
+
+### 30. WR-01 regression guard: no flicker at the exact commit boundary
+expected: Swipe a row and watch closely at the exact moment the 3s grace period elapses and the commit's request resolves. The row's stock indicator never flickers back to the pre-swipe (stale) value during that round-trip.
+result: pass
+
 ## Summary
 
-total: 29
-passed: 28
+total: 30
+passed: 30
 issues: 1
 pending: 0
 skipped: 0
