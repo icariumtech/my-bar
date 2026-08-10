@@ -1,13 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSwipeable } from 'react-swipeable'
+import { LEFT, RIGHT, useSwipeable } from 'react-swipeable'
 import { Button } from 'antd'
 import { EditOutlined } from '@ant-design/icons'
 import type { Ingredient } from '@my-bar/shared'
+import { getRevealColorClass, getRowSurfaceClasses } from './swipeVisuals.js'
 
 // D-08: 3s is the concrete reading of "brief (~few seconds)" — a named,
 // tunable constant rather than a structural choice (01-RESEARCH.md
 // Assumption A4). Confirm the feel with the owner during UAT.
 const UNDO_GRACE_PERIOD_MS = 3000
+
+// G-01-5b: the fixed magnitude both the live-drag clamp and the
+// held/revealed position use. A swipe that crosses the toggle threshold
+// snaps to (and holds at) this offset, signed by direction, for the
+// duration of the grace period instead of springing back to 0 on release.
+const REVEAL_OFFSET = 80
 
 interface IngredientRowProps {
   ingredient: Ingredient
@@ -86,6 +93,11 @@ export function IngredientRow({ ingredient, onCommitToggle, onEdit }: Ingredient
     clearTimeout(timerRef.current)
     setPending(nextInStock)
     setCanUndo(true)
+    // G-01-5b: snap to and hold the revealed position (signed by
+    // direction) so the row stays visually revealed — with Undo rendered
+    // inside that revealed area — for the duration of the grace period,
+    // instead of springing back to 0 on release.
+    setSwipeOffset(nextInStock ? REVEAL_OFFSET : -REVEAL_OFFSET)
     timerRef.current = setTimeout(() => {
       onCommitToggle(ingredient.id, nextInStock)
       // Do not clear `pending` here (WR-01) — it keeps driving
@@ -94,6 +106,11 @@ export function IngredientRow({ ingredient, onCommitToggle, onEdit }: Ingredient
       // ingredient.inStock-watching effect above clears `pending` once
       // the committed value actually lands.
       setCanUndo(false)
+      // G-01-5b: the grace period elapsing both fires the commit above and
+      // animates the row back to rest via the row's own
+      // transition-transform class, coordinating the visual slideback with
+      // the commit rather than decoupling them.
+      setSwipeOffset(0)
     }, UNDO_GRACE_PERIOD_MS)
   }
 
@@ -103,49 +120,76 @@ export function IngredientRow({ ingredient, onCommitToggle, onEdit }: Ingredient
     clearTimeout(timerRef.current)
     setPending(null)
     setCanUndo(false)
+    // G-01-5b: the row is no longer at rest once a swipe has crossed the
+    // toggle threshold (it holds revealed through the grace period), so
+    // tapping Undo must also return it to rest immediately.
+    setSwipeOffset(0)
   }
 
   const handlers = useSwipeable({
     onSwiping: (event) => {
       // Clamp the live drag so the reveal is a bounded peek, not a
       // full-width drag-follow.
-      setSwipeOffset(Math.max(-80, Math.min(80, event.deltaX)))
+      setSwipeOffset(Math.max(-REVEAL_OFFSET, Math.min(REVEAL_OFFSET, event.deltaX)))
     },
-    onSwiped: () => setSwipeOffset(0),
-    onSwipedLeft: () => startToggle(false), // D-08: left = out-of-stock
-    onSwipedRight: () => startToggle(true), // D-08: right = in-stock
+    // A single onSwiped handler dispatching on the event's `dir` field
+    // replaces the previous separate left/right/generic callbacks — this
+    // is the one place that decides hold-vs-bounce for every swipe end.
+    onSwiped: (event) => {
+      if (event.dir === LEFT) {
+        startToggle(false) // D-08: left = out-of-stock
+      } else if (event.dir === RIGHT) {
+        startToggle(true) // D-08: right = in-stock
+      } else {
+        // Non-horizontal or below-threshold gesture — bounce back with no
+        // toggle started.
+        setSwipeOffset(0)
+      }
+    },
     trackMouse: true,
   })
 
   // The row flips instantly on swipe: pending (if any) wins over the
   // ingredient's last-known server value.
   const displayedInStock = pending ?? ingredient.inStock
-  const revealColorClass = swipeOffset < 0 ? 'bg-bar-destructive' : 'bg-bar-accent'
+  const revealColorClass = getRevealColorClass(swipeOffset)
+  const surfaceClasses = getRowSurfaceClasses(displayedInStock)
+  // Undo is reachable to assistive tech only while it is actually rendered
+  // inside the reveal div, so aria-hidden reflects that instead of being
+  // unconditionally set.
+  const revealIsInteractive = canUndo
 
   return (
     <div className="relative overflow-hidden rounded-lg" style={{ minHeight: 48 }}>
       {/* The visual half of the gesture react-swipeable doesn't provide —
-          a CSS-transform reveal behind the row as the swipe progresses. */}
-      <div className={`absolute inset-0 rounded-lg ${revealColorClass}`} aria-hidden="true" />
+          a CSS-transform reveal behind the row as the swipe progresses,
+          now also the home of the Undo control while a toggle is pending
+          (G-01-5b: Undo lives inside the revealed color area, not among
+          the row's trailing controls). */}
       <div
-        className={`relative flex items-center justify-between gap-md min-h-[48px] px-md rounded-lg bg-bar-surface transition-transform ${
-          displayedInStock ? '' : 'opacity-60'
+        className={`absolute inset-0 rounded-lg flex items-center px-md ${revealColorClass} ${
+          swipeOffset > 0 ? 'justify-start' : 'justify-end'
         }`}
+        aria-hidden={!revealIsInteractive}
+      >
+        {canUndo && (
+          <Button onClick={undo} style={{ minHeight: 48, minWidth: 48 }}>
+            Undo
+          </Button>
+        )}
+      </div>
+      <div
+        className={`relative flex items-center justify-between gap-md min-h-[48px] px-md rounded-lg transition-transform ${surfaceClasses.background}`}
         style={{ transform: `translateX(${swipeOffset}px)` }}
       >
         {/* Swipe handlers live only on the name/category content, not on
             the edit button below — tapping Edit must never start a toggle. */}
         <div {...handlers} className="flex flex-col min-w-0 flex-1 py-sm">
-          <span className="text-white text-base truncate">{ingredient.name}</span>
+          <span className={`text-base truncate ${surfaceClasses.nameText}`}>{ingredient.name}</span>
           <span className="text-zinc-400 text-sm truncate">{ingredient.categoryName}</span>
         </div>
 
         <div className="flex items-center gap-sm shrink-0">
-          {canUndo && (
-            <Button onClick={undo} style={{ minHeight: 48, minWidth: 48 }}>
-              Undo
-            </Button>
-          )}
           <span
             aria-label={displayedInStock ? 'in stock' : 'out of stock'}
             className={`inline-block w-3 h-3 rounded-full ${
