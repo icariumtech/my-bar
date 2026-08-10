@@ -11,7 +11,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **INV-01**: Barback can add a new ingredient/bottle with name and category
 - [ ] **INV-02**: Barback can edit an existing ingredient's name/category
-- [ ] **INV-03**: Barback can toggle an ingredient in-stock / out-of-stock
+- [x] **INV-03**: Barback can toggle an ingredient in-stock / out-of-stock
 - [ ] **INV-04**: Barback can search/filter the inventory list by name or category
 - [x] **INV-05**: Barback interface is mobile-first responsive (usable one-handed on a phone)
 
@@ -96,7 +96,7 @@ Populated during roadmap creation.
 |-------------|-------|--------|
 | INV-01 | Phase 1 | Complete |
 | INV-02 | Phase 1 | Pending |
-| INV-03 | Phase 1 | Pending |
+| INV-03 | Phase 1 | Complete |
 | INV-04 | Phase 1 | Pending |
 | INV-05 | Phase 1 | Complete |
 | MATCH-01 | Phase 2 | Pending |
