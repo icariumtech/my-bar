@@ -1,7 +1,7 @@
 ---
 phase: 1
 slug: barback-inventory-foundation
-status: draft
+status: verified
 shadcn_initialized: false
 preset: none
 created: 2026-08-09
@@ -83,10 +83,14 @@ Note: normalized to exactly 2 weights (400 regular, 600 semibold) per the design
 |------|-------|-------|
 | Dominant (60%) | `#18181b` (zinc-900) | Page background, layout surface |
 | Secondary (30%) | `#27272a` (zinc-800) | Ingredient rows, cards, form surfaces, nav |
-| Accent (10%) | `#22c55e` (green) | In-stock status indicator, primary CTA buttons ("Add Ingredient", "Add Category", "Save"), active/selected filter chip |
+| Accent (10%) | `#22c55e` (green) | In-stock status indicator, primary CTA buttons ("Add Ingredient", "Add Category", "Save Changes"), active/selected filter chip |
 | Destructive | `#ef4444` (red) | Out-of-stock swipe-reveal background, category-delete-blocked error, destructive confirmations |
 
-Accent reserved for: **primary CTA buttons only** ("Add Ingredient", "Add Category", "Save"/"Save Changes"), the **in-stock status indicator** (dot/badge on each row), and the **active/selected state of the search/filter control**. Never used for body text, non-primary buttons, or decorative elements.
+Accent reserved for: **primary CTA buttons only** ("Add Ingredient", "Add Category", "Save Changes"), the **in-stock status indicator** (dot/badge on each row), and the **active/selected state of the search/filter control**. Never used for body text, non-primary buttons, or decorative elements.
+
+### Focal Points
+
+The **IngredientList** (vertical scrolling list of ingredient rows) is the primary visual anchor — it occupies the central content area and is where the owner's eye lands first. The **"Add Ingredient" CTA** is the secondary focal point, held in a persistent top/header position using the accent color (`#22c55e`) to draw attention without competing with the list. In-stock/out-of-stock status indicators on each row are tertiary — visible at a glance via the accent/destructive color dots, but subordinate to the row content itself.
 
 ---
 
@@ -95,6 +99,7 @@ Accent reserved for: **primary CTA buttons only** ("Add Ingredient", "Add Catego
 | Element | Copy |
 |---------|------|
 | Primary CTA | "Add Ingredient" (also "Add Category" in category management) |
+| Form submit | "Save Changes" (used for both Add and Edit Ingredient forms — never bare "Save") |
 | Empty state heading | "No ingredients yet" |
 | Empty state body | "Add your first bottle to start tracking inventory." |
 | Error state | "Couldn't save — check your connection and try again." |
@@ -149,11 +154,11 @@ Applicable state considerations resolved: 8 covered, 5 backstop, 1 unresolved
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: FLAG (resolved — form submit label formalized as "Save Changes"; category-zero state left as documented open item in UI Considerations)
+- [x] Dimension 2 Visuals: FLAG (resolved — Focal Points section added above)
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved 2026-08-09
