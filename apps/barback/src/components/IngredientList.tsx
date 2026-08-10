@@ -1,28 +1,34 @@
-import { useIngredients } from '../api/useIngredients.js'
+import type { Ingredient } from '@my-bar/shared'
+import { useIngredients, useToggleStock } from '../api/useIngredients.js'
+import { IngredientRow } from './IngredientRow.js'
 
-// This is the tracer slice's render target: one row per ingredient, name +
-// category name + in-stock indicator, on the D-13 secondary surface at a
-// 48px minimum tap-target height. Loading, error, filtered-empty and
-// true-empty states are plan 01-05's scope — not built here.
-export function IngredientList() {
+interface IngredientListProps {
+  // Threaded through to each IngredientRow's edit affordance. Left
+  // undefined here — plan 01-04 wires this to the edit form; until then
+  // IngredientRow simply doesn't render the edit control.
+  onEdit?: (ingredient: Ingredient) => void
+}
+
+// Renders one IngredientRow per ingredient (INV-03's swipeable stock
+// toggle, deferred commit + undo) and supplies the commit handler backed
+// by useToggleStock(). Loading, error, filtered-empty and true-empty
+// states are plan 01-05's scope — not built here.
+export function IngredientList({ onEdit }: IngredientListProps = {}) {
   const { data: ingredients } = useIngredients()
+  const toggleStock = useToggleStock()
+
+  function handleCommitToggle(id: string, nextInStock: boolean) {
+    toggleStock.mutate({ id, inStock: nextInStock })
+  }
 
   return (
     <ul className="flex flex-col gap-sm mt-md">
       {ingredients?.map((ingredient) => (
-        <li
-          key={ingredient.id}
-          className="flex items-center justify-between gap-md bg-bar-surface rounded-lg px-md min-h-[48px]"
-        >
-          <div className="flex flex-col">
-            <span className="text-white text-base">{ingredient.name}</span>
-            <span className="text-zinc-400 text-sm">{ingredient.categoryName}</span>
-          </div>
-          <span
-            aria-label={ingredient.inStock ? 'in stock' : 'out of stock'}
-            className={`inline-block w-3 h-3 rounded-full ${
-              ingredient.inStock ? 'bg-bar-accent' : 'bg-bar-destructive'
-            }`}
+        <li key={ingredient.id}>
+          <IngredientRow
+            ingredient={ingredient}
+            onCommitToggle={handleCommitToggle}
+            onEdit={onEdit}
           />
         </li>
       ))}

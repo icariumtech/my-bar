@@ -27,3 +27,12 @@ export const ingredient = z.object({
   inStock: z.boolean(),
 })
 export type Ingredient = z.infer<typeof ingredient>
+
+// The swipe-toggle contract (INV-03, D-08). Deliberately its own schema
+// rather than a partial of ingredientInput: stock is the one field a swipe
+// may change, so a narrow contract means a malformed or over-broad toggle
+// request cannot rename a bottle or move it between categories (T-01-12).
+export const stockPatch = z.object({
+  inStock: z.boolean(),
+})
+export type StockPatch = z.infer<typeof stockPatch>

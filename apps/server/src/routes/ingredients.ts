@@ -2,7 +2,7 @@ import type { FastifyPluginAsync, FastifyPluginOptions } from 'fastify'
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
-import { ingredient, ingredientInput } from '@my-bar/shared'
+import { ingredient, ingredientInput, stockPatch } from '@my-bar/shared'
 import { db as defaultDb } from '../db/client.js'
 import { categories, ingredients } from '../db/schema.js'
 
@@ -105,6 +105,54 @@ export const ingredientsRoutes: FastifyPluginAsync<IngredientsRoutesOptions> = a
         .all()
 
       return reply.status(201).send(created)
+    },
+  )
+
+  // PATCH /api/ingredients/:id/stock — the deferred swipe-toggle commit
+  // (INV-03, D-08). `schema.body` is the narrow `stockPatch` contract (a
+  // single boolean) so a toggle request cannot rename a bottle or reassign
+  // its category (T-01-12), and `schema.params` constrains `id` to a uuid
+  // string so a malformed id is rejected before it reaches the query layer
+  // (T-01-13). Only the `inStock` column is written.
+  app.withTypeProvider<ZodTypeProvider>().patch(
+    '/:id/stock',
+    {
+      schema: {
+        params: z.object({ id: z.string().uuid() }),
+        body: stockPatch,
+        response: {
+          200: ingredient,
+          404: z.object({ error: z.string() }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params
+
+      db.update(ingredients).set({ inStock: request.body.inStock }).where(eq(ingredients.id, id)).run()
+
+      const [updated] = db
+        .select({
+          id: ingredients.id,
+          name: ingredients.name,
+          categoryId: ingredients.categoryId,
+          categoryName: categories.name,
+          note: ingredients.note,
+          inStock: ingredients.inStock,
+        })
+        .from(ingredients)
+        .innerJoin(categories, eq(ingredients.categoryId, categories.id))
+        .where(eq(ingredients.id, id))
+        .all()
+
+      // T-01-14: an unmatched id must 404, not silently "succeed" — a
+      // swipe that appears to work while writing nothing is exactly the
+      // failure that makes the inventory untrustworthy.
+      if (!updated) {
+        return reply.status(404).send({ error: 'Ingredient not found' })
+      }
+
+      return reply.status(200).send(updated)
     },
   )
 }
