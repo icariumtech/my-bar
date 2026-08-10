@@ -91,3 +91,88 @@ describe('GET /api/ingredients', () => {
     }).toThrow(/FOREIGN KEY constraint failed/i)
   })
 })
+
+describe('POST /api/ingredients', () => {
+  let testDb: ReturnType<typeof createTestDb>
+
+  beforeEach(() => {
+    testDb = createTestDb()
+  })
+
+  afterEach(() => {
+    testDb.cleanup()
+  })
+
+  function buildTestApp() {
+    const app = Fastify()
+    app.setValidatorCompiler(validatorCompiler)
+    app.setSerializerCompiler(serializerCompiler)
+    app.register(ingredientsRoutes, { prefix: '/api/ingredients', db: testDb.db })
+    return app
+  }
+
+  function seedCategory(name = 'Dry Gin') {
+    const categoryId = crypto.randomUUID()
+    testDb.db.insert(categories).values({ id: categoryId, name }).run()
+    return categoryId
+  }
+
+  it('creates an ingredient and reads back inStock true when the request omitted stock', async () => {
+    const categoryId = seedCategory()
+    const app = buildTestApp()
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/ingredients',
+      payload: { name: 'Bombay Sapphire Gin', categoryId, note: '750ml' },
+    })
+
+    expect(res.statusCode).toBe(201)
+    const body = res.json()
+    expect(body).toMatchObject({
+      name: 'Bombay Sapphire Gin',
+      categoryId,
+      categoryName: 'Dry Gin',
+      note: '750ml',
+      inStock: true,
+    })
+  })
+
+  it('rejects a blank name with 400 before any database work', async () => {
+    const categoryId = seedCategory()
+    const app = buildTestApp()
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/ingredients',
+      payload: { name: '', categoryId },
+    })
+
+    expect(res.statusCode).toBe(400)
+  })
+
+  it('rejects a name over the 200-character bound with 400', async () => {
+    const categoryId = seedCategory()
+    const app = buildTestApp()
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/ingredients',
+      payload: { name: 'x'.repeat(201), categoryId },
+    })
+
+    expect(res.statusCode).toBe(400)
+  })
+
+  it('rejects an unknown categoryId with 400, not 500', async () => {
+    const app = buildTestApp()
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/ingredients',
+      payload: { name: 'Bombay Sapphire Gin', categoryId: crypto.randomUUID() },
+    })
+
+    expect(res.statusCode).toBe(400)
+  })
+})
