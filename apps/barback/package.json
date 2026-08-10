@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "pnpm --filter @my-bar/shared build && tsc -p tsconfig.json --noEmit && vite build",
-    "test": "echo \"no tests in apps/barback yet\""
+    "test": "vitest run"
   },
   "dependencies": {
     "@ant-design/icons": "6.3.2",
@@ -24,6 +24,7 @@
     "@vitejs/plugin-react": "6.0.5",
     "tailwindcss": "4.3.3",
     "typescript": "5.9.3",
-    "vite": "8.2.1"
+    "vite": "8.2.1",
+    "vitest": "4.1.10"
   }
 }
