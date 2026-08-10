@@ -36,3 +36,17 @@ export const stockPatch = z.object({
   inStock: z.boolean(),
 })
 export type StockPatch = z.infer<typeof stockPatch>
+
+// INV-02: the owner-edit contract for name/category/note. Derived from
+// ingredientInput (via .partial()) rather than restated, so the same
+// length bounds (T-01-02's mitigation) carry over automatically. The
+// empty-object refinement stops a no-op PATCH from returning 200 as though
+// something changed. stockPatch stays a wholly separate schema — an edit
+// request must never be able to flip stock, which belongs to the swipe
+// gesture alone (D-08).
+export const ingredientPatch = ingredientInput
+  .partial()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'At least one field must be provided',
+  })
+export type IngredientPatch = z.infer<typeof ingredientPatch>
