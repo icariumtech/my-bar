@@ -5,6 +5,7 @@ import fastifyStatic from '@fastify/static'
 import fastifyCors from '@fastify/cors'
 import { serializerCompiler, validatorCompiler } from '@fastify/type-provider-zod'
 import { ingredientsRoutes } from './routes/ingredients.js'
+import { categoriesRoutes } from './routes/categories.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -24,6 +25,7 @@ export function buildApp() {
   }
 
   app.register(ingredientsRoutes, { prefix: '/api/ingredients' })
+  app.register(categoriesRoutes, { prefix: '/api/categories' })
 
   // T-01-05: root is confined to the built SPA directory only, never the
   // repo root — @fastify/static rejects path traversal outside `root`.
