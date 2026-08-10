@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-09)
 Phase: 01 (Barback Inventory Foundation) — EXECUTING
 Plan: 1 of 5
 Status: Executing Phase 01
-Last activity: 2026-08-10 - Completed quick task 260810-g1w: Fix WR-01/WR-02 swipe-toggle race conditions in IngredientRow
+Last activity: 2026-08-10 - Completed quick task 260810-hmh: Add setup.sh and start_server.sh scripts modeled on janus-console's pattern
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -78,6 +78,7 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260810-g1w | Fix WR-01/WR-02 swipe-toggle race conditions in IngredientRow | 2026-08-10 | ec01784 | [260810-g1w-fix-wr-01-wr-02-swipe-toggle-race-condit](./quick/260810-g1w-fix-wr-01-wr-02-swipe-toggle-race-condit/) |
+| 260810-hmh | Add setup.sh and start_server.sh scripts modeled on janus-console's pattern | 2026-08-10 | 5f111fa | [260810-hmh-add-setup-sh-and-start-server-sh-scripts](./quick/260810-hmh-add-setup-sh-and-start-server-sh-scripts/) |
 
 ## Deferred Items
 
