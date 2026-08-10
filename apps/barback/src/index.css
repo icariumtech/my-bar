@@ -23,7 +23,33 @@ body,
   height: 100%;
 }
 
+/* D-13 typography: exactly two weights (400/600), no custom webfont. Body
+   16px/1.5, headings 20px/600 — matches 01-UI-SPEC.md's typography scale. */
 body {
   margin: 0;
   background-color: #18181b;
+  color: #ffffff;
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* Safe-area padding for viewport-fit=cover on notched phones (D-13): the
+   sticky search bar and the bottom of the list must never sit under the
+   status bar or the home indicator. */
+.safe-area-inset-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-inset-bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 16px);
 }
