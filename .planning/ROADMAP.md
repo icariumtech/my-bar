@@ -62,9 +62,12 @@ Plans:
   4. For a not-makeable recipe, the missing ingredient(s) are shown exactly
   5. Recipes match against any in-stock bottle in the right category (e.g. any orange liqueur, not just one exact brand), and ingredient quantities display in normal units (oz/dash) without affecting the makeable check itself
 
-**Plans**: 6/6 plans executed
+**Plans**: 6/7 plans executed
 
 Plans:
+
+- [ ] 02-07-PLAN.md — Gap closure: fix UnitDropdown/GlasswareSelector value/onChange binding + apiFetch real error surfacing (G-02-6)
+
 **Wave 1**
 
 - [x] 02-01-PLAN.md — Tracer: recipe schema, shared contracts, makeable engine, GET/POST /api/recipes + DB push (RECIPE-01, MATCH-01–04)
