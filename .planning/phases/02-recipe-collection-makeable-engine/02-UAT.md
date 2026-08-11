@@ -1,5 +1,5 @@
 ---
-status: partial
+status: diagnosed
 phase: 02-recipe-collection-makeable-engine
 source: [02-01-SUMMARY.md, 02-02-SUMMARY.md, 02-03-SUMMARY.md, 02-04-SUMMARY.md, 02-05-SUMMARY.md, 02-06-SUMMARY.md]
 started: 2026-08-11T15:12:31Z
@@ -225,7 +225,16 @@ blocked: 8
   reason: "User reported: fail, when I try to save a recipe I get an error \"Couldn't save recipe - check your connection and try again.\" (POST /api/recipes appears to be failing in real usage)"
   severity: blocker
   test: 6
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "UnitDropdown.tsx renders a bare, prop-less <Select> — it accepts zero props, so it never receives/forwards the value/onChange antd's Form.Item injects into its direct child. Every ingredient line's unit field is therefore always submitted as undefined. packages/shared/src/recipe.ts's recipeIngredientInput.unit is a required z.enum(...), so Fastify's Zod validator rejects every recipe save with 400 Bad Request. Confirmed via direct curl repro (payload without unit -> 400; with unit -> 201) and by tracing antd's Form engine source. Secondary/contributing cause: apps/barback/src/api/client.ts's apiFetch() discards the server's real {error} body on non-2xx responses, so RecipeForm always shows the same generic 'check your connection' Alert regardless of actual cause, masking the real 400 validation failure as a network problem."
+  artifacts:
+    - path: "apps/barback/src/components/UnitDropdown.tsx"
+      issue: "Doesn't forward value/onChange to the wrapped <Select> — Form.Item can't control it"
+    - path: "apps/barback/src/components/GlasswareSelector.tsx"
+      issue: "Same defect pattern (destructures only { glassware }, drops value/onChange) — latent, doesn't block repro because glasswareId is optional"
+    - path: "apps/barback/src/api/client.ts"
+      issue: "apiFetch() swallows the server's real error body on non-2xx responses, producing a misleading generic message for any failure type"
+  missing:
+    - "UnitDropdown must accept and forward value/onChange props to the inner <Select> (destructure+spread, or inline <Select> directly as Form.Item's child like other working bindings)"
+    - "GlasswareSelector must accept and forward value/onChange the same way"
+    - "apiFetch should surface the server's actual error message instead of a generic string, so future validation failures aren't misread as network problems"
+  debug_session: ".planning/debug/recipe-save-fails-connection.md"
