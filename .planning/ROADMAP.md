@@ -131,6 +131,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Barback Inventory Foundation | 6/6 | Complete    | 2026-08-10 |
-| 2. Recipe Collection & Makeable Engine | 8/8 | In Progress|  |
+| 2. Recipe Collection & Makeable Engine | 8/8 | Complete    | 2026-08-11 |
 | 3. Patron Browse Experience | 0/TBD | Not started | - |
 | 4. Bartender Console & Order Workflow | 0/TBD | Not started | - |
