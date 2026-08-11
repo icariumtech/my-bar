@@ -1,18 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 02-recipe-collection-makeable-engine
 source: [02-01-SUMMARY.md, 02-02-SUMMARY.md, 02-03-SUMMARY.md, 02-04-SUMMARY.md, 02-05-SUMMARY.md, 02-06-SUMMARY.md, 02-07-SUMMARY.md, 02-08-SUMMARY.md]
 started: 2026-08-11T15:12:31Z
-updated: 2026-08-11T18:05:00Z
+updated: 2026-08-11T18:12:00Z
 ---
 
 ## Current Test
 
-number: 6
-name: Recipe list shows makeable badges (re-test after G-02-9 fix)
-expected: |
-  Create (or reuse) a recipe requiring rye. Mark all rye bottles out of stock in the Ingredients screen. Return to the Recipes list/detail WITHOUT reloading the page — the badge should now show "Missing: rye" (or similar) live, no manual refresh needed.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -38,8 +34,8 @@ result: pass
 
 ### 6. Recipe list shows makeable badges
 expected: The recipe list shows every recipe with a name and a makeable/not-makeable badge, computed server-side (never recomputed in the browser). Toggling an ingredient's in-stock status elsewhere in Barback updates the recipe's badge without a manual page reload.
-result: [pending]
-note: "Was G-02-9 (stale badge until manual refresh) — fix in plan 02-08 verified by automated regression test + full suite, but re-testing live since that's exactly how the last two bugs surfaced despite green tests."
+result: pass
+note: "Re-verified live after G-02-9 fix (plan 02-08) — badge now updates without a manual page reload."
 
 ### 7. Search the recipe list by name
 expected: Typing in the recipe search box filters the list to matching names.
@@ -199,9 +195,9 @@ coverage_id: D5 (02-06)
 ## Summary
 
 total: 34
-passed: 33
+passed: 34
 issues: 0
-pending: 1
+pending: 0
 skipped: 0
 blocked: 0
 
