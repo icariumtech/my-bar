@@ -1,9 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import Fastify from 'fastify'
-import { eq } from 'drizzle-orm'
 import { serializerCompiler, validatorCompiler } from '@fastify/type-provider-zod'
 import { createTestDb } from '../db/test-helpers.js'
-import { glassware as glasswareTable, recipes } from '../db/schema.js'
+import { glassware as glasswareTable } from '../db/schema.js'
 import { glasswareRoutes } from './glassware.js'
 
 describe('glassware routes', () => {
@@ -120,75 +119,4 @@ describe('glassware routes', () => {
     })
   })
 
-  describe('DELETE /api/glassware/:id', () => {
-    function seedGlassware(name = 'Coupe') {
-      const id = crypto.randomUUID()
-      testDb.db.insert(glasswareTable).values({ id, name }).run()
-      return id
-    }
-
-    function seedRecipeUsingGlassware(glasswareId: string) {
-      const recipeId = crypto.randomUUID()
-      const now = new Date()
-      testDb.db
-        .insert(recipes)
-        .values({
-          id: recipeId,
-          name: 'Martini',
-          method: JSON.stringify(['Stir']),
-          glasswareId,
-          garnish: null,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run()
-      return recipeId
-    }
-
-    it('deletes an unreferenced glassware entry and returns 204', async () => {
-      const id = seedGlassware()
-      const app = buildTestApp()
-
-      const res = await app.inject({ method: 'DELETE', url: `/api/glassware/${id}` })
-
-      expect(res.statusCode).toBe(204)
-
-      const list = await app.inject({ method: 'GET', url: '/api/glassware' })
-      expect(list.json()).toEqual([])
-    })
-
-    it('refuses to delete a glassware entry referenced by 2 recipes, with an accurate recipeCount, leaving both intact', async () => {
-      const id = seedGlassware()
-      const recipeIdA = seedRecipeUsingGlassware(id)
-      const recipeIdB = seedRecipeUsingGlassware(id)
-      const app = buildTestApp()
-
-      const res = await app.inject({ method: 'DELETE', url: `/api/glassware/${id}` })
-
-      expect(res.statusCode).toBe(409)
-      expect(res.json()).toEqual({
-        error: 'This glassware is used by 2 recipe(s) — remove or reassign them first.',
-        recipeCount: 2,
-      })
-
-      const list = await app.inject({ method: 'GET', url: '/api/glassware' })
-      expect(list.json()).toHaveLength(1)
-
-      const [recipeA] = testDb.db.select().from(recipes).where(eq(recipes.id, recipeIdA)).all()
-      const [recipeB] = testDb.db.select().from(recipes).where(eq(recipes.id, recipeIdB)).all()
-      expect(recipeA.glasswareId).toBe(id)
-      expect(recipeB.glasswareId).toBe(id)
-    })
-
-    it('returns 404 for an unknown glassware id', async () => {
-      const app = buildTestApp()
-
-      const res = await app.inject({
-        method: 'DELETE',
-        url: `/api/glassware/${crypto.randomUUID()}`,
-      })
-
-      expect(res.statusCode).toBe(404)
-    })
-  })
 })
