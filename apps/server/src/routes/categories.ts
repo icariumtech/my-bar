@@ -4,14 +4,19 @@ import { asc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { category, categoryInput } from '@my-bar/shared'
 import { db as defaultDb } from '../db/client.js'
-import { categories, ingredients } from '../db/schema.js'
+import { categories, ingredients, recipeIngredients } from '../db/schema.js'
 
-// D-03 Copywriting Contract: the exact refusal copy for an in-use category
-// delete, with the real count substituted in — shared between the
-// pre-count fast path and the race-condition fallback below so the two
-// can never phrase the same case differently.
-function inUseMessage(count: number) {
-  return `This category is used by ${count} ingredient(s) — reassign or remove them first.`
+// D-03/D-21 Copywriting Contract: the exact refusal copy for an in-use
+// category delete, with the real counts substituted in — shared between the
+// pre-count fast path and the race-condition fallback below so the two can
+// never phrase the same case differently. Each count only contributes a
+// clause when it is non-zero, so an ingredient-only conflict (the Phase 1
+// regression guard) still reads byte-for-byte identical to before D-21.
+function inUseMessage(ingredientCount: number, recipeIngredientCount: number) {
+  const parts: string[] = []
+  if (ingredientCount > 0) parts.push(`${ingredientCount} ingredient(s)`)
+  if (recipeIngredientCount > 0) parts.push(`${recipeIngredientCount} recipe(s)`)
+  return `This category is used by ${parts.join(' and/or ')} — reassign or remove them first.`
 }
 
 interface CategoriesRoutesOptions extends FastifyPluginOptions {
@@ -132,7 +137,11 @@ export const categoriesRoutes: FastifyPluginAsync<CategoriesRoutesOptions> = asy
         response: {
           204: z.void(),
           404: z.object({ error: z.string() }),
-          409: z.object({ error: z.string(), ingredientCount: z.number() }),
+          409: z.object({
+            error: z.string(),
+            ingredientCount: z.number(),
+            recipeIngredientCount: z.number(),
+          }),
         },
       },
     },
@@ -150,23 +159,47 @@ export const categoriesRoutes: FastifyPluginAsync<CategoriesRoutesOptions> = asy
         .where(eq(ingredients.categoryId, id))
         .all()
 
-      if (ingredientCount > 0) {
-        return reply.status(409).send({ error: inUseMessage(ingredientCount), ingredientCount })
+      // D-21: a category still referenced by a recipe's ingredient lines
+      // must be refused deletion exactly like one still referenced by an
+      // ingredient — counted here alongside ingredientCount so both show up
+      // in a single accurate refusal.
+      const [{ recipeIngredientCount }] = db
+        .select({ recipeIngredientCount: sql<number>`count(*)` })
+        .from(recipeIngredients)
+        .where(eq(recipeIngredients.categoryId, id))
+        .all()
+
+      if (ingredientCount + recipeIngredientCount > 0) {
+        return reply.status(409).send({
+          error: inUseMessage(ingredientCount, recipeIngredientCount),
+          ingredientCount,
+          recipeIngredientCount,
+        })
       }
 
       try {
         db.delete(categories).where(eq(categories.id, id)).run()
       } catch (err) {
         if (err instanceof Error && /FOREIGN KEY constraint failed/i.test(err.message)) {
-          // T-01-16: a racing insert landed between the pre-count above and
-          // this delete — re-count for an accurate message rather than
-          // trusting the now-stale pre-count.
-          const [{ ingredientCount: raceCount }] = db
+          // T-01-16 (extended by D-21): a racing insert landed between the
+          // pre-count above and this delete — re-count both ingredients and
+          // recipeIngredients for an accurate message rather than trusting
+          // the now-stale pre-count.
+          const [{ ingredientCount: raceIngredientCount }] = db
             .select({ ingredientCount: sql<number>`count(*)` })
             .from(ingredients)
             .where(eq(ingredients.categoryId, id))
             .all()
-          return reply.status(409).send({ error: inUseMessage(raceCount), ingredientCount: raceCount })
+          const [{ recipeIngredientCount: raceRecipeIngredientCount }] = db
+            .select({ recipeIngredientCount: sql<number>`count(*)` })
+            .from(recipeIngredients)
+            .where(eq(recipeIngredients.categoryId, id))
+            .all()
+          return reply.status(409).send({
+            error: inUseMessage(raceIngredientCount, raceRecipeIngredientCount),
+            ingredientCount: raceIngredientCount,
+            recipeIngredientCount: raceRecipeIngredientCount,
+          })
         }
         throw err
       }
