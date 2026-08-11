@@ -36,6 +36,30 @@ export function createTestDb() {
       note TEXT,
       in_stock INTEGER NOT NULL DEFAULT 1
     );
+
+    CREATE TABLE glassware (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE
+    );
+
+    CREATE TABLE recipes (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      method TEXT NOT NULL,
+      glassware_id TEXT REFERENCES glassware(id) ON DELETE SET NULL,
+      garnish TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE recipe_ingredients (
+      id TEXT PRIMARY KEY,
+      recipe_id TEXT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+      category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
+      quantity TEXT NOT NULL,
+      unit TEXT NOT NULL,
+      display_order INTEGER NOT NULL
+    );
   `)
 
   const db = drizzle(sqlite, { schema })
