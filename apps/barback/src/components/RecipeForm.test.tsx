@@ -168,4 +168,46 @@ describe('RecipeForm', () => {
     await waitFor(() => expect(capturedBody).toBeDefined())
     expect(capturedBody!.glasswareId).toBe(fixtureGlassware.id)
   })
+
+  it("shows the server's real validation message in the save-failure Alert, not the generic connection copy (G-02-6)", async () => {
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      const method = init?.method ?? 'GET'
+
+      if (url === '/api/categories' && method === 'GET') {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => [fixtureCategory],
+        } as Response)
+      }
+      if (url === '/api/glassware' && method === 'GET') {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => [fixtureGlassware],
+        } as Response)
+      }
+      if (url === '/api/recipes' && method === 'POST') {
+        return Promise.resolve({
+          ok: false,
+          status: 400,
+          statusText: 'Bad Request',
+          json: async () => ({ error: 'Recipe name is required' }),
+        } as Response)
+      }
+      return Promise.reject(new Error(`Unhandled fetch in test: ${method} ${url}`))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    renderForm()
+    await waitForReferenceDataLoaded(fetchMock)
+    await fillBaseRecipe()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save Recipe' }))
+
+    expect(await screen.findByText('Recipe name is required')).toBeInTheDocument()
+    expect(
+      screen.queryByText("Couldn't save recipe — check your connection and try again."),
+    ).not.toBeInTheDocument()
+  })
 })

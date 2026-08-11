@@ -35,6 +35,15 @@ export function RecipeForm({ recipe, open, onClose }: RecipeFormProps) {
   const isEditing = recipe !== undefined
   const saving = isEditing ? updateRecipe.isPending : createRecipe.isPending
   const saveFailed = isEditing ? updateRecipe.isError : createRecipe.isError
+  const saveError = isEditing ? updateRecipe.error : createRecipe.error
+  // G-02-6: apiFetch now throws the server's real validation message when
+  // one is present — surface it verbatim instead of a static, misleadingly
+  // network-sounding string. Falls back to the generic copy only if the
+  // error somehow carries no message (defensive; apiFetch always sets one).
+  const saveErrorMessage =
+    saveError instanceof Error && saveError.message
+      ? saveError.message
+      : "Couldn't save recipe — check your connection and try again."
 
   // Re-populate whenever the modal opens against a (possibly different)
   // recipe — mirrors AddEditIngredientForm's identical effect. Drops the
@@ -87,12 +96,7 @@ export function RecipeForm({ recipe, open, onClose }: RecipeFormProps) {
       destroyOnHidden
     >
       {saveFailed && (
-        <Alert
-          type="error"
-          title="Couldn't save recipe — check your connection and try again."
-          showIcon
-          style={{ marginBottom: 16 }}
-        />
+        <Alert type="error" title={saveErrorMessage} showIcon style={{ marginBottom: 16 }} />
       )}
       <Form form={form} layout="vertical" onFinish={handleSubmit} requiredMark={false}>
         <Form.Item name="name" label="Recipe Name" rules={nameRules}>
