@@ -25,7 +25,7 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Recipes
 
 - [x] **RECIPE-01**: Owner can manually create a recipe with name, ingredients (with quantity/unit and category reference), method, glassware, and garnish
-- [ ] **RECIPE-02**: Owner can edit or delete an existing recipe
+- [x] **RECIPE-02**: Owner can edit or delete an existing recipe
 
 ### Patron Interface
 
@@ -104,7 +104,7 @@ Populated during roadmap creation.
 | MATCH-03 | Phase 2 | Complete |
 | MATCH-04 | Phase 2 | Complete |
 | RECIPE-01 | Phase 2 | Complete |
-| RECIPE-02 | Phase 2 | Pending |
+| RECIPE-02 | Phase 2 | Complete |
 | PATR-01 | Phase 3 | Pending |
 | PATR-02 | Phase 3 | Pending |
 | PATR-03 | Phase 3 | Pending |

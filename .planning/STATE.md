@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 02
 current_phase_name: Recipe Collection & Makeable Engine
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-08-11T02:49:47.003Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-08-11T02:55:59.118Z"
 last_activity: 2026-08-10
 last_activity_desc: Phase 01 complete, transitioned to Phase 2
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 12
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-08-09)
 ## Current Position
 
 Phase: 02 (Recipe Collection & Makeable Engine) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-08-10 — Phase 02 execution started
 
-Progress: [██████░░░░] 58%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [██████░░░░] 58%
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 02 P01 | 8min | 2 tasks | 9 files |
+| Phase 02 P02 | 12min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,7 @@ Recent decisions affecting current work:
 - Roadmap: Phases sequenced Barback → Recipes/Makeable Engine → Patron Browse → Bartender/Ordering, matching real dependency order (inventory must exist before makeable computation; makeable computation must exist before Patron/Bartender can display it trustworthily; both screens must exist before the order workflow connects them)
 - [Phase ?]: computeMakeable takes db as an explicit second parameter defaulting to the real client (corrects RESEARCH.md sketch) so injected test dbs are never bypassed
 - [Phase ?]: missingCategoryNames added to the recipe response schema beyond RESEARCH.md's sketch so MATCH-02 is satisfiable without frontend cross-referencing two lists
+- [Phase ?]: PATCH /api/recipes/:id checks recipe existence via a direct SELECT before calling loadRecipe, since loadRecipe (from 02-01) throws rather than returns undefined on a miss — preserves loadRecipe's contract for GET/POST while still producing a clean 404 for PATCH
 
 ### Pending Todos
 
@@ -98,6 +100,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-11T02:49:46.991Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-08-11T02:55:59.108Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None
