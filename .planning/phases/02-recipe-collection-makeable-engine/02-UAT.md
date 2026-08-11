@@ -1,0 +1,231 @@
+---
+status: partial
+phase: 02-recipe-collection-makeable-engine
+source: [02-01-SUMMARY.md, 02-02-SUMMARY.md, 02-03-SUMMARY.md, 02-04-SUMMARY.md, 02-05-SUMMARY.md, 02-06-SUMMARY.md]
+started: 2026-08-11T15:12:31Z
+updated: 2026-08-11T15:20:00Z
+---
+
+## Current Test
+
+[testing paused — blocked on recipe-creation bug G-02-6]
+
+## Tests
+
+### 1. Cold Start Smoke Test
+expected: Kill any running server/service. Start the application from scratch (`pnpm -F @my-bar/server dev` or equivalent). Server boots without errors, `glassware`/`recipes`/`recipe_ingredients` tables are present, and loading the Barback app's Recipes list returns data (or the empty state) without errors.
+result: pass
+
+### 2. Glassware delete-guard race fallback (code inspection only)
+expected: This is a defensive-code path (concurrent delete-vs-insert race), not reachable through normal UI interaction — confirm you're OK treating this as covered by code review/pattern-parity rather than a live click-through.
+result: pass
+
+### 3. Open Glassware manager and add/rename/delete a glassware type
+expected: From the Barback header, a "Glassware" button opens a manager modal. Add a new glassware type, rename it, then delete an unused one — all three actions work from the phone/iPad UI.
+result: pass
+
+### 4. Delete a glassware type still used by a recipe
+expected: Attempting to delete a glassware entry referenced by a recipe shows a refusal message: "This glassware is used by N recipe(s) — remove or reassign them first." with the real recipe count.
+result: blocked
+blocked_by: prior-phase
+reason: "No recipe exists yet to reference the glassware — revisit after test 11 (create a recipe)."
+
+### 5. Glassware manager empty state
+expected: With zero glassware types, the manager shows "No glassware types yet" / "Add glassware options for your recipes."
+result: pass
+
+### 6. Recipe list shows makeable badges
+expected: The recipe list shows every recipe with a name and a makeable/not-makeable badge, computed server-side (never recomputed in the browser).
+result: issue
+reported: "fail, when I try to save a recipe I get an error \"Couldn't save recipe - check your connection and try again.\""
+severity: blocker
+
+### 7. Search the recipe list by name
+expected: Typing in the recipe search box filters the list to matching names.
+result: blocked
+blocked_by: prior-phase
+reason: "User paused UAT: recipe creation (POST /api/recipes) is broken (see G-02-6) — blocks this test until fixed."
+
+### 8. Delete a recipe from its row
+expected: Clicking delete on a recipe row shows a confirmation naming the recipe ("Delete {name}? This can't be undone.") before it's actually removed.
+result: blocked
+blocked_by: prior-phase
+reason: "User paused UAT: recipe creation (POST /api/recipes) is broken (see G-02-6) — blocks this test until fixed."
+
+### 9. Recipe list empty state
+expected: With zero recipes, the list shows "No recipes yet" / "Add your first recipe to build your menu."
+result: blocked
+blocked_by: prior-phase
+reason: "User paused UAT: recipe creation (POST /api/recipes) is broken (see G-02-6) — blocks this test until fixed."
+
+### 10. Ingredient/method sub-form behavior
+expected: The ingredient sub-form requires at least one ingredient line. The method sub-form numbers steps sequentially and renumbers correctly after removing a step from the middle. The unit dropdown offers only the fixed set of units (no free text entry).
+result: blocked
+blocked_by: prior-phase
+reason: "User paused UAT: recipe creation (POST /api/recipes) is broken (see G-02-6) — blocks this test until fixed."
+
+### 11. Create a new recipe end-to-end
+expected: From the Barback UI, create a recipe with name, ingredients, method, optional glassware, optional garnish. It appears in the list immediately after saving.
+result: blocked
+blocked_by: prior-phase
+reason: "User paused UAT: recipe creation (POST /api/recipes) is broken (see G-02-6) — blocks this test until fixed."
+
+### 12. Edit an existing recipe
+expected: Opening Edit on a recipe pre-fills the form with all its current values, including glassware.
+result: blocked
+blocked_by: prior-phase
+reason: "User paused UAT: recipe creation (POST /api/recipes) is broken (see G-02-6) — blocks this test until fixed."
+
+### 13. Reach Recipes from the Barback header
+expected: A "Recipes" button in the existing Barback header opens the Recipes area (no separate app or route) — from there you can add, edit, view, and delete recipes.
+result: blocked
+blocked_by: prior-phase
+reason: "User paused UAT: recipe creation (POST /api/recipes) is broken (see G-02-6) — blocks this test until fixed."
+
+### 14. [coverage] POST /api/recipes creates a recipe with name, ingredients, method, glassware, garnish
+expected: POST /api/recipes creates a recipe with name, category-based ingredient lines (quantity+unit), ordered method steps, optional glassware, optional garnish
+result: pass
+source: automated
+coverage_id: D1 (02-01)
+
+### 15. [coverage] GET /api/recipes returns server-computed makeable boolean
+expected: GET /api/recipes returns every recipe with a server-computed makeable boolean, never client-computed
+result: pass
+source: automated
+coverage_id: D2 (02-01)
+
+### 16. [coverage] Not-makeable recipes expose missing category ids/names
+expected: Not-makeable recipes expose missingCategoryIds and missingCategoryNames for every category with zero in-stock ingredients
+result: pass
+source: automated
+coverage_id: D3 (02-01)
+
+### 17. [coverage] Matching is category-based, not brand-based
+expected: Matching is category-based — any in-stock bottle in the required category satisfies it, never a specific brand
+result: pass
+source: automated
+coverage_id: D4 (02-01)
+
+### 18. [coverage] Quantity/unit never influence makeable computation
+expected: Quantity/unit are stored and returned exactly as submitted and never influence the makeable computation (presence-based, volume-agnostic)
+result: pass
+source: automated
+coverage_id: D5 (02-01)
+
+### 19. [coverage] Recipe creation validation edge cases
+expected: Empty ingredients/method rejected 400; unknown categoryId/glasswareId rejected 400 not 500; duplicate recipe names allowed
+result: pass
+source: automated
+coverage_id: D6 (02-01)
+
+### 20. [coverage] Dev DB has glassware/recipes/recipe_ingredients tables
+expected: Dev database physically has the glassware/recipes/recipe_ingredients tables
+result: pass
+source: automated
+coverage_id: D7 (02-01)
+
+### 21. [coverage] PATCH updates only supplied fields
+expected: PATCH /api/recipes/:id updates only the fields supplied, leaving the rest untouched
+result: pass
+source: automated
+coverage_id: D1 (02-02)
+
+### 22. [coverage] PATCH ingredient replace is atomic
+expected: PATCH with a replaced ingredients array atomically swaps the set; makeable/missing fields reflect the NEW set
+result: pass
+source: automated
+coverage_id: D2 (02-02)
+
+### 23. [coverage] PATCH edge cases (empty body, unknown id, unknown categoryId)
+expected: PATCH with an empty body ({}) is rejected 400 before any write; unknown id 404; unknown categoryId in ingredients 400 not 500
+result: pass
+source: automated
+coverage_id: D3 (02-02)
+
+### 24. [coverage] DELETE cascades recipe_ingredients
+expected: DELETE /api/recipes/:id cascades recipe_ingredients, verified by direct table query, not assumed; unknown id 404; repeated delete 204-then-404
+result: pass
+source: automated
+coverage_id: D4 (02-02)
+
+### 25. [coverage] Category delete-guard counts recipe references (D-21)
+expected: Category deletion refused if referenced by recipe ingredient lines alone, with an accurate recipe(s) count; combined ingredient+recipe conflict produces one message with both counts
+result: pass
+source: automated
+coverage_id: D5 (02-02)
+
+### 26. [coverage] Ingredient-only category delete-guard regression
+expected: Existing ingredient-only category delete-guard message (Phase 1) is unchanged
+result: pass
+source: automated
+coverage_id: D6 (02-02)
+
+### 27. [coverage] Glassware list/create/rename mirrors categories CRUD (D-17)
+expected: Owner can list, create, and rename glassware entries via GET/POST/PATCH /api/glassware, mirroring the categories CRUD pattern exactly
+result: pass
+source: automated
+coverage_id: D1 (02-03)
+
+### 28. [coverage] Glassware names unique
+expected: Glassware names are unique — creating or renaming onto an existing name is refused with 409, never a duplicate row
+result: pass
+source: automated
+coverage_id: D2 (02-03)
+
+### 29. [coverage] Glassware delete-guard refuses with accurate count (D-22)
+expected: Deleting a glassware entry still referenced by any recipe is refused with 409 and an accurate recipe count, using the exact D-22 copy from 02-UI-SPEC.md
+result: pass
+source: automated
+coverage_id: D3 (02-03)
+
+### 30. [coverage] Unreferenced glassware deletes cleanly
+expected: Deleting an unreferenced glassware entry succeeds with 204
+result: pass
+source: automated
+coverage_id: D4 (02-03)
+
+### 31. [coverage] Glassware rename invalidates glassware + recipes caches
+expected: Renaming a glassware entry invalidates both the glassware list and the recipes list, mirroring D-03's category-rename-propagates-to-ingredients precedent
+result: pass
+source: automated
+coverage_id: D4 (02-04)
+
+### 32. [coverage] Recipe detail view renders ingredients/method/glassware/garnish
+expected: Recipe detail view shows ingredients (qty/unit/category), numbered method, glassware name or 'None specified', garnish, and makeable status
+result: pass
+source: automated
+coverage_id: D3 (02-06)
+
+### 33. [coverage] Not-makeable detail shows exact missing-ingredient sentence
+expected: Not-makeable recipe detail shows the exact sentence "Can't make this right now. Missing: {category names}." using server-computed missingCategoryNames
+result: pass
+source: automated
+coverage_id: D4 (02-06)
+
+### 34. [coverage] Recipe save failure shows contracted error copy
+expected: Recipe save failure shows the exact contracted error copy without losing typed values; Save Recipe button shows a loading state bound to the active mutation
+result: pass
+source: automated
+coverage_id: D5 (02-06)
+
+## Summary
+
+total: 34
+passed: 25
+issues: 1
+pending: 0
+skipped: 0
+blocked: 8
+
+## Gaps
+
+- gap_id: G-02-6
+  truth: "The recipe list shows every recipe with a name and a makeable/not-makeable badge, computed server-side (never recomputed in the browser)."
+  status: failed
+  reason: "User reported: fail, when I try to save a recipe I get an error \"Couldn't save recipe - check your connection and try again.\" (POST /api/recipes appears to be failing in real usage)"
+  severity: blocker
+  test: 6
+  root_cause: ""
+  artifacts: []
+  missing: []
+  debug_session: ""
