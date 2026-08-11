@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 3
-current_phase_name: Patron Browse Experience
+current_phase: 02.1
+current_phase_name: Recipe UI cleanup
 status: planning
 stopped_at: "Completed 02-08-PLAN.md (gap closure G-02-9: stale makeable badge after stock toggle)"
-last_updated: "2026-08-11T18:24:06.414Z"
+last_updated: "2026-08-11T22:32:11.393Z"
 last_activity: 2026-08-11
 last_activity_desc: Phase 02 complete, transitioned to Phase 3
 progress:
-  total_phases: 2
+  total_phases: 3
   completed_phases: 2
   total_plans: 14
   completed_plans: 14
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-11)
 
 **Core value:** The inventory must be the single source of truth: at any moment, the Patron and Bartender screens must correctly show which drinks are makeable right now, and which are missing ingredients.
-**Current focus:** Phase 03 — Patron Browse Experience
+**Current focus:** Phase 02.1 — Recipe UI cleanup (urgent insertion, ahead of Phase 3)
 
 ## Current Position
 
-Phase: 3 — Patron Browse Experience
+Phase: 02.1 — Recipe UI cleanup
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-08-11 — Phase 02 complete, transitioned to Phase 3
+Status: Ready to discuss/plan
+Last activity: 2026-08-11 — Phase 02.1 inserted after Phase 2 (Recipe UI cleanup)
 
 Progress: [██████████] 100%
 
@@ -101,6 +101,10 @@ None yet.
 | 260810-g1w | Fix WR-01/WR-02 swipe-toggle race conditions in IngredientRow | 2026-08-10 | ec01784 | [260810-g1w-fix-wr-01-wr-02-swipe-toggle-race-condit](./quick/260810-g1w-fix-wr-01-wr-02-swipe-toggle-race-condit/) |
 | 260810-hmh | Add setup.sh and start_server.sh scripts modeled on janus-console's pattern | 2026-08-10 | 5f111fa | [260810-hmh-add-setup-sh-and-start-server-sh-scripts](./quick/260810-hmh-add-setup-sh-and-start-server-sh-scripts/) |
 | 260810-nth | Restyle swipe Undo control in IngredientRow.tsx: plain text, centered in reveal area | 2026-08-10 | 40a1216 | [260810-nth-restyle-swipe-undo-control-in-ingredient](./quick/260810-nth-restyle-swipe-undo-control-in-ingredient/) |
+
+### Roadmap Evolution
+
+- Phase 02.1 inserted after Phase 2: Recipe UI cleanup (URGENT)
 
 ## Deferred Items
 
