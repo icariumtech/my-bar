@@ -17,14 +17,14 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Makeable Logic (Shared)
 
-- [ ] **MATCH-01**: System computes makeable/not-makeable per recipe from boolean ingredient presence (server-side, single source of truth)
-- [ ] **MATCH-02**: System computes and exposes which specific ingredient(s) are missing for a not-makeable recipe
-- [ ] **MATCH-03**: Ingredients are modeled with categories (e.g. "orange liqueur") so recipes can match against any in-stock bottle in the right category, not just an exact brand
-- [ ] **MATCH-04**: Recipe ingredient quantities are stored in a canonical unit and converted for display (oz/dash/etc.) without affecting makeable-check logic (which stays presence-based, not volume-based)
+- [x] **MATCH-01**: System computes makeable/not-makeable per recipe from boolean ingredient presence (server-side, single source of truth)
+- [x] **MATCH-02**: System computes and exposes which specific ingredient(s) are missing for a not-makeable recipe
+- [x] **MATCH-03**: Ingredients are modeled with categories (e.g. "orange liqueur") so recipes can match against any in-stock bottle in the right category, not just an exact brand
+- [x] **MATCH-04**: Recipe ingredient quantities are stored in a canonical unit and converted for display (oz/dash/etc.) without affecting makeable-check logic (which stays presence-based, not volume-based)
 
 ### Recipes
 
-- [ ] **RECIPE-01**: Owner can manually create a recipe with name, ingredients (with quantity/unit and category reference), method, glassware, and garnish
+- [x] **RECIPE-01**: Owner can manually create a recipe with name, ingredients (with quantity/unit and category reference), method, glassware, and garnish
 - [ ] **RECIPE-02**: Owner can edit or delete an existing recipe
 
 ### Patron Interface
@@ -99,11 +99,11 @@ Populated during roadmap creation.
 | INV-03 | Phase 1 | Complete |
 | INV-04 | Phase 1 | Complete |
 | INV-05 | Phase 1 | Complete |
-| MATCH-01 | Phase 2 | Pending |
-| MATCH-02 | Phase 2 | Pending |
-| MATCH-03 | Phase 2 | Pending |
-| MATCH-04 | Phase 2 | Pending |
-| RECIPE-01 | Phase 2 | Pending |
+| MATCH-01 | Phase 2 | Complete |
+| MATCH-02 | Phase 2 | Complete |
+| MATCH-03 | Phase 2 | Complete |
+| MATCH-04 | Phase 2 | Complete |
+| RECIPE-01 | Phase 2 | Complete |
 | RECIPE-02 | Phase 2 | Pending |
 | PATR-01 | Phase 3 | Pending |
 | PATR-02 | Phase 3 | Pending |

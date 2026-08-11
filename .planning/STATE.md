@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 2
+current_phase: 02
 current_phase_name: Recipe Collection & Makeable Engine
 status: executing
-stopped_at: Phase 02 UI-SPEC approved
-last_updated: "2026-08-11T02:39:52.125Z"
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-08-11T02:49:47.003Z"
 last_activity: 2026-08-10
 last_activity_desc: Phase 01 complete, transitioned to Phase 2
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 12
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Project State
@@ -23,16 +23,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-09)
 
 **Core value:** The inventory must be the single source of truth: at any moment, the Patron and Bartender screens must correctly show which drinks are makeable right now, and which are missing ingredients.
-**Current focus:** Phase 01 — Barback Inventory Foundation
+**Current focus:** Phase 02 — Recipe Collection & Makeable Engine
 
 ## Current Position
 
-Phase: 2 — Recipe Collection & Makeable Engine
-Plan: Not started
+Phase: 02 (Recipe Collection & Makeable Engine) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-08-10 — Phase 01 complete, transitioned to Phase 2
+Last activity: 2026-08-10 — Phase 02 execution started
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██████░░░░] 58%
 
 ## Performance Metrics
 
@@ -54,6 +54,11 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 02 P01 | 8min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -64,6 +69,8 @@ Recent decisions affecting current work:
 
 - Roadmap: Project mode is Vertical MVP — each phase delivers an end-to-end usable slice (e.g. Phase 2 pairs recipe creation with the makeable engine so results are immediately observable, rather than splitting "backend engine" and "UI" into separate phases)
 - Roadmap: Phases sequenced Barback → Recipes/Makeable Engine → Patron Browse → Bartender/Ordering, matching real dependency order (inventory must exist before makeable computation; makeable computation must exist before Patron/Bartender can display it trustworthily; both screens must exist before the order workflow connects them)
+- [Phase ?]: computeMakeable takes db as an explicit second parameter defaulting to the real client (corrects RESEARCH.md sketch) so injected test dbs are never bypassed
+- [Phase ?]: missingCategoryNames added to the recipe response schema beyond RESEARCH.md's sketch so MATCH-02 is satisfiable without frontend cross-referencing two lists
 
 ### Pending Todos
 
@@ -91,6 +98,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-11T01:58:01.177Z
-Stopped at: Phase 02 UI-SPEC approved
-Resume file: /home/gjohnson/src/my-bar/.planning/phases/02-recipe-collection-makeable-engine/02-UI-SPEC.md
+Last session: 2026-08-11T02:49:46.991Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: None
