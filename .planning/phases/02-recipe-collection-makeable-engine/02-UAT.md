@@ -1,18 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 02-recipe-collection-makeable-engine
 source: [02-01-SUMMARY.md, 02-02-SUMMARY.md, 02-03-SUMMARY.md, 02-04-SUMMARY.md, 02-05-SUMMARY.md, 02-06-SUMMARY.md, 02-07-SUMMARY.md]
 started: 2026-08-11T15:12:31Z
-updated: 2026-08-11T16:44:00Z
+updated: 2026-08-11T17:10:00Z
 ---
 
 ## Current Test
 
-number: 6
-name: Recipe list shows makeable badges
-expected: |
-  The recipe list shows every recipe with a name and a makeable/not-makeable badge, computed server-side (never recomputed in the browser).
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -30,9 +26,7 @@ result: pass
 
 ### 4. Delete a glassware type still used by a recipe
 expected: Attempting to delete a glassware entry referenced by a recipe shows a refusal message: "This glassware is used by N recipe(s) — remove or reassign them first." with the real recipe count.
-result: blocked
-blocked_by: prior-phase
-reason: "No recipe exists yet to reference the glassware — revisit after test 11 (create a recipe)."
+result: pass
 
 ### 5. Glassware manager empty state
 expected: With zero glassware types, the manager shows "No glassware types yet" / "Add glassware options for your recipes."
@@ -40,36 +34,38 @@ result: pass
 
 ### 6. Recipe list shows makeable badges
 expected: The recipe list shows every recipe with a name and a makeable/not-makeable badge, computed server-side (never recomputed in the browser).
-result: [pending]
-note: "Was blocked by G-02-6 (recipe save 400ing on every submission) — resolved by plan 02-07 (see debug session .planning/debug/recipe-save-fails-connection.md). Re-testing now."
+result: issue
+reported: "I have to refresh the page before the Ready to make state changes. For example if I create a recipe with rye as the ingrediant and then mark all the rye bottles as out of stock the recipe sill indicates that it is ready to make"
+severity: major
 
 ### 7. Search the recipe list by name
 expected: Typing in the recipe search box filters the list to matching names.
-result: [pending]
+result: pass
 
 ### 8. Delete a recipe from its row
 expected: Clicking delete on a recipe row shows a confirmation naming the recipe ("Delete {name}? This can't be undone.") before it's actually removed.
-result: [pending]
+result: pass
 
 ### 9. Recipe list empty state
 expected: With zero recipes, the list shows "No recipes yet" / "Add your first recipe to build your menu."
-result: [pending]
+result: pass
 
 ### 10. Ingredient/method sub-form behavior
 expected: The ingredient sub-form requires at least one ingredient line. The method sub-form numbers steps sequentially and renumbers correctly after removing a step from the middle. The unit dropdown offers only the fixed set of units (no free text entry).
-result: [pending]
+result: pass
 
 ### 11. Create a new recipe end-to-end
 expected: From the Barback UI, create a recipe with name, ingredients, method, optional glassware, optional garnish. It appears in the list immediately after saving.
-result: [pending]
+result: pass
 
 ### 12. Edit an existing recipe
 expected: Opening Edit on a recipe pre-fills the form with all its current values, including glassware.
-result: [pending]
+result: pass
 
 ### 13. Reach Recipes from the Barback header
 expected: A "Recipes" button in the existing Barback header opens the Recipes area (no separate app or route) — from there you can add, edit, view, and delete recipes.
-result: [pending]
+result: pass
+note: "User: 'pass, but I don't like this UI' — functional behavior confirmed; asked for specifics on the aesthetic complaint since it's currently too vague to act on."
 
 ### 14. [coverage] POST /api/recipes creates a recipe with name, ingredients, method, glassware, garnish
 expected: POST /api/recipes creates a recipe with name, category-based ingredient lines (quantity+unit), ordered method steps, optional glassware, optional garnish
@@ -200,11 +196,11 @@ coverage_id: D5 (02-06)
 ## Summary
 
 total: 34
-passed: 25
-issues: 0
-pending: 8
+passed: 33
+issues: 1
+pending: 0
 skipped: 0
-blocked: 1
+blocked: 0
 
 ## Gaps
 
@@ -213,6 +209,17 @@ blocked: 1
   status: resolved
   resolved_by: 02-07-PLAN.md
   resolved_at: 2026-08-11
+
+- gap_id: G-02-9
+  truth: "The recipe list shows every recipe with a name and a makeable/not-makeable badge, computed server-side (never recomputed in the browser)."
+  status: failed
+  reason: "User reported: I have to refresh the page before the Ready to make state changes. For example if I create a recipe with rye as the ingrediant and then mark all the rye bottles as out of stock the recipe sill indicates that it is ready to make (recipes list/detail cache is stale after an ingredient stock-status change elsewhere in Barback — likely a missing TanStack Query invalidation of the recipes query key from the ingredient out-of-stock mutation)"
+  severity: major
+  test: 6
+  root_cause: ""
+  artifacts: []
+  missing: []
+  debug_session: ""
   reason: "User reported: fail, when I try to save a recipe I get an error \"Couldn't save recipe - check your connection and try again.\" (POST /api/recipes appears to be failing in real usage)"
   severity: blocker
   test: 6
