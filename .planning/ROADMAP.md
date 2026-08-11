@@ -62,11 +62,11 @@ Plans:
   4. For a not-makeable recipe, the missing ingredient(s) are shown exactly
   5. Recipes match against any in-stock bottle in the right category (e.g. any orange liqueur, not just one exact brand), and ingredient quantities display in normal units (oz/dash) without affecting the makeable check itself
 
-**Plans**: 6/7 plans executed
+**Plans**: 7/7 plans executed
 
 Plans:
 
-- [ ] 02-07-PLAN.md — Gap closure: fix UnitDropdown/GlasswareSelector value/onChange binding + apiFetch real error surfacing (G-02-6)
+- [x] 02-07-PLAN.md — Gap closure: fix UnitDropdown/GlasswareSelector value/onChange binding + apiFetch real error surfacing (G-02-6)
 
 **Wave 1**
 
@@ -129,6 +129,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Barback Inventory Foundation | 6/6 | Complete    | 2026-08-10 |
-| 2. Recipe Collection & Makeable Engine | 6/6 | Complete    | 2026-08-10 |
+| 2. Recipe Collection & Makeable Engine | 7/7 | Complete    | 2026-08-11 |
 | 3. Patron Browse Experience | 0/TBD | Not started | - |
 | 4. Bartender Console & Order Workflow | 0/TBD | Not started | - |

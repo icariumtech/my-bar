@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 3
 current_phase_name: Patron Browse Experience
 status: planning
-stopped_at: Completed 02-06-PLAN.md
-last_updated: "2026-08-11T03:31:39.978Z"
+stopped_at: "Completed 02-07-PLAN.md (gap closure G-02-6: recipe save failure)"
+last_updated: "2026-08-11T16:41:31.841Z"
 last_activity: 2026-08-10
 last_activity_desc: Phase 01 complete, transitioned to Phase 2
 progress:
   total_phases: 2
   completed_phases: 2
-  total_plans: 12
-  completed_plans: 12
+  total_plans: 13
+  completed_plans: 13
 ---
 
 # Project State
@@ -65,6 +65,7 @@ Progress: [██████████] 100%
 | Phase 02 P04 | 3min | 2 tasks | 3 files |
 | Phase 02 P05 | 4min | 2 tasks | 8 files |
 | Phase 02 P06 | 6min | 2 tasks | 4 files |
+| Phase 02 P07 | 35min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,8 @@ Recent decisions affecting current work:
 - [Phase ?]: PATCH /api/recipes/:id checks recipe existence via a direct SELECT before calling loadRecipe, since loadRecipe (from 02-01) throws rather than returns undefined on a miss — preserves loadRecipe's contract for GET/POST while still producing a clean 404 for PATCH
 - [Phase ?]: Split combined test file into two RED/GREEN cycles per task (02-03) so each task's test/feat commit pair is distinct in git log
 - [Phase ?]: MakeableStatusBadge excludes missingCategoryNames prop — the longer 'Missing: [...]' sentence is reserved for 02-06's RecipeDetailView
+- [Phase ?]: Gap closure 02-07: fixed UnitDropdown/GlasswareSelector to forward Form.Item's value/onChange (root cause of G-02-6 recipe-save failure); wired apiFetch's real error message into RecipeForm's Alert (Rule 2 deviation beyond Task 3's file scope)
+- [Phase ?]: antd 6 Select test interaction pattern: click dropdown options via title attribute, not role=option (which is a virtualization-only accessibility mirror with no click handler)
 
 ### Pending Todos
 
@@ -107,6 +110,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-11T03:14:37.091Z
-Stopped at: Completed 02-06-PLAN.md
+Last session: 2026-08-11T16:41:31.830Z
+Stopped at: Completed 02-07-PLAN.md (gap closure G-02-6: recipe save failure)
 Resume file: None
