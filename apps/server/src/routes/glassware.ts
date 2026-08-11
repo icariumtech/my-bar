@@ -1,15 +1,23 @@
 import type { FastifyPluginAsync, FastifyPluginOptions } from 'fastify'
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
-import { asc, eq } from 'drizzle-orm'
+import { asc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { glassware, glasswareInput } from '@my-bar/shared'
 import { db as defaultDb } from '../db/client.js'
-import { glassware as glasswareTable } from '../db/schema.js'
+import { glassware as glasswareTable, recipes } from '../db/schema.js'
 
 interface GlasswareRoutesOptions extends FastifyPluginOptions {
   // Injection point for tests (src/routes/glassware.test.ts), same pattern
   // as categoriesRoutes — defaults to the real db in normal server boot.
   db?: typeof defaultDb
+}
+
+// D-22 Copywriting Contract: the exact refusal copy for an in-use glassware
+// delete, with the real recipe count substituted in — shared between the
+// pre-count fast path and the race-condition fallback below so the two can
+// never phrase the same case differently.
+function inUseMessage(count: number) {
+  return `This glassware is used by ${count} recipe(s) — remove or reassign them first.`
 }
 
 // D-17: glassware create/list/rename lives on its own plugin, mirroring
@@ -105,6 +113,65 @@ export const glasswareRoutes: FastifyPluginAsync<GlasswareRoutesOptions> = async
       }
 
       return reply.status(200).send(updated)
+    },
+  )
+
+  // DELETE /api/glassware/:id — refuse-only delete (D-22, T-02-11). The
+  // schema's FK `onDelete: 'set null'` on recipes.glasswareId is a defensive
+  // fallback only — the real UX-facing block is this route's pre-count.
+  // Because a check-then-act pair can be raced by a concurrent recipe
+  // insert, the delete itself is also wrapped and a re-count is done on any
+  // unexpected constraint failure so a stale pre-count is never trusted.
+  app.withTypeProvider<ZodTypeProvider>().delete(
+    '/:id',
+    {
+      schema: {
+        params: z.object({ id: z.string().uuid() }),
+        response: {
+          204: z.void(),
+          404: z.object({ error: z.string() }),
+          409: z.object({ error: z.string(), recipeCount: z.number() }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params
+
+      const [existing] = db.select().from(glasswareTable).where(eq(glasswareTable.id, id)).all()
+      if (!existing) {
+        return reply.status(404).send({ error: 'Glassware not found' })
+      }
+
+      const [{ recipeCount }] = db
+        .select({ recipeCount: sql<number>`count(*)` })
+        .from(recipes)
+        .where(eq(recipes.glasswareId, id))
+        .all()
+
+      if (recipeCount > 0) {
+        return reply.status(409).send({ error: inUseMessage(recipeCount), recipeCount })
+      }
+
+      try {
+        db.delete(glasswareTable).where(eq(glasswareTable.id, id)).run()
+      } catch (err) {
+        if (err instanceof Error && /FOREIGN KEY constraint failed/i.test(err.message)) {
+          // T-02-11: a racing recipe insert landed between the pre-count
+          // above and this delete — re-count for an accurate message rather
+          // than trusting the now-stale pre-count.
+          const [{ recipeCount: raceRecipeCount }] = db
+            .select({ recipeCount: sql<number>`count(*)` })
+            .from(recipes)
+            .where(eq(recipes.glasswareId, id))
+            .all()
+          return reply
+            .status(409)
+            .send({ error: inUseMessage(raceRecipeCount), recipeCount: raceRecipeCount })
+        }
+        throw err
+      }
+
+      return reply.status(204).send()
     },
   )
 }
