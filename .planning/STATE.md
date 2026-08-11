@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 3
 current_phase_name: Patron Browse Experience
 status: planning
-stopped_at: "Completed 02-07-PLAN.md (gap closure G-02-6: recipe save failure)"
-last_updated: "2026-08-11T16:41:31.841Z"
+stopped_at: "Completed 02-08-PLAN.md (gap closure G-02-9: stale makeable badge after stock toggle)"
+last_updated: "2026-08-11T17:19:59.344Z"
 last_activity: 2026-08-10
 last_activity_desc: Phase 01 complete, transitioned to Phase 2
 progress:
   total_phases: 2
   completed_phases: 2
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 14
+  completed_plans: 14
 ---
 
 # Project State
@@ -66,6 +66,7 @@ Progress: [██████████] 100%
 | Phase 02 P05 | 4min | 2 tasks | 8 files |
 | Phase 02 P06 | 6min | 2 tasks | 4 files |
 | Phase 02 P07 | 35min | 3 tasks | 10 files |
+| Phase 02 P08 | 8min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,7 @@ Recent decisions affecting current work:
 - [Phase ?]: MakeableStatusBadge excludes missingCategoryNames prop — the longer 'Missing: [...]' sentence is reserved for 02-06's RecipeDetailView
 - [Phase ?]: Gap closure 02-07: fixed UnitDropdown/GlasswareSelector to forward Form.Item's value/onChange (root cause of G-02-6 recipe-save failure); wired apiFetch's real error message into RecipeForm's Alert (Rule 2 deviation beyond Task 3's file scope)
 - [Phase ?]: antd 6 Select test interaction pattern: click dropdown options via title attribute, not role=option (which is a virtualization-only accessibility mirror with no click handler)
+- [Phase ?]: Gap closure 02-08 (G-02-9): useToggleStock and useUpdateIngredient now invalidate ['recipes'] in onSettled, mirroring useUpdateGlassware/useRenameCategory's cross-entity-invalidation pattern — fixes stale makeable badge after Barback stock changes
 
 ### Pending Todos
 
@@ -110,6 +112,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-11T16:41:31.830Z
-Stopped at: Completed 02-07-PLAN.md (gap closure G-02-6: recipe save failure)
+Last session: 2026-08-11T17:19:59.330Z
+Stopped at: Completed 02-08-PLAN.md (gap closure G-02-9: stale makeable badge after stock toggle)
 Resume file: None
