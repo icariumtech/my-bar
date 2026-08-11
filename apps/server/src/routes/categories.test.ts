@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import Fastify from 'fastify'
 import { serializerCompiler, validatorCompiler } from '@fastify/type-provider-zod'
 import { createTestDb } from '../db/test-helpers.js'
-import { categories, ingredients } from '../db/schema.js'
+import { categories, ingredients, recipeIngredients, recipes } from '../db/schema.js'
 import { categoriesRoutes } from './categories.js'
 import { ingredientsRoutes } from './ingredients.js'
 
@@ -162,6 +162,38 @@ describe('categories routes', () => {
       return categoryId
     }
 
+    // D-21: seeds a recipe ingredient line referencing `categoryId` — a
+    // real recipe row is required first since recipe_ingredients.recipe_id
+    // is NOT NULL with an FK to recipes.
+    function seedRecipeIngredient(categoryId: string) {
+      const recipeId = crypto.randomUUID()
+      const now = new Date()
+      testDb.db
+        .insert(recipes)
+        .values({
+          id: recipeId,
+          name: 'Martini',
+          method: JSON.stringify(['Stir']),
+          glasswareId: null,
+          garnish: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .run()
+      testDb.db
+        .insert(recipeIngredients)
+        .values({
+          id: crypto.randomUUID(),
+          recipeId,
+          categoryId,
+          quantity: '2',
+          unit: 'oz',
+          displayOrder: 0,
+        })
+        .run()
+      return recipeId
+    }
+
     it('deletes an unused category and returns 204', async () => {
       const categoryId = seedCategory()
       const app = buildTestApp()
@@ -199,6 +231,44 @@ describe('categories routes', () => {
 
       const remainingIngredients = testDb.db.select().from(ingredients).all()
       expect(remainingIngredients).toHaveLength(2)
+    })
+
+    it('refuses to delete a category referenced by 2 recipe ingredient lines and 0 ingredients, with an accurate recipeIngredientCount (D-21)', async () => {
+      const categoryId = seedCategory()
+      seedRecipeIngredient(categoryId)
+      seedRecipeIngredient(categoryId)
+      const app = buildTestApp()
+
+      const res = await app.inject({ method: 'DELETE', url: `/api/categories/${categoryId}` })
+
+      expect(res.statusCode).toBe(409)
+      expect(res.json()).toMatchObject({
+        ingredientCount: 0,
+        recipeIngredientCount: 2,
+        error: 'This category is used by 2 recipe(s) — reassign or remove them first.',
+      })
+
+      const list = await app.inject({ method: 'GET', url: '/api/categories' })
+      expect(list.json()).toHaveLength(1)
+    })
+
+    it('combines ingredient and recipe counts into one refusal message when both reference the category (D-21)', async () => {
+      const categoryId = seedCategory()
+      testDb.db
+        .insert(ingredients)
+        .values({ id: crypto.randomUUID(), name: 'Bombay Sapphire Gin', categoryId, note: null })
+        .run()
+      seedRecipeIngredient(categoryId)
+      const app = buildTestApp()
+
+      const res = await app.inject({ method: 'DELETE', url: `/api/categories/${categoryId}` })
+
+      expect(res.statusCode).toBe(409)
+      expect(res.json()).toMatchObject({
+        ingredientCount: 1,
+        recipeIngredientCount: 1,
+        error: 'This category is used by 1 ingredient(s) and/or 1 recipe(s) — reassign or remove them first.',
+      })
     })
 
     it('returns 404 for an unknown category id', async () => {
