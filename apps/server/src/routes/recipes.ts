@@ -3,7 +3,7 @@ import type { ZodTypeProvider } from '@fastify/type-provider-zod'
 import { asc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import type { Recipe, RecipeIngredient } from '@my-bar/shared'
-import { recipe, recipeInput } from '@my-bar/shared'
+import { recipe, recipeInput, recipePatch } from '@my-bar/shared'
 import { db as defaultDb } from '../db/client.js'
 import { categories, glassware, recipeIngredients, recipes } from '../db/schema.js'
 import { computeMakeable } from '../services/makeableEngine.js'
@@ -176,6 +176,119 @@ export const recipesRoutes: FastifyPluginAsync<RecipesRoutesOptions> = async (ap
       }
 
       return reply.status(201).send(loadRecipe(db, recipeId))
+    },
+  )
+
+  // RECIPE-02: PATCH /api/recipes/:id — edit a recipe. `schema.body` reuses
+  // the shared `recipePatch` contract (a `.partial()` of `recipeInput` that
+  // rejects an empty object via `.refine()`), so PATCH `{}` is rejected with
+  // 400 by validation alone, before any write. Only the fields present in
+  // the body are written — mirrors the conditional-field-set pattern
+  // `ingredients.ts`'s PATCH uses.
+  app.withTypeProvider<ZodTypeProvider>().patch(
+    '/:id',
+    {
+      schema: {
+        params: z.object({ id: z.string().uuid() }),
+        body: recipePatch,
+        response: {
+          200: recipe,
+          400: z.object({ error: z.string() }),
+          404: z.object({ error: z.string() }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params
+      const patch = request.body
+
+      try {
+        // T-02-06: when `ingredients` is replaced, the delete-then-reinsert
+        // is wrapped in a single db.transaction() call so a failed insert
+        // mid-loop rolls back the delete too — never a partially-replaced
+        // ingredient set. better-sqlite3's transaction wrapper is
+        // synchronous and invoked immediately.
+        const newIngredients = patch.ingredients
+        if (newIngredients !== undefined) {
+          db.transaction((tx) => {
+            tx.delete(recipeIngredients).where(eq(recipeIngredients.recipeId, id)).run()
+            newIngredients.forEach((ing, idx) => {
+              tx.insert(recipeIngredients)
+                .values({
+                  id: crypto.randomUUID(),
+                  recipeId: id,
+                  categoryId: ing.categoryId,
+                  quantity: ing.quantity,
+                  unit: ing.unit,
+                  displayOrder: idx,
+                })
+                .run()
+            })
+          })
+        }
+
+        db.update(recipes)
+          .set({
+            ...(patch.name !== undefined && { name: patch.name }),
+            ...(patch.method !== undefined && { method: JSON.stringify(patch.method) }),
+            ...(patch.glasswareId !== undefined && { glasswareId: patch.glasswareId }),
+            ...(patch.garnish !== undefined && { garnish: patch.garnish }),
+            updatedAt: new Date(),
+          })
+          .where(eq(recipes.id, id))
+          .run()
+      } catch (err) {
+        // T-02-08: an unknown categoryId (in a replaced ingredients array)
+        // or an unknown glasswareId trips the FK constraint — translate to
+        // 400 rather than letting a raw 500 escape.
+        if (err instanceof Error && /FOREIGN KEY constraint failed/i.test(err.message)) {
+          return reply.status(400).send({ error: 'Unknown category or glassware' })
+        }
+        throw err
+      }
+
+      // An unknown id matches zero rows on the UPDATE above (a no-op, not an
+      // error) — checked directly here (rather than relying on loadRecipe's
+      // return, which throws on a miss) so an unknown id becomes a 404
+      // instead of an uncaught exception.
+      const [existing] = db.select({ id: recipes.id }).from(recipes).where(eq(recipes.id, id)).all()
+      if (!existing) {
+        return reply.status(404).send({ error: 'Recipe not found' })
+      }
+
+      return reply.status(200).send(loadRecipe(db, id))
+    },
+  )
+
+  // RECIPE-02: DELETE /api/recipes/:id — delete a recipe. Unlike
+  // categories/glassware, recipes have no downstream reference-count guard
+  // to build (nothing else references recipes.id except recipeIngredients,
+  // which is onDelete: 'cascade') — the cascade is the DB's job, no manual
+  // recipeIngredients delete is added here.
+  app.withTypeProvider<ZodTypeProvider>().delete(
+    '/:id',
+    {
+      schema: {
+        params: z.object({ id: z.string().uuid() }),
+        response: {
+          204: z.void(),
+          404: z.object({ error: z.string() }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params
+
+      const [existing] = db.select({ id: recipes.id }).from(recipes).where(eq(recipes.id, id)).all()
+      // T-02-09: repeated DELETE on an already-gone id must 404, never a
+      // false-success 204.
+      if (!existing) {
+        return reply.status(404).send({ error: 'Recipe not found' })
+      }
+
+      db.delete(recipes).where(eq(recipes.id, id)).run()
+
+      return reply.status(204).send()
     },
   )
 }
