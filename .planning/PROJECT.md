@@ -12,7 +12,8 @@ The inventory must be the single source of truth: at any moment, the Patron and 
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] Manual recipe entry/editing (owner builds the recipe collection from scratch, no seeded dataset) — Validated in Phase 2: Barback recipe CRUD (name, ingredients, method, glassware, garnish)
+- [x] Makeable/not-makeable computation core: server-side, computed once from live inventory, exact missing-ingredient reporting — Validated in Phase 2 (`computeMakeable()` + recipes API); surfacing this on Patron/Bartender screens is still Active (Phase 3+)
 
 ### Active
 
@@ -20,12 +21,11 @@ The inventory must be the single source of truth: at any moment, the Patron and 
 - [ ] Bartender interface (iPad): recipe lookup with full ingredient/method detail, live order queue/tickets from the Patron screen
 - [ ] Barback interface (phone-first, responsive): inventory tracking — add/edit bottles and ingredients, see stock levels
 - [ ] Live shared inventory: all three interfaces reflect the same real-time stock state
-- [ ] Makeable/not-makeable logic: every drink shows as makeable or not based on current inventory; for not-makeable drinks, show exactly which ingredient(s) are missing
+- [ ] Makeable/not-makeable status surfaced on Patron and Bartender screens (backend computation validated in Phase 2 — see Validated)
 - [ ] UPC barcode scanning via device camera (browser-based) to add bottles to inventory without manual typing
 - [ ] AI-assisted patron recommendations: when a requested/desired drink can't be made, suggest a makeable alternative the patron would likely enjoy, using Claude API
 - [ ] AI-assisted substitution suggestions for the bartender/barback: when a recipe is missing an ingredient, suggest a reasonable substitution from what's in stock
 - [ ] AI-assisted recipe import: photograph or screenshot a recipe, Claude extracts structured recipe data (name, ingredients, steps) for user review/confirmation before saving
-- [ ] Manual recipe entry/editing (owner builds the recipe collection from scratch, no seeded dataset)
 - [ ] Runs on a local home server on the home network; no login/accounts — open kiosk-style access for all three interfaces
 
 ### Out of Scope
@@ -56,7 +56,7 @@ The inventory must be the single source of truth: at any moment, the Patron and 
 |----------|-----------|---------|
 | Three separate interfaces (Patron, Bartender, Barback) sharing one inventory backend | Matches the three real roles/devices in use; keeps each screen focused on its job | — Pending |
 | No user accounts/login | Home network, trusted friends/family, no commercial concerns | — Pending |
-| Build recipe collection manually (no seeded dataset) | Owner wants a curated, personal recipe set rather than a generic imported database | — Pending |
+| Build recipe collection manually (no seeded dataset) | Owner wants a curated, personal recipe set rather than a generic imported database | Validated in Phase 2 |
 | Camera-based UPC scanning in-browser, no dedicated scanner hardware | Avoids extra hardware purchase/setup; modern phone/tablet cameras handle this well | — Pending |
 | Claude API for all AI features | Chosen provider for recommendations, substitutions, and recipe photo/screenshot parsing | — Pending |
 | Local home server deployment | No need for internet dependency on core features; keeps data private and on-premises | — Pending |
@@ -80,4 +80,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-09 after initialization*
+*Last updated: 2026-08-10 — Phase 2 (Recipe Collection & Makeable Engine) complete*
