@@ -41,7 +41,7 @@ function renderWithClient<T>(callback: () => T) {
 
 function invalidatedQueryKeys(invalidateSpy: ReturnType<typeof vi.spyOn>) {
   return invalidateSpy.mock.calls.map(
-    (call) => (call[0] as { queryKey: unknown[] } | undefined)?.queryKey,
+    (call: unknown[]) => (call[0] as { queryKey: unknown[] } | undefined)?.queryKey,
   )
 }
 
