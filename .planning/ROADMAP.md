@@ -65,12 +65,22 @@ Plans:
 **Plans**: 6 plans
 
 Plans:
+**Wave 1**
 
 - [ ] 02-01-PLAN.md — Tracer: recipe schema, shared contracts, makeable engine, GET/POST /api/recipes + DB push (RECIPE-01, MATCH-01–04)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 02-02-PLAN.md — Recipe edit/delete + category delete-guard extension (RECIPE-02, D-21)
 - [ ] 02-03-PLAN.md — Glassware CRUD backend with recipe-usage delete guard (D-17, D-22)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 02-04-PLAN.md — Glassware management UI (D-17, D-22)
 - [ ] 02-05-PLAN.md — Recipe list + delete + form sub-components (ingredients/method/unit/glassware selector)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 02-06-PLAN.md — Recipe create/edit form + detail view + Barback header wiring (D-14)
 
 **UI hint**: yes
