@@ -228,7 +228,9 @@ blocked: 0
 
 - gap_id: G-02-9
   truth: "The recipe list shows every recipe with a name and a makeable/not-makeable badge, computed server-side (never recomputed in the browser)."
-  status: failed
+  status: resolved
+  resolved_by: 02-08-PLAN.md
+  resolved_at: 2026-08-11
   reason: "User reported: I have to refresh the page before the Ready to make state changes. For example if I create a recipe with rye as the ingrediant and then mark all the rye bottles as out of stock the recipe sill indicates that it is ready to make"
   severity: major
   test: 6
