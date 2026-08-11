@@ -108,19 +108,24 @@ async function fillBaseRecipe() {
   fireEvent.click(screen.getByRole('button', { name: /Add Ingredient/ }))
 
   // antd 6's Select renders its own inline markup (no rc-select
-  // `.ant-select-selector` class) — the reliable, version-stable hook is
-  // the underlying `role="combobox"` input each Select renders. DOM order
-  // matches render order: category select, then unit select, then (once
-  // reached) the glassware select.
+  // `.ant-select-selector` class) — the reliable, version-stable hook to
+  // open a Select is the underlying `role="combobox"` input it renders.
+  // DOM order matches render order: category select, then unit select,
+  // then (once reached) the glassware select.
+  //
+  // The dropdown's `role="option"` elements are a virtualization-only
+  // accessibility mirror with no click handler (rc-virtual-list keeps the
+  // real, clickable item as a plain `.ant-select-item-option` div carrying
+  // a `title` attribute instead) — click by title, not by role.
   let comboboxes = screen.getAllByRole('combobox')
   fireEvent.mouseDown(comboboxes[0])
-  fireEvent.click(await screen.findByRole('option', { name: fixtureCategory.name }))
+  fireEvent.click(await screen.findByTitle(fixtureCategory.name))
 
   fireEvent.change(screen.getByPlaceholderText('Qty'), { target: { value: '2' } })
 
   comboboxes = screen.getAllByRole('combobox')
   fireEvent.mouseDown(comboboxes[1])
-  fireEvent.click(await screen.findByRole('option', { name: 'oz' }))
+  fireEvent.click(await screen.findByTitle('oz'))
 
   fireEvent.click(screen.getByRole('button', { name: /Add Step/ }))
   fireEvent.change(screen.getByPlaceholderText('Step 1'), {
@@ -156,7 +161,7 @@ describe('RecipeForm', () => {
 
     const comboboxes = screen.getAllByRole('combobox')
     fireEvent.mouseDown(comboboxes[2])
-    fireEvent.click(await screen.findByRole('option', { name: fixtureGlassware.name }))
+    fireEvent.click(await screen.findByTitle(fixtureGlassware.name))
 
     fireEvent.click(screen.getByRole('button', { name: 'Save Recipe' }))
 
