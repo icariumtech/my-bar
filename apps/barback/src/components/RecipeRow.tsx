@@ -1,5 +1,5 @@
 import { Button, Modal } from 'antd'
-import { DeleteOutlined, EditOutlined } from '@ant-design/icons'
+import { DeleteOutlined, EditOutlined, EyeOutlined } from '@ant-design/icons'
 import type { Recipe } from '@my-bar/shared'
 import { useDeleteRecipe } from '../api/useRecipes.js'
 import { MakeableStatusBadge } from './MakeableStatusBadge.js'
@@ -15,7 +15,7 @@ interface RecipeRowProps {
 // directly and gates the mutate call behind an antd Modal.confirm naming
 // the recipe (T-02-14), rather than requiring the parent to wire a
 // delete handler through.
-export function RecipeRow({ recipe, onEdit, onView: _onView }: RecipeRowProps) {
+export function RecipeRow({ recipe, onEdit, onView }: RecipeRowProps) {
   const deleteRecipe = useDeleteRecipe()
 
   function handleDelete() {
@@ -39,9 +39,15 @@ export function RecipeRow({ recipe, onEdit, onView: _onView }: RecipeRowProps) {
         </div>
 
         <div className="flex items-center gap-sm shrink-0">
-          {/* View is added in 02-06 once RecipeDetailView exists — this
-              plan never renders a View affordance, regardless of whether
-              `onView` is supplied. */}
+          {onView && (
+            <Button
+              type="text"
+              icon={<EyeOutlined />}
+              aria-label={`View ${recipe.name}`}
+              onClick={() => onView(recipe)}
+              style={{ minHeight: 48, minWidth: 48 }}
+            />
+          )}
           {onEdit && (
             <Button
               type="text"
