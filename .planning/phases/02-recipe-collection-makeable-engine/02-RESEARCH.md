@@ -84,6 +84,10 @@ None — every gray area had an explicit user decision.
 | antd | npm | ~7 years (v6 released 2024) | ~1M/week | github.com/ant-design/ant-design | OK | Approved |
 | react | npm | ~9 years (v19 released late 2024) | ~20M/week | github.com/facebook/react | OK | Approved |
 | tailwindcss | npm | ~8 years (v4 released early 2025) | ~8M/week | github.com/tailwindlabs/tailwindcss | OK | Approved |
+| @testing-library/react | npm | ~7 years (v16.3.2 current) | high weekly downloads | github.com/testing-library/react-testing-library | OK | Approved |
+| @testing-library/jest-dom | npm | ~7 years (v7.0.1 current) | high weekly downloads | github.com/testing-library/jest-dom | OK | Approved |
+| @testing-library/user-event | npm | ~7 years (v14.6.3 current) | high weekly downloads | github.com/testing-library/user-event | OK | Approved |
+| jsdom | npm | ~15 years (v30.0.1 current) | high weekly downloads | github.com/jsdom/jsdom | OK | Approved |
 
 **Packages removed due to [SLOP] verdict:** none
 **Packages flagged as suspicious [SUS]:** none
