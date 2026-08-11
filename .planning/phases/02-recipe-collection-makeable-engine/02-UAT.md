@@ -209,17 +209,6 @@ blocked: 0
   status: resolved
   resolved_by: 02-07-PLAN.md
   resolved_at: 2026-08-11
-
-- gap_id: G-02-9
-  truth: "The recipe list shows every recipe with a name and a makeable/not-makeable badge, computed server-side (never recomputed in the browser)."
-  status: failed
-  reason: "User reported: I have to refresh the page before the Ready to make state changes. For example if I create a recipe with rye as the ingrediant and then mark all the rye bottles as out of stock the recipe sill indicates that it is ready to make (recipes list/detail cache is stale after an ingredient stock-status change elsewhere in Barback — likely a missing TanStack Query invalidation of the recipes query key from the ingredient out-of-stock mutation)"
-  severity: major
-  test: 6
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
   reason: "User reported: fail, when I try to save a recipe I get an error \"Couldn't save recipe - check your connection and try again.\" (POST /api/recipes appears to be failing in real usage)"
   severity: blocker
   test: 6
@@ -236,3 +225,18 @@ blocked: 0
     - "GlasswareSelector must accept and forward value/onChange the same way"
     - "apiFetch should surface the server's actual error message instead of a generic string, so future validation failures aren't misread as network problems"
   debug_session: ".planning/debug/recipe-save-fails-connection.md"
+
+- gap_id: G-02-9
+  truth: "The recipe list shows every recipe with a name and a makeable/not-makeable badge, computed server-side (never recomputed in the browser)."
+  status: failed
+  reason: "User reported: I have to refresh the page before the Ready to make state changes. For example if I create a recipe with rye as the ingrediant and then mark all the rye bottles as out of stock the recipe sill indicates that it is ready to make"
+  severity: major
+  test: 6
+  root_cause: "apps/barback/src/api/useIngredients.ts's useToggleStock mutation (the swipe-to-toggle in-stock/out-of-stock action in IngredientRow — the sole UI path that can change an ingredient's inStock value) invalidates only the ['ingredients'] query key in its onSettled callback; it never invalidates ['recipes']. The server recomputes makeable fresh on every GET /api/recipes request (no server-side caching), so a manual reload always shows correct data — this is purely a client TanStack Query cache-invalidation gap, not a bug in computeMakeable(). It is the one outlier against the codebase's own established cross-entity-invalidation pattern (useRenameCategory invalidates ['categories']+['ingredients']; useUpdateGlassware invalidates ['glassware']+['recipes']) — useToggleStock predates the ['recipes'] query key (written in Phase 1, before recipes existed) and was never revisited when Phase 2 added the recipes list's dependency on ingredient stock."
+  artifacts:
+    - path: "apps/barback/src/api/useIngredients.ts"
+      issue: "useToggleStock's onSettled is missing queryClient.invalidateQueries({ queryKey: ['recipes'] })"
+  missing:
+    - "useToggleStock must also invalidate ['recipes'] in onSettled, mirroring useUpdateGlassware/useRenameCategory's established cross-entity-invalidation pattern"
+    - "Worth auditing useUpdateIngredient for the same latent gap while in there (structurally can't change stock today via the edit form, but the missing invalidation is still incorrect)"
+  debug_session: ".planning/debug/stale-makeable-badge.md"
