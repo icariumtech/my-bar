@@ -62,7 +62,7 @@ Plans:
   4. For a not-makeable recipe, the missing ingredient(s) are shown exactly
   5. Recipes match against any in-stock bottle in the right category (e.g. any orange liqueur, not just one exact brand), and ingredient quantities display in normal units (oz/dash) without affecting the makeable check itself
 
-**Plans**: 2/6 plans executed
+**Plans**: 3/6 plans executed
 
 Plans:
 **Wave 1**
@@ -72,7 +72,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1 completion)*
 
 - [x] 02-02-PLAN.md — Recipe edit/delete + category delete-guard extension (RECIPE-02, D-21)
-- [ ] 02-03-PLAN.md — Glassware CRUD backend with recipe-usage delete guard (D-17, D-22)
+- [x] 02-03-PLAN.md — Glassware CRUD backend with recipe-usage delete guard (D-17, D-22)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -126,6 +126,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Barback Inventory Foundation | 6/6 | Complete    | 2026-08-10 |
-| 2. Recipe Collection & Makeable Engine | 2/6 | In Progress|  |
+| 2. Recipe Collection & Makeable Engine | 3/6 | In Progress|  |
 | 3. Patron Browse Experience | 0/TBD | Not started | - |
 | 4. Bartender Console & Order Workflow | 0/TBD | Not started | - |
