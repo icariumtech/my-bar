@@ -58,7 +58,9 @@ export function createTestDb() {
       category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
       quantity TEXT NOT NULL,
       unit TEXT NOT NULL,
-      display_order INTEGER NOT NULL
+      display_order INTEGER NOT NULL,
+      ingredient_id TEXT REFERENCES ingredients(id) ON DELETE SET NULL,
+      requires_specific INTEGER NOT NULL DEFAULT 1
     );
   `)
 

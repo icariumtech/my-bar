@@ -66,10 +66,12 @@ describe('POST /api/recipes', () => {
   }
 
   function seedIngredient(categoryId: string, inStock = true, name = 'Bottle') {
+    const ingredientId = crypto.randomUUID()
     testDb.db
       .insert(ingredients)
-      .values({ id: crypto.randomUUID(), name, categoryId, note: null, inStock })
+      .values({ id: ingredientId, name, categoryId, note: null, inStock })
       .run()
+    return ingredientId
   }
 
   it('creates a recipe with ingredients, method, glassware, and garnish; reports makeable true', async () => {

@@ -46,7 +46,8 @@ export const recipes = sqliteTable('recipes', {
 })
 
 // MATCH-03: a recipe ingredient line references a category, never a
-// specific bottle — matching is category-based. D-21: categoryId
+// specific bottle by default — matching is category-based unless locked to
+// a specific ingredient (D-30/D-31, below). D-21: categoryId
 // restrict-deletes as the DB-level safety net for the route-level delete
 // guard added in a later plan. quantity/unit (D-19/D-20) are stored exactly
 // as submitted and are never read by computeMakeable (MATCH-04) — the
@@ -63,4 +64,14 @@ export const recipeIngredients = sqliteTable('recipe_ingredients', {
   quantity: text('quantity').notNull(),
   unit: text('unit').notNull(),
   displayOrder: integer('display_order').notNull(),
+  // D-31/MATCH-05: nullable FK to a specific ingredient — NULL means this
+  // line is a plain category match (Phase 2 behavior unchanged). onDelete
+  // 'set null' (never 'cascade'/'restrict') so deleting the locked
+  // ingredient degrades the line to category-only instead of orphaning the
+  // recipe or blocking the ingredient delete.
+  ingredientId: text('ingredient_id').references(() => ingredients.id, { onDelete: 'set null' }),
+  // D-30: whether this line is locked to the specific ingredient above
+  // (ignored when ingredientId is NULL). Defaults true — new
+  // specific-ingredient selections are non-substitutable by default.
+  requiresSpecific: integer('requires_specific', { mode: 'boolean' }).notNull().default(true),
 })

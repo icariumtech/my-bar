@@ -5,7 +5,7 @@ import { z } from 'zod'
 import type { Recipe, RecipeIngredient } from '@my-bar/shared'
 import { recipe, recipeInput, recipePatch } from '@my-bar/shared'
 import { db as defaultDb } from '../db/client.js'
-import { categories, glassware, recipeIngredients, recipes } from '../db/schema.js'
+import { categories, glassware, ingredients, recipeIngredients, recipes } from '../db/schema.js'
 import { computeMakeable } from '../services/makeableEngine.js'
 
 interface RecipesRoutesOptions extends FastifyPluginOptions {
@@ -54,41 +54,77 @@ function loadRecipe(db: typeof defaultDb, recipeId: string): Recipe {
       id: recipeIngredients.id,
       categoryId: recipeIngredients.categoryId,
       categoryName: categories.name,
+      ingredientId: recipeIngredients.ingredientId,
+      ingredientName: ingredients.name,
+      requiresSpecific: recipeIngredients.requiresSpecific,
       quantity: recipeIngredients.quantity,
       unit: recipeIngredients.unit,
       displayOrder: recipeIngredients.displayOrder,
     })
     .from(recipeIngredients)
     .innerJoin(categories, eq(recipeIngredients.categoryId, categories.id))
+    // Nullable join — a category-only line has no ingredientId, so no
+    // matching ingredients row (ingredientName resolves to null via
+    // ingredientId's own nullability, not an inner-join miss).
+    .leftJoin(ingredients, eq(recipeIngredients.ingredientId, ingredients.id))
     .where(eq(recipeIngredients.recipeId, recipeId))
     .orderBy(asc(recipeIngredients.displayOrder))
     .all()
 
-  const requiredCategoryIds = ingredientRows.map((r) => r.categoryId)
-  // MATCH-01: makeable is computed exclusively here, server-side — never in
-  // the browser. The route's own resolved `db` (real or injected test db)
-  // is threaded through so makeable status is computed against the exact
-  // same data this response is built from.
-  const { makeable, missingCategoryIds } = computeMakeable(requiredCategoryIds, db)
+  // MATCH-01/MATCH-05: tri-state status is computed exclusively here,
+  // server-side — never in the browser. The route's own resolved `db`
+  // (real or injected test db) is threaded through so status is computed
+  // against the exact same data this response is built from.
+  const {
+    lines: lineStatuses,
+    overallStatus,
+    missingCategoryIds,
+  } = computeMakeable(
+    ingredientRows.map((r) => ({
+      id: r.id,
+      categoryId: r.categoryId,
+      ingredientId: r.ingredientId,
+      requiresSpecific: r.requiresSpecific,
+    })),
+    db,
+  )
+  const statusByLineId = new Map(lineStatuses.map((s) => [s.id, s]))
 
   const categoryNameById = new Map(ingredientRows.map((r) => [r.categoryId, r.categoryName]))
   const missingCategoryNames = missingCategoryIds.map(
     (categoryId) => categoryNameById.get(categoryId) ?? 'Unknown category',
   )
 
+  const ingredientsResponse: RecipeIngredient[] = ingredientRows.map((r) => {
+    const lineStatus = statusByLineId.get(r.id)
+    return {
+      id: r.id,
+      categoryId: r.categoryId,
+      categoryName: r.categoryName,
+      ingredientId: r.ingredientId,
+      ingredientName: r.ingredientName,
+      requiresSpecific: r.requiresSpecific,
+      quantity: r.quantity,
+      // `unit` is stored as a plain text column (schema.ts) — the enum
+      // constraint lives at the Zod boundary on write, not a DB CHECK — so
+      // this cast narrows a known-valid runtime value to the union type,
+      // not bypassing any real validation.
+      unit: r.unit as RecipeIngredient['unit'],
+      displayOrder: r.displayOrder,
+      status: lineStatus?.status ?? 'red',
+      alternativeIngredientName: lineStatus?.alternativeIngredientName ?? null,
+    }
+  })
+
   return {
     id: row.id,
     name: row.name,
-    // `unit` is stored as a plain text column (schema.ts) — the enum
-    // constraint lives at the Zod boundary on write, not a DB CHECK — so
-    // the cast below is narrowing a known-valid runtime value back to the
-    // RecipeIngredient union type, not bypassing any real validation.
-    ingredients: ingredientRows as RecipeIngredient[],
+    ingredients: ingredientsResponse,
     method: JSON.parse(row.method) as string[],
     glasswareId: row.glasswareId,
     glasswareName: row.glasswareName,
     garnish: row.garnish,
-    makeable,
+    overallStatus,
     missingCategoryIds,
     missingCategoryNames,
     createdAt: row.createdAt,
@@ -152,12 +188,17 @@ export const recipesRoutes: FastifyPluginAsync<RecipesRoutesOptions> = async (ap
           .run()
 
         // D-16: displayOrder preserves submitted ingredient-line order.
+        // D-30/MATCH-05: ingredientId/requiresSpecific are persisted
+        // exactly as submitted — a category-only line omits ingredientId
+        // (persisted as null); requiresSpecific defaults to true (D-30).
         request.body.ingredients.forEach((ing, idx) => {
           db.insert(recipeIngredients)
             .values({
               id: crypto.randomUUID(),
               recipeId,
               categoryId: ing.categoryId,
+              ingredientId: ing.ingredientId ?? null,
+              requiresSpecific: ing.requiresSpecific ?? true,
               quantity: ing.quantity,
               unit: ing.unit,
               displayOrder: idx,
@@ -165,12 +206,13 @@ export const recipesRoutes: FastifyPluginAsync<RecipesRoutesOptions> = async (ap
             .run()
         })
       } catch (err) {
-        // T-02-01/T-02-03: an unknown categoryId or glasswareId trips the
-        // FK constraint (enforced by the `foreign_keys = ON` pragma) —
-        // translate that into a 400 rather than letting a raw 500 (with
-        // SQLite's own error text/stack) escape to the client.
+        // T-02-01/T-02-03/T-02.1-01: an unknown categoryId, ingredientId,
+        // or glasswareId trips the FK constraint (enforced by the
+        // `foreign_keys = ON` pragma) — translate that into a 400 rather
+        // than letting a raw 500 (with SQLite's own error text/stack)
+        // escape to the client.
         if (err instanceof Error && /FOREIGN KEY constraint failed/i.test(err.message)) {
-          return reply.status(400).send({ error: 'Unknown category or glassware' })
+          return reply.status(400).send({ error: 'Unknown category, ingredient, or glassware' })
         }
         throw err
       }
@@ -218,6 +260,8 @@ export const recipesRoutes: FastifyPluginAsync<RecipesRoutesOptions> = async (ap
                   id: crypto.randomUUID(),
                   recipeId: id,
                   categoryId: ing.categoryId,
+                  ingredientId: ing.ingredientId ?? null,
+                  requiresSpecific: ing.requiresSpecific ?? true,
                   quantity: ing.quantity,
                   unit: ing.unit,
                   displayOrder: idx,
@@ -238,11 +282,12 @@ export const recipesRoutes: FastifyPluginAsync<RecipesRoutesOptions> = async (ap
           .where(eq(recipes.id, id))
           .run()
       } catch (err) {
-        // T-02-08: an unknown categoryId (in a replaced ingredients array)
-        // or an unknown glasswareId trips the FK constraint — translate to
-        // 400 rather than letting a raw 500 escape.
+        // T-02-08/T-02.1-01: an unknown categoryId or ingredientId (in a
+        // replaced ingredients array) or an unknown glasswareId trips the
+        // FK constraint — translate to 400 rather than letting a raw 500
+        // escape.
         if (err instanceof Error && /FOREIGN KEY constraint failed/i.test(err.message)) {
-          return reply.status(400).send({ error: 'Unknown category or glassware' })
+          return reply.status(400).send({ error: 'Unknown category, ingredient, or glassware' })
         }
         throw err
       }
