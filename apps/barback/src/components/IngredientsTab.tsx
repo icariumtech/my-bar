@@ -1,6 +1,4 @@
 import { useState } from 'react'
-import { Button } from 'antd'
-import { PlusOutlined } from '@ant-design/icons'
 import type { Ingredient } from '@my-bar/shared'
 import { IngredientList } from './IngredientList.js'
 import { SearchFilterBar } from './SearchFilterBar.js'
@@ -41,6 +39,10 @@ import { AddEditIngredientView } from './views/AddEditIngredientView.js'
 // `calc(env(safe-area-inset-top) + var(--spacing-lg))`, matching
 // `.safe-area-inset-bottom`'s existing additive pattern) — `pt-lg` is now
 // redundant and has been removed from the className below.
+//
+// 260812-jz9: removed the separate full-width "Add Ingredient" button row
+// — the add affordance now renders inline inside SearchFilterBar itself,
+// next to the search input, via the new onAdd/addLabel props.
 export function IngredientsTab() {
   const [view, setView] = useState<'list' | 'add'>('list')
   const [editing, setEditing] = useState<Ingredient>()
@@ -64,21 +66,13 @@ export function IngredientsTab() {
   return (
     <div className="px-md pb-3xl">
       <div className="sticky top-0 z-10 bg-bar-bg pb-md safe-area-inset-top">
-        <div className="flex justify-end pb-md">
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            style={{ minHeight: 48 }}
-            onClick={openAdd}
-          >
-            Add Ingredient
-          </Button>
-        </div>
         <SearchFilterBar
           query={query}
           onQueryChange={setQuery}
           categoryId={categoryId}
           onCategoryChange={setCategoryId}
+          onAdd={openAdd}
+          addLabel="Add Ingredient"
         />
       </div>
       <IngredientList onEdit={openEdit} query={query} categoryId={categoryId} />

@@ -44,6 +44,13 @@ import { RecipeDetailView } from './views/RecipeDetailView.js'
 // `calc(env(safe-area-inset-top) + var(--spacing-lg))`, matching
 // `.safe-area-inset-bottom`'s existing additive pattern) — `pt-lg` is now
 // redundant and has been removed from the className below.
+//
+// 260812-jz9: removed the separate full-width "Add Recipe" button row in
+// favor of an inline square button beside the search Input (mirroring
+// SearchFilterBar's pattern, replicated directly here since RecipesTab
+// doesn't route through SearchFilterBar — it has no category chips). The
+// Input was bumped to size="large" + minHeight:48 so its row matches the
+// new button's 48px height.
 export function RecipesTab() {
   const [view, setView] = useState<'list' | 'add' | 'detail'>('list')
   const [editing, setEditing] = useState<Recipe>()
@@ -76,21 +83,23 @@ export function RecipesTab() {
   return (
     <div className="px-md pb-3xl">
       <div className="sticky top-0 z-10 bg-bar-bg pb-md safe-area-inset-top">
-        <div className="flex justify-end pb-md">
+        <div className="flex gap-sm items-center">
+          <Input
+            placeholder="Search recipes…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            size="large"
+            style={{ minHeight: 48 }}
+            className="flex-1"
+          />
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            style={{ minHeight: 48 }}
+            aria-label="Add Recipe"
             onClick={openAdd}
-          >
-            Add Recipe
-          </Button>
+            style={{ width: 48, height: 48, minWidth: 48, padding: 0 }}
+          />
         </div>
-        <Input
-          placeholder="Search recipes…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
       </div>
       <RecipeList onEdit={openEdit} onView={openDetail} query={query} />
     </div>
