@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer, unique } from 'drizzle-orm/sqlite-core'
 
 // D-01: category names are unique so the curated taxonomy that Phase 2's
 // makeable matching depends on cannot silently typo-drift.
@@ -35,12 +35,15 @@ export const glassware = sqliteTable('glassware', {
 // DB-level safety net; the real UX block on deleting in-use glassware is a
 // route-level guard (D-22, a later plan). D-18: garnish is free text and
 // nullable, never validated against categories/ingredients.
+// D-40: description is free text, nullable, optional — no validation
+// against categories/ingredients, mirrors garnish's own precedent.
 export const recipes = sqliteTable('recipes', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   method: text('method').notNull(),
   glasswareId: text('glassware_id').references(() => glassware.id, { onDelete: 'set null' }),
   garnish: text('garnish'),
+  description: text('description'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 })
@@ -75,3 +78,37 @@ export const recipeIngredients = sqliteTable('recipe_ingredients', {
   // specific-ingredient selections are non-substitutable by default.
   requiresSpecific: integer('requires_specific', { mode: 'boolean' }).notNull().default(true),
 })
+
+// D-33/D-34: fixed tag taxonomy — four groups (spirit/type/season/flavor).
+// unique(group, name) mirrors categories.name's typo-drift protection,
+// scoped per-group so tags in different groups could share a name (D-34's
+// actual list has no cross-group collisions, but the constraint doesn't
+// assume that).
+export const tags = sqliteTable(
+  'tags',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    group: text('group', { enum: ['spirit', 'type', 'season', 'flavor'] }).notNull(),
+  },
+  (table) => [unique().on(table.group, table.name)],
+)
+
+// Recipe <-> Tag many-to-many (D-33). recipeId cascades (deleting a recipe
+// cleans up its tag links, mirrors recipeIngredients); tagId restricts (a
+// tag in use can never be silently deleted out from under a recipe — no
+// tag-delete endpoint exists this phase per D-35, so this is a defensive
+// schema-level guard only).
+export const recipeTags = sqliteTable(
+  'recipe_tags',
+  {
+    id: text('id').primaryKey(),
+    recipeId: text('recipe_id')
+      .notNull()
+      .references(() => recipes.id, { onDelete: 'cascade' }),
+    tagId: text('tag_id')
+      .notNull()
+      .references(() => tags.id, { onDelete: 'restrict' }),
+  },
+  (table) => [unique().on(table.recipeId, table.tagId)],
+)

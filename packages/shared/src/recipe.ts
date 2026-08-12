@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { triStateStatus } from './makeable.js'
+import { tag } from './tag.js'
 
 // D-19: unit is chosen from a fixed dropdown, never free text — prevents
 // the same typo-drift Phase 1's D-01 avoided for categories.
@@ -26,13 +27,19 @@ export type RecipeIngredientInput = z.infer<typeof recipeIngredientInput>
 // 400 before any database write. D-16: method is an ordered array of step
 // strings, not a single free-text block. D-17: glasswareId is optional
 // ("or none"). D-18: garnish is free text only, never validated against
-// categories/ingredients.
+// categories/ingredients. D-40: description is optional free text, DoS
+// bounded via .max(), same convention as garnish/method steps. D-33:
+// tagIds is write-side only (ids, not joined name/group objects) — a
+// client can never inject a fabricated tag label; the joined `tags` field
+// below is exclusively a read-side, server-derived field.
 export const recipeInput = z.object({
   name: z.string().trim().min(1).max(200),
   ingredients: z.array(recipeIngredientInput).min(1),
   method: z.array(z.string().trim().min(1).max(500)).min(1),
   glasswareId: z.string().uuid().optional(),
   garnish: z.string().trim().max(200).optional(),
+  description: z.string().trim().max(2000).optional(),
+  tagIds: z.array(z.string().uuid()).optional(),
 })
 export type RecipeInput = z.infer<typeof recipeInput>
 
@@ -69,6 +76,11 @@ export const recipe = z.object({
   glasswareId: z.string().uuid().nullable(),
   glasswareName: z.string().nullable(),
   garnish: z.string().nullable(),
+  // D-40: null when omitted, never undefined/empty-string.
+  description: z.string().nullable(),
+  // D-33: server-derived, pre-sorted by TAG_GROUP_ORDER then name — never
+  // client-writable (see recipeInput above).
+  tags: z.array(tag),
   overallStatus: triStateStatus,
   missingCategoryIds: z.array(z.string().uuid()),
   missingCategoryNames: z.array(z.string()),
