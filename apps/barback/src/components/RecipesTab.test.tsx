@@ -33,6 +33,12 @@ const FIXTURE_RECIPE: Recipe = {
   updatedAt: new Date('2026-01-01'),
 }
 
+const FIXTURE_RECIPE_2: Recipe = {
+  ...FIXTURE_RECIPE,
+  id: '22222222-2222-2222-2222-222222222222',
+  name: 'Mojito',
+}
+
 function stubFetch() {
   const fetchMock = vi.fn((url: string, init?: RequestInit) => {
     const method = init?.method ?? 'GET'
@@ -42,6 +48,28 @@ function stubFetch() {
         ok: true,
         status: 200,
         json: async () => [FIXTURE_RECIPE],
+      } as Response)
+    }
+
+    return Promise.reject(new Error(`Unhandled fetch in test: ${method} ${url}`))
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
+}
+
+// 260812-e8j regression guard: proves the lifted `query` state (moved from
+// RecipeList up to RecipesTab so the title/Add-button row and the search
+// Input can render together inside one sticky wrapper) still wires
+// correctly end to end.
+function stubFetchTwoRecipes() {
+  const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+    const method = init?.method ?? 'GET'
+
+    if (url === '/api/recipes' && method === 'GET') {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => [FIXTURE_RECIPE, FIXTURE_RECIPE_2],
       } as Response)
     }
 
@@ -87,5 +115,20 @@ describe('RecipesTab', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Back/ }))
 
     expect(await screen.findByRole('button', { name: /Add Recipe/ })).toBeInTheDocument()
+  })
+
+  it('typing a query into the lifted search Input filters RecipeList by name', async () => {
+    stubFetchTwoRecipes()
+    renderTab()
+
+    expect(await screen.findByText(FIXTURE_RECIPE.name)).toBeInTheDocument()
+    expect(await screen.findByText(FIXTURE_RECIPE_2.name)).toBeInTheDocument()
+
+    fireEvent.change(screen.getByPlaceholderText('Search recipes…'), {
+      target: { value: FIXTURE_RECIPE_2.name },
+    })
+
+    expect(await screen.findByText(FIXTURE_RECIPE_2.name)).toBeInTheDocument()
+    expect(screen.queryByText(FIXTURE_RECIPE.name)).not.toBeInTheDocument()
   })
 })
