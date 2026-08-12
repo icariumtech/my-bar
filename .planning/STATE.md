@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 Phase: 3 — Patron Browse Experience
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-08-12 - Completed quick task 260812-drh: Fix Barback layout — BottomTabBar isn't visible on full-screen sub-views
+Last activity: 2026-08-12 - Completed quick task 260812-e8j: Fix Barback top-section anchoring (sticky header + bounded scroll container)
 
 Progress: [██████████] 100%
 
@@ -109,6 +109,7 @@ None yet.
 | 260810-hmh | Add setup.sh and start_server.sh scripts modeled on janus-console's pattern | 2026-08-10 | 5f111fa | [260810-hmh-add-setup-sh-and-start-server-sh-scripts](./quick/260810-hmh-add-setup-sh-and-start-server-sh-scripts/) |
 | 260810-nth | Restyle swipe Undo control in IngredientRow.tsx: plain text, centered in reveal area | 2026-08-10 | 40a1216 | [260810-nth-restyle-swipe-undo-control-in-ingredient](./quick/260810-nth-restyle-swipe-undo-control-in-ingredient/) |
 | 260812-drh | Fix Barback layout: BottomTabBar isn't visible on full-screen sub-views (sticky→fixed positioning) | 2026-08-12 | 7a1b178 | [260812-drh-fix-barback-layout-1-bottomtabbar-isn-t-](./quick/260812-drh-fix-barback-layout-1-bottomtabbar-isn-t-/) |
+| 260812-e8j | Fix Barback top-section anchoring: bounded scroll container + sticky title/Add/search/filter header per tab | 2026-08-12 | b62b744 | [260812-e8j-fix-barback-top-section-anchoring-on-eac](./quick/260812-e8j-fix-barback-top-section-anchoring-on-eac/) |
 
 ### Roadmap Evolution
 
@@ -125,5 +126,5 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-08-12T04:29:33.362Z
-Stopped at: Completed quick task 260812-drh: Fix Barback layout — BottomTabBar isn't visible on full-screen sub-views
+Stopped at: Completed quick task 260812-e8j: Fix Barback top-section anchoring (sticky header + bounded scroll container)
 Resume file: None
