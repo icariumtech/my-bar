@@ -76,7 +76,8 @@ Declared values (must be multiples of 4):
 |------|-------|-------|
 | Dominant (60%) | #1a2332 | Page background, main content area background |
 | Secondary (30%) | #2d3f52 | Card containers, rail background, detail view content box |
-| Accent (10%) | #ff6b35 | Rail group icons, tag pill backgrounds, makeable-badge (green), primary action indicators |
+| Accent (10%) | #ff6b35 | Rail group icons, tag pill backgrounds, primary action indicators, neon border accents |
+| Success | #10b981 | Makeable-badge fill (when drink is makeable; green interior on card/detail) |
 | Accent Text | #4dd0e1 | Secondary ingredient text, descriptive metadata (origin/decade), emphasis within descriptions |
 | Destructive | #ef4444 | Not-makeable badge, error states, alert indicators |
 | Text Primary | #ffffff | All primary text (drink names, body copy, ingredient lists) |
@@ -85,9 +86,12 @@ Declared values (must be multiples of 4):
 **Accent reserved for:**
 - Rail group icons (Spirit, Type, Season, Flavor) and their submenu labels
 - Tag pill backgrounds (multi-value tags shown on card and detail)
-- Makeable-badge fill (when drink is makeable; green interior on card/detail)
 - Primary interactive elements (if any buttons exist in this phase; see PATR-06's browse-only scope)
 - Neon border accents on card and detail container frames
+
+**Success reserved for:**
+- Makeable-badge fill (when drink is makeable; green interior on card/detail)
+- Makeable status indicators (small-footprint success/availability color, not part of the 60/30/10 dominant/secondary/accent split)
 
 **Destructive reserved for:**
 - Not-makeable badge fill (red interior on card/detail when drink cannot be made)
@@ -179,6 +183,12 @@ Applicable state considerations resolved: **7 covered, 1 backstop**
 - Patron can tap dimmed card to see missing ingredients detail
 - Not-makeable drinks remain fully visible and tappable (no hide/filter toggle; satisfies PATR-06)
 
+**Visual Hierarchy & Focal Point (Browse Grid):**
+- Drink name (20px, weight 600, #ffffff) is the primary visual focal point on each card
+  - Top-left or top-center position, maximum contrast text
+  - Draws the eye first before tags, badge, or secondary details
+  - Supports rapid browsing: patron scans card names to find a drink of interest, then reads tags/ingredient list on detail view
+
 ---
 
 ## Implementation Notes
@@ -198,7 +208,7 @@ Applicable state considerations resolved: **7 covered, 1 backstop**
 **Icons (Lucide):**
 - Spirit group: `Wine2` (or `Bottle`), Type group: `Sparkles` (or `Star`), Season group: `Leaf`, Flavor group: `Flame`
 - Specific tag icons TBD in planning phase (e.g., Whiskey → `Flame`, Gin → `Leaf`, etc.)
-- Back button on detail: `ChevronLeft` (circular container, green accent — matches FullScreenHeader pattern from 260812-m0i)
+- Back button on detail: `ChevronLeft` (circular container, Success color #10b981 — matches FullScreenHeader pattern from 260812-m0i)
 
 **Placeholder Photo Treatment (D-41):**
 - Detail view hero slot shows a centered cocktail glass silhouette or solid gradient block (TBD in planning phase)
