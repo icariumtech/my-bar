@@ -1,21 +1,25 @@
-import { Button, Form, Input, Select } from 'antd'
+import { Button, Form, Input } from 'antd'
 import { MinusOutlined, PlusOutlined } from '@ant-design/icons'
-import { useCategories } from '../api/useCategories.js'
+import { IngredientPicker } from './pickers/IngredientPicker.js'
 import { UnitDropdown } from './UnitDropdown.js'
 
 // `recipeInput.ingredients` requires `.min(1)` — deliberately does NOT
 // auto-seed an empty row on mount (that would silently satisfy the count
 // without real data). The surrounding Form.Item's `rules={[{ required:
-// true }]}` (set by RecipeForm in 02-06) plus antd's own empty-array
-// Form.List validation enforce the constraint; this component only renders
-// whatever rows exist and lets add/remove mutate them.
+// true }]}` (set by RecipeForm/AddEditRecipeView) plus antd's own
+// empty-array Form.List validation enforce the constraint; this component
+// only renders whatever rows exist and lets add/remove mutate them.
+//
+// D-28/MATCH-05: each row's category-or-specific-ingredient field is the
+// combined IngredientPicker (plan 02.1-05) instead of a static category
+// <Select>. IngredientPicker's value is a composite object writing three
+// related fields at once (categoryId/ingredientId/requiresSpecific) — it
+// does NOT rely on antd Form.Item's automatic value/onChange cloning (that
+// only carries one scalar). This component is always rendered inside
+// RecipeForm's/AddEditRecipeView's <Form>, so Form.useFormInstance()
+// always resolves to the surrounding form.
 export function IngredientListForm() {
-  const { data: categories } = useCategories()
-
-  const categoryOptions = (categories ?? []).map((c) => ({
-    value: c.id,
-    label: c.name,
-  }))
+  const form = Form.useFormInstance()
 
   return (
     <Form.List name="ingredients">
@@ -23,13 +27,32 @@ export function IngredientListForm() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {fields.map((field) => (
             <div key={field.key} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-              <Form.Item
-                {...field}
-                name={[field.name, 'categoryId']}
-                style={{ flex: 1, margin: 0 }}
-              >
-                <Select placeholder="Category" options={categoryOptions} />
-              </Form.Item>
+              <div style={{ flex: 1, margin: 0 }}>
+                <Form.Item noStyle shouldUpdate key={`${field.key}-picker`}>
+                  {() => {
+                    const categoryId = form.getFieldValue(['ingredients', field.name, 'categoryId'])
+                    const ingredientId = form.getFieldValue(['ingredients', field.name, 'ingredientId']) ?? null
+                    const requiresSpecific =
+                      form.getFieldValue(['ingredients', field.name, 'requiresSpecific']) ?? false
+                    return (
+                      <IngredientPicker
+                        value={{ categoryId, ingredientId, requiresSpecific }}
+                        onChange={(next) => {
+                          form.setFieldValue(['ingredients', field.name, 'categoryId'], next.categoryId)
+                          form.setFieldValue(
+                            ['ingredients', field.name, 'ingredientId'],
+                            next.ingredientId,
+                          )
+                          form.setFieldValue(
+                            ['ingredients', field.name, 'requiresSpecific'],
+                            next.requiresSpecific,
+                          )
+                        }}
+                      />
+                    )
+                  }}
+                </Form.Item>
+              </div>
               <Form.Item
                 {...field}
                 name={[field.name, 'quantity']}
@@ -52,7 +75,7 @@ export function IngredientListForm() {
           <Button
             type="dashed"
             icon={<PlusOutlined />}
-            onClick={() => add()}
+            onClick={() => add({ ingredientId: null, requiresSpecific: false })}
             block
             style={{ minHeight: 48 }}
           >
