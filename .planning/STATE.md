@@ -5,8 +5,8 @@ milestone_name: milestone
 current_phase: 02.1
 current_phase_name: Recipe UI cleanup
 status: planning
-stopped_at: "Completed 02-08-PLAN.md (gap closure G-02-9: stale makeable badge after stock toggle)"
-last_updated: "2026-08-11T22:32:11.393Z"
+stopped_at: Phase 02.1 context gathered
+last_updated: "2026-08-12T02:00:06.678Z"
 last_activity: 2026-08-11
 last_activity_desc: Phase 02 complete, transitioned to Phase 3
 progress:
@@ -116,6 +116,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-11T18:30:00.000Z
-Stopped at: Phase 02 complete — UAT 34/34 passed (both gaps live-verified), security audit threats_open:0, ready to plan Phase 3
-Resume file: None
+Last session: 2026-08-12T02:00:06.658Z
+Stopped at: Phase 02.1 context gathered
+Resume file: /home/gjohnson/src/my-bar/.planning/phases/02.1-recipe-ui-cleanup/02.1-CONTEXT.md
