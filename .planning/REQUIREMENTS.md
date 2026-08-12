@@ -21,7 +21,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **MATCH-02**: System computes and exposes which specific ingredient(s) are missing for a not-makeable recipe
 - [x] **MATCH-03**: Ingredients are modeled with categories (e.g. "orange liqueur") so recipes can match against any in-stock bottle in the right category, not just an exact brand
 - [x] **MATCH-04**: Recipe ingredient quantities are stored in a canonical unit and converted for display (oz/dash/etc.) without affecting makeable-check logic (which stays presence-based, not volume-based)
-- [ ] **MATCH-05**: A recipe ingredient line can lock to one specific ingredient (not just its category) for ingredients that aren't meaningfully substitutable (e.g. lemon juice vs. lime juice). Makeable status is tri-state per line — exact match in stock (green/ready), specific ingredient out of stock but another in-stock bottle exists in the same category (yellow/substitution available), or nothing in stock at all (red/missing) — and rolls up to the recipe level as the worst state across all lines.
+- [x] **MATCH-05**: A recipe ingredient line can lock to one specific ingredient (not just its category) for ingredients that aren't meaningfully substitutable (e.g. lemon juice vs. lime juice). Makeable status is tri-state per line — exact match in stock (green/ready), specific ingredient out of stock but another in-stock bottle exists in the same category (yellow/substitution available), or nothing in stock at all (red/missing) — and rolls up to the recipe level as the worst state across all lines.
 
 ### Recipes
 
@@ -112,7 +112,7 @@ Populated during roadmap creation.
 | MATCH-04 | Phase 2 | Complete |
 | RECIPE-01 | Phase 2 | Complete |
 | RECIPE-02 | Phase 2 | Complete |
-| MATCH-05 | Phase 2.1 | Pending |
+| MATCH-05 | Phase 2.1 | Complete |
 | BARBACK-01 | Phase 2.1 | Pending |
 | BARBACK-02 | Phase 2.1 | Pending |
 | BARBACK-03 | Phase 2.1 | Pending |
