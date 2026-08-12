@@ -1,5 +1,5 @@
-import { Input } from 'antd'
-import { SearchOutlined } from '@ant-design/icons'
+import { Button, Input } from 'antd'
+import { PlusOutlined, SearchOutlined } from '@ant-design/icons'
 import { useCategories } from '../api/useCategories.js'
 
 interface SearchFilterBarProps {
@@ -7,6 +7,8 @@ interface SearchFilterBarProps {
   onQueryChange: (query: string) => void
   categoryId: string | null
   onCategoryChange: (categoryId: string | null) => void
+  onAdd: () => void
+  addLabel: string
 }
 
 // Controlled name-search input plus category filter chips (INV-04).
@@ -18,25 +20,44 @@ interface SearchFilterBarProps {
 // control. The Input's built-in
 // `allowClear` is the one-handed clear affordance called out in the plan:
 // the owner can reset the query without selecting text.
+//
+// 260812-jz9: the full-width "Add {Item}" button row IngredientsTab
+// previously rendered above this component has been replaced with an
+// inline square icon-only button inside SearchFilterBar's own first row,
+// driven by the new onAdd/addLabel props — keeping the "Add" affordance
+// colocated with the search bar it sits beside rather than as a separate
+// full-width row.
 export function SearchFilterBar({
   query,
   onQueryChange,
   categoryId,
   onCategoryChange,
+  onAdd,
+  addLabel,
 }: SearchFilterBarProps) {
   const { data: categories } = useCategories()
 
   return (
     <div className="flex flex-col gap-sm">
-      <Input
-        allowClear
-        size="large"
-        prefix={<SearchOutlined className="text-zinc-400" />}
-        placeholder="Search by name or category"
-        value={query}
-        onChange={(event) => onQueryChange(event.target.value)}
-        style={{ minHeight: 48 }}
-      />
+      <div className="flex gap-sm items-center">
+        <Input
+          allowClear
+          size="large"
+          prefix={<SearchOutlined className="text-zinc-400" />}
+          placeholder="Search by name or category"
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+          style={{ minHeight: 48 }}
+          className="flex-1"
+        />
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          aria-label={addLabel}
+          onClick={onAdd}
+          style={{ width: 48, height: 48, minWidth: 48, padding: 0 }}
+        />
+      </div>
       <div
         className="flex gap-sm overflow-x-auto pb-xs"
         role="tablist"
