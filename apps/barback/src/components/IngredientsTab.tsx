@@ -18,6 +18,11 @@ import { AddEditIngredientView } from './views/AddEditIngredientView.js'
 // can render as one pinned `position: sticky` unit — before this, only the
 // search bar attempted to pin and the title row above it always scrolled
 // away.
+//
+// 260812-fpi: removed the per-tab "Ingredients" `<h2>` — BottomTabBar's
+// active-tab state already communicates which tab is open, so the heading
+// was redundant. Also bumped the sticky wrapper's bottom padding from
+// `pb-sm` to `pb-md` for a clearer visual gap above the scrolling list.
 export function IngredientsTab() {
   const [view, setView] = useState<'list' | 'add'>('list')
   const [editing, setEditing] = useState<Ingredient>()
@@ -40,9 +45,8 @@ export function IngredientsTab() {
 
   return (
     <div className="px-md pb-3xl">
-      <div className="sticky top-0 z-10 bg-bar-bg pt-md pb-sm safe-area-inset-top">
-        <div className="flex items-center justify-between pb-md">
-          <h2 className="text-white text-xl font-semibold">Ingredients</h2>
+      <div className="sticky top-0 z-10 bg-bar-bg pt-md pb-md safe-area-inset-top">
+        <div className="flex justify-end pb-md">
           <Button
             type="primary"
             icon={<PlusOutlined />}
