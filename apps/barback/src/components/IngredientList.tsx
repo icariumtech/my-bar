@@ -1,35 +1,37 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Alert, Button, Spin } from 'antd'
 import type { Ingredient } from '@my-bar/shared'
 import { useIngredients, useToggleStock } from '../api/useIngredients.js'
 import { IngredientRow } from './IngredientRow.js'
-import { SearchFilterBar } from './SearchFilterBar.js'
 
 interface IngredientListProps {
   // Threaded through to each IngredientRow's edit affordance. Left
   // undefined here — plan 01-04 wires this to the edit form; until then
   // IngredientRow simply doesn't render the edit control.
   onEdit?: (ingredient: Ingredient) => void
+  // 260812-e8j: search/filter state now lives in IngredientsTab (so the
+  // title/Add-button row and SearchFilterBar can render together inside one
+  // sticky wrapper) and is passed down here as props.
+  query: string
+  categoryId: string | null
 }
 
 // Renders one IngredientRow per ingredient (INV-03's swipeable stock
 // toggle, deferred commit + undo) and supplies the commit handler backed
-// by useToggleStock(). Also owns the search/filter state (INV-04): the
-// already-fetched array from useIngredients() is filtered in memory — no
-// query parameter is ever added to the ingredients request, and no
-// server-side search endpoint exists, per the plan's explicit boundary.
+// by useToggleStock(). It no longer owns the search/filter state
+// (260812-e8j lifted that up to IngredientsTab) — it only performs the
+// in-memory filtering (INV-04) against the query/categoryId props and
+// renders the four loading/error/true-empty/filtered-empty states.
 //
-// Four distinct, non-conflatable states live here too: loading (first
-// fetch in flight), error (fetch failed, with Retry), true-empty (nothing
-// ever added) and filtered-empty (search/filter matches nothing). The
+// Four distinct, non-conflatable states live here: loading (first fetch in
+// flight), error (fetch failed, with Retry), true-empty (nothing ever
+// added) and filtered-empty (search/filter matches nothing). The
 // true-empty and filtered-empty states are distinguished by the length of
 // the UNFILTERED list, never by the filtered result being empty — a
 // mistyped search must never read as data loss.
-export function IngredientList({ onEdit }: IngredientListProps = {}) {
+export function IngredientList({ onEdit, query, categoryId }: IngredientListProps) {
   const { data: ingredients, isPending, isError, refetch } = useIngredients()
   const toggleStock = useToggleStock()
-  const [query, setQuery] = useState('')
-  const [categoryId, setCategoryId] = useState<string | null>(null)
 
   // Memoized against the source list, the query and the category filter so
   // typing does not re-filter on unrelated re-renders (e.g. a toggle
@@ -83,15 +85,6 @@ export function IngredientList({ onEdit }: IngredientListProps = {}) {
 
   return (
     <div>
-      <div className="sticky top-0 z-10 bg-bar-bg pt-sm pb-sm safe-area-inset-top">
-        <SearchFilterBar
-          query={query}
-          onQueryChange={setQuery}
-          categoryId={categoryId}
-          onCategoryChange={setCategoryId}
-        />
-      </div>
-
       {!hasAnyIngredients && (
         <div className="text-center pt-3xl px-md">
           <h2 className="text-white">No ingredients yet</h2>

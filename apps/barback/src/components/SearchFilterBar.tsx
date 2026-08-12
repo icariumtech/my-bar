@@ -10,9 +10,12 @@ interface SearchFilterBarProps {
 }
 
 // Controlled name-search input plus category filter chips (INV-04).
-// SearchFilterBar owns no state itself — IngredientList holds query and
-// categoryId so the filtered array can be memoized alongside them (and so
-// this component stays a pure, reusable control). The Input's built-in
+// SearchFilterBar owns no state itself — IngredientsTab holds query and
+// categoryId (lifted up in 260812-e8j so the title/Add-button row and this
+// search/filter row can render together inside one sticky wrapper; the
+// filtered array is still memoized alongside them, now in IngredientList,
+// which receives both as props) so this component stays a pure, reusable
+// control. The Input's built-in
 // `allowClear` is the one-handed clear affordance called out in the plan:
 // the owner can reset the query without selecting text.
 export function SearchFilterBar({
