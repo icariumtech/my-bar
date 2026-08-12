@@ -105,7 +105,7 @@ Plans:
   5. A recipe ingredient line can lock to one specific ingredient (checkbox, defaults checked when a specific ingredient is selected); the specific-ingredient picker can also create a brand-new ingredient inline (name + category + stock)
   6. Makeable status is tri-state per ingredient line — green (exact/category match in stock), yellow (locked specific ingredient out of stock but another in-stock bottle exists in its category), red (nothing in stock) — and the recipe-level badge shows the worst state across all lines
 
-**Plans:** 7/7 plans executed
+**Plans:** 7/7 plans complete
 
 Plans:
 
