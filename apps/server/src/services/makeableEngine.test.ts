@@ -21,60 +21,201 @@ describe('computeMakeable', () => {
   }
 
   function seedIngredient(categoryId: string, inStock: boolean, name = 'Bottle') {
+    const ingredientId = crypto.randomUUID()
     testDb.db
       .insert(ingredients)
-      .values({ id: crypto.randomUUID(), name, categoryId, note: null, inStock })
+      .values({ id: ingredientId, name, categoryId, note: null, inStock })
       .run()
+    return ingredientId
   }
 
-  it('is makeable when the required category has an in-stock ingredient', () => {
+  it('category-only line (ingredientId null, requiresSpecific false) is green when the category has an in-stock member', () => {
     const categoryId = seedCategory('Dry Gin')
     seedIngredient(categoryId, true)
+    const lineId = crypto.randomUUID()
 
-    const result = computeMakeable([categoryId], testDb.db)
+    const result = computeMakeable(
+      [{ id: lineId, categoryId, ingredientId: null, requiresSpecific: false }],
+      testDb.db,
+    )
 
-    expect(result).toEqual({ makeable: true, missingCategoryIds: [] })
+    expect(result.lines).toEqual([{ id: lineId, status: 'green', alternativeIngredientName: null }])
+    expect(result.overallStatus).toBe('green')
   })
 
-  it('is not makeable when the required category has zero in-stock ingredients (all out of stock)', () => {
+  it('category-only line is red when the category has zero in-stock members', () => {
     const categoryId = seedCategory('Dry Gin')
-    seedIngredient(categoryId, false)
+    const lineId = crypto.randomUUID()
 
-    const result = computeMakeable([categoryId], testDb.db)
+    const result = computeMakeable(
+      [{ id: lineId, categoryId, ingredientId: null, requiresSpecific: false }],
+      testDb.db,
+    )
 
-    expect(result).toEqual({ makeable: false, missingCategoryIds: [categoryId] })
+    expect(result.lines).toEqual([{ id: lineId, status: 'red', alternativeIngredientName: null }])
+    expect(result.overallStatus).toBe('red')
   })
 
-  it('is not makeable when the required category has no ingredients at all', () => {
-    const categoryId = seedCategory('Dry Gin')
-
-    const result = computeMakeable([categoryId], testDb.db)
-
-    expect(result).toEqual({ makeable: false, missingCategoryIds: [categoryId] })
-  })
-
-  it('MATCH-03: matches ANY in-stock ingredient in the category, never a specific one', () => {
+  it('MATCH-03 regression: a category-only line is satisfied by ANY in-stock member, never matched to a specific one', () => {
     const categoryId = seedCategory('Dry Gin')
     seedIngredient(categoryId, true, 'Bombay Sapphire')
     seedIngredient(categoryId, false, 'Tanqueray')
+    const lineId = crypto.randomUUID()
 
-    const result = computeMakeable([categoryId], testDb.db)
+    const result = computeMakeable(
+      [{ id: lineId, categoryId, ingredientId: null, requiresSpecific: false }],
+      testDb.db,
+    )
 
-    expect(result).toEqual({ makeable: true, missingCategoryIds: [] })
+    expect(result.lines[0].status).toBe('green')
   })
 
-  it('an empty requirement set is trivially satisfied', () => {
+  it('a locked-specific line whose exact ingredient is in stock is green, regardless of other category members', () => {
+    const categoryId = seedCategory('Citrus')
+    const lemonId = seedIngredient(categoryId, true, 'Lemon Juice')
+    seedIngredient(categoryId, false, 'Lime Juice')
+    const lineId = crypto.randomUUID()
+
+    const result = computeMakeable(
+      [{ id: lineId, categoryId, ingredientId: lemonId, requiresSpecific: true }],
+      testDb.db,
+    )
+
+    expect(result.lines).toEqual([{ id: lineId, status: 'green', alternativeIngredientName: null }])
+  })
+
+  it('a locked-specific line whose exact ingredient is out of stock, with another in-stock category member, is yellow with the substitute name', () => {
+    const categoryId = seedCategory('Citrus')
+    const lemonId = seedIngredient(categoryId, false, 'Lemon Juice')
+    seedIngredient(categoryId, true, 'Lime Juice')
+    const lineId = crypto.randomUUID()
+
+    const result = computeMakeable(
+      [{ id: lineId, categoryId, ingredientId: lemonId, requiresSpecific: true }],
+      testDb.db,
+    )
+
+    expect(result.lines).toEqual([{ id: lineId, status: 'yellow', alternativeIngredientName: 'Lime Juice' }])
+  })
+
+  it("MATCH-05 adjacency edge case: a locked-specific line whose ingredient is out of stock AND is the category's only member is red, not yellow", () => {
+    const categoryId = seedCategory('Bitters')
+    const onlyId = seedIngredient(categoryId, false, 'Angostura')
+    const lineId = crypto.randomUUID()
+
+    const result = computeMakeable(
+      [{ id: lineId, categoryId, ingredientId: onlyId, requiresSpecific: true }],
+      testDb.db,
+    )
+
+    expect(result.lines).toEqual([{ id: lineId, status: 'red', alternativeIngredientName: null }])
+  })
+
+  it('D-30: a line with ingredientId set but requiresSpecific false behaves exactly like a category-only line', () => {
+    const categoryId = seedCategory('Citrus')
+    const lemonId = seedIngredient(categoryId, false, 'Lemon Juice')
+    seedIngredient(categoryId, true, 'Lime Juice')
+    const lineId = crypto.randomUUID()
+
+    const result = computeMakeable(
+      [{ id: lineId, categoryId, ingredientId: lemonId, requiresSpecific: false }],
+      testDb.db,
+    )
+
+    // Category-only semantics: green because the category has an in-stock
+    // member — alternativeIngredientName is a locked-specific-only concept.
+    expect(result.lines).toEqual([{ id: lineId, status: 'green', alternativeIngredientName: null }])
+  })
+
+  it('recipe-level overallStatus is red if any line is red, regardless of line order', () => {
+    const greenCategoryId = seedCategory('Dry Gin')
+    seedIngredient(greenCategoryId, true)
+    const yellowCategoryId = seedCategory('Citrus')
+    const yellowIngId = seedIngredient(yellowCategoryId, false, 'Lemon Juice')
+    seedIngredient(yellowCategoryId, true, 'Lime Juice')
+    const redCategoryId = seedCategory('Dry Vermouth')
+
+    const greenLine = {
+      id: crypto.randomUUID(),
+      categoryId: greenCategoryId,
+      ingredientId: null,
+      requiresSpecific: false,
+    }
+    const yellowLine = {
+      id: crypto.randomUUID(),
+      categoryId: yellowCategoryId,
+      ingredientId: yellowIngId,
+      requiresSpecific: true,
+    }
+    const redLine = {
+      id: crypto.randomUUID(),
+      categoryId: redCategoryId,
+      ingredientId: null,
+      requiresSpecific: false,
+    }
+
+    const orderA = computeMakeable([greenLine, yellowLine, redLine], testDb.db)
+    const orderB = computeMakeable([redLine, greenLine, yellowLine], testDb.db)
+
+    expect(orderA.overallStatus).toBe('red')
+    expect(orderB.overallStatus).toBe('red')
+  })
+
+  it('recipe-level overallStatus is yellow when no line is red but at least one is yellow, regardless of line order', () => {
+    const greenCategoryId = seedCategory('Dry Gin')
+    seedIngredient(greenCategoryId, true)
+    const yellowCategoryId = seedCategory('Citrus')
+    const yellowIngId = seedIngredient(yellowCategoryId, false, 'Lemon Juice')
+    seedIngredient(yellowCategoryId, true, 'Lime Juice')
+
+    const greenLine = {
+      id: crypto.randomUUID(),
+      categoryId: greenCategoryId,
+      ingredientId: null,
+      requiresSpecific: false,
+    }
+    const yellowLine = {
+      id: crypto.randomUUID(),
+      categoryId: yellowCategoryId,
+      ingredientId: yellowIngId,
+      requiresSpecific: true,
+    }
+
+    const orderA = computeMakeable([greenLine, yellowLine], testDb.db)
+    const orderB = computeMakeable([yellowLine, greenLine], testDb.db)
+
+    expect(orderA.overallStatus).toBe('yellow')
+    expect(orderB.overallStatus).toBe('yellow')
+  })
+
+  it('missingCategoryIds includes only categories behind red lines, not yellow', () => {
+    const yellowCategoryId = seedCategory('Citrus')
+    const yellowIngId = seedIngredient(yellowCategoryId, false, 'Lemon Juice')
+    seedIngredient(yellowCategoryId, true, 'Lime Juice')
+    const redCategoryId = seedCategory('Dry Vermouth')
+
+    const yellowLine = {
+      id: crypto.randomUUID(),
+      categoryId: yellowCategoryId,
+      ingredientId: yellowIngId,
+      requiresSpecific: true,
+    }
+    const redLine = {
+      id: crypto.randomUUID(),
+      categoryId: redCategoryId,
+      ingredientId: null,
+      requiresSpecific: false,
+    }
+
+    const result = computeMakeable([yellowLine, redLine], testDb.db)
+
+    expect(result.missingCategoryIds).toEqual([redCategoryId])
+  })
+
+  it('computeMakeable([]) returns overallStatus green, empty lines, empty missingCategoryIds', () => {
     const result = computeMakeable([], testDb.db)
 
-    expect(result).toEqual({ makeable: true, missingCategoryIds: [] })
-  })
-
-  it('collapses duplicate required category ids to a single missing entry', () => {
-    const categoryId = seedCategory('Dry Gin')
-
-    const result = computeMakeable([categoryId, categoryId], testDb.db)
-
-    expect(result.missingCategoryIds).toEqual([categoryId])
+    expect(result).toEqual({ lines: [], overallStatus: 'green', missingCategoryIds: [] })
   })
 
   it('is isolated to the injected db param — a category only seeded in testDb resolves correctly', () => {
@@ -84,9 +225,13 @@ describe('computeMakeable', () => {
     // would never be found in-stock, and this assertion would fail.
     const categoryId = seedCategory('Absinthe')
     seedIngredient(categoryId, true)
+    const lineId = crypto.randomUUID()
 
-    const result = computeMakeable([categoryId], testDb.db)
+    const result = computeMakeable(
+      [{ id: lineId, categoryId, ingredientId: null, requiresSpecific: false }],
+      testDb.db,
+    )
 
-    expect(result.makeable).toBe(true)
+    expect(result.overallStatus).toBe('green')
   })
 })
