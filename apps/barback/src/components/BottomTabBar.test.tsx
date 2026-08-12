@@ -28,4 +28,26 @@ describe('BottomTabBar', () => {
 
     expect(onChange).not.toHaveBeenCalled()
   })
+
+  it('renders an icon for each of the three tabs', () => {
+    render(<BottomTabBar activeTab="ingredients" onChange={vi.fn()} />)
+
+    expect(screen.getByRole('img', { name: 'inbox' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'coffee' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'setting' })).toBeInTheDocument()
+  })
+
+  it('marks only the active tab as aria-selected', () => {
+    render(<BottomTabBar activeTab="recipes" onChange={vi.fn()} />)
+
+    expect(screen.getByRole('tab', { name: /Recipes/ })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: /Ingredients/ })).toHaveAttribute(
+      'aria-selected',
+      'false',
+    )
+    expect(screen.getByRole('tab', { name: /Settings/ })).toHaveAttribute(
+      'aria-selected',
+      'false',
+    )
+  })
 })
