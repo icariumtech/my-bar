@@ -21,11 +21,18 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **MATCH-02**: System computes and exposes which specific ingredient(s) are missing for a not-makeable recipe
 - [x] **MATCH-03**: Ingredients are modeled with categories (e.g. "orange liqueur") so recipes can match against any in-stock bottle in the right category, not just an exact brand
 - [x] **MATCH-04**: Recipe ingredient quantities are stored in a canonical unit and converted for display (oz/dash/etc.) without affecting makeable-check logic (which stays presence-based, not volume-based)
+- [ ] **MATCH-05**: A recipe ingredient line can lock to one specific ingredient (not just its category) for ingredients that aren't meaningfully substitutable (e.g. lemon juice vs. lime juice). Makeable status is tri-state per line — exact match in stock (green/ready), specific ingredient out of stock but another in-stock bottle exists in the same category (yellow/substitution available), or nothing in stock at all (red/missing) — and rolls up to the recipe level as the worst state across all lines.
 
 ### Recipes
 
 - [x] **RECIPE-01**: Owner can manually create a recipe with name, ingredients (with quantity/unit and category reference), method, glassware, and garnish
 - [x] **RECIPE-02**: Owner can edit or delete an existing recipe
+
+### Barback Navigation
+
+- [ ] **BARBACK-01**: Barback interface uses persistent bottom tab navigation (Ingredients / Recipes / Settings) instead of header buttons opening stacked modals; each item-list tab has an "Add {Item}" action in the upper-right corner
+- [ ] **BARBACK-02**: Add/edit/detail flows (ingredients, recipes, categories, glassware) are full-screen views with a back action, not modals-on-modals
+- [ ] **BARBACK-03**: Category, glassware, and recipe-ingredient pickers are a single autocomplete field (search-as-you-type over existing entries) with an inline "add new" option, replacing static dropdowns
 
 ### Patron Interface
 
@@ -105,6 +112,10 @@ Populated during roadmap creation.
 | MATCH-04 | Phase 2 | Complete |
 | RECIPE-01 | Phase 2 | Complete |
 | RECIPE-02 | Phase 2 | Complete |
+| MATCH-05 | Phase 2.1 | Pending |
+| BARBACK-01 | Phase 2.1 | Pending |
+| BARBACK-02 | Phase 2.1 | Pending |
+| BARBACK-03 | Phase 2.1 | Pending |
 | PATR-01 | Phase 3 | Pending |
 | PATR-02 | Phase 3 | Pending |
 | PATR-03 | Phase 3 | Pending |
@@ -124,10 +135,10 @@ Populated during roadmap creation.
 
 **Coverage:**
 
-- v1 requirements: 27 total
-- Mapped to phases: 27
+- v1 requirements: 31 total
+- Mapped to phases: 31
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-08-09*
-*Last updated: 2026-08-09 after roadmap creation (traceability populated)*
+*Last updated: 2026-08-11 — added MATCH-05, BARBACK-01/02/03 for Phase 2.1 (Recipe UI cleanup)*

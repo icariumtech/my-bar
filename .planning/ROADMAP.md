@@ -90,6 +90,26 @@ Plans:
 
 **UI hint**: yes
 
+### Phase 02.1: Recipe UI cleanup (INSERTED)
+
+**Goal:** Barback navigation is rebuilt around a persistent bottom tab bar (Ingredients/Recipes/Settings) with full-screen add/edit/detail flows replacing stacked modals, category/glassware/ingredient pickers become a single autocomplete-with-inline-create field, and the makeable engine gains per-line specific-ingredient locking with a tri-state (green/yellow/red) status
+**Mode:** mvp
+**Requirements**: MATCH-05, BARBACK-01, BARBACK-02, BARBACK-03
+**Depends on:** Phase 2
+**Success Criteria** (what must be TRUE):
+
+  1. Barback has a persistent bottom tab bar with Ingredients, Recipes, and Settings tabs (Settings houses Categories and Glassware management); the "My Bar — Barback" header title is removed
+  2. Each item-list tab (Ingredients, Recipes) has an "Add {Item}" action in the upper-right corner
+  3. Add/edit/detail flows for ingredients, recipes, categories, and glassware are full-screen views with a back action — no more modal-on-modal stacking
+  4. Category, glassware, and recipe-ingredient pickers are a single autocomplete field searching existing entries, with an inline "add new" option, replacing today's static dropdowns
+  5. A recipe ingredient line can lock to one specific ingredient (checkbox, defaults checked when a specific ingredient is selected); the specific-ingredient picker can also create a brand-new ingredient inline (name + category + stock)
+  6. Makeable status is tri-state per ingredient line — green (exact/category match in stock), yellow (locked specific ingredient out of stock but another in-stock bottle exists in its category), red (nothing in stock) — and the recipe-level badge shows the worst state across all lines
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 02.1 to break down)
+
 ### Phase 3: Patron Browse Experience
 
 **Goal**: A patron standing at the wall-mounted iPad can browse the full drink menu and trust what they see — makeable status always matches real inventory, live
