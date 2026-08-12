@@ -3,14 +3,16 @@ import { Button } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import type { Ingredient } from '@my-bar/shared'
 import { IngredientList } from './IngredientList.js'
-import { AddEditIngredientForm } from './AddEditIngredientForm.js'
+import { AddEditIngredientView } from './views/AddEditIngredientView.js'
 
-// D-25/BARBACK-01: Ingredients tab container — owns its OWN local add/edit
-// view state so switching the active bottom tab never resets this state.
-// Wraps the existing (unchanged) IngredientList + AddEditIngredientForm;
-// only the shell (header + Add Ingredient button) is new here.
+// D-25/BARBACK-01/D-26: Ingredients tab container — owns its OWN local
+// add/edit view state so switching the active bottom tab never resets this
+// state. When view === 'add', the full-screen AddEditIngredientView
+// replaces this tab's entire content area (list is not rendered
+// underneath it) — mirrors the same conditional-full-screen-render
+// pattern every other full-screen-view plan in this phase follows.
 export function IngredientsTab() {
-  const [view, setView] = useState<'list' | 'add' | 'edit'>('list')
+  const [view, setView] = useState<'list' | 'add'>('list')
   const [editing, setEditing] = useState<Ingredient>()
 
   function openAdd() {
@@ -21,6 +23,10 @@ export function IngredientsTab() {
   function openEdit(ingredient: Ingredient) {
     setEditing(ingredient)
     setView('add')
+  }
+
+  if (view === 'add') {
+    return <AddEditIngredientView ingredient={editing} onBack={() => setView('list')} />
   }
 
   return (
@@ -37,11 +43,6 @@ export function IngredientsTab() {
         </Button>
       </div>
       <IngredientList onEdit={openEdit} />
-      <AddEditIngredientForm
-        ingredient={editing}
-        open={view === 'add'}
-        onClose={() => setView('list')}
-      />
     </div>
   )
 }
