@@ -47,7 +47,7 @@ h3 {
    sticky search bar and the bottom of the list must never sit under the
    status bar or the home indicator. */
 .safe-area-inset-top {
-  padding-top: env(safe-area-inset-top);
+  padding-top: calc(env(safe-area-inset-top) + var(--spacing-lg));
 }
 
 .safe-area-inset-bottom {

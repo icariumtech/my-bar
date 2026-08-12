@@ -27,6 +27,20 @@ import { AddEditIngredientView } from './views/AddEditIngredientView.js'
 // 260812-gcp: bumped the sticky wrapper's top padding from `pt-md` to
 // `pt-lg` for clearer breathing room above the Add-button row, matching
 // 260812-fpi's identical `pb-sm` → `pb-md` fix on the header's bottom edge.
+//
+// 260812-j0q: the 260812-gcp `pt-lg` bump never actually took visual
+// effect. Tailwind v4 wraps all its generated utility classes (including
+// `pt-lg`) inside `@layer utilities`, while `.safe-area-inset-top` in
+// index.css is an unlayered author rule. Per the CSS cascade-layers spec,
+// an unlayered rule always wins over a layered rule for the same property
+// regardless of source order — so `.safe-area-inset-top`'s
+// `padding-top: env(safe-area-inset-top)` (which resolves to `0px` on any
+// non-notched device) silently zeroed out `pt-lg`'s `padding-top: 24px` on
+// every device without a safe-area inset. Fixed by moving the padding
+// value directly into `.safe-area-inset-top` itself (now
+// `calc(env(safe-area-inset-top) + var(--spacing-lg))`, matching
+// `.safe-area-inset-bottom`'s existing additive pattern) — `pt-lg` is now
+// redundant and has been removed from the className below.
 export function IngredientsTab() {
   const [view, setView] = useState<'list' | 'add'>('list')
   const [editing, setEditing] = useState<Ingredient>()
@@ -49,7 +63,7 @@ export function IngredientsTab() {
 
   return (
     <div className="px-md pb-3xl">
-      <div className="sticky top-0 z-10 bg-bar-bg pt-lg pb-md safe-area-inset-top">
+      <div className="sticky top-0 z-10 bg-bar-bg pb-md safe-area-inset-top">
         <div className="flex justify-end pb-md">
           <Button
             type="primary"
