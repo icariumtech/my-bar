@@ -41,7 +41,17 @@ export function RecipeDetailView({ recipe, onBack }: RecipeDetailViewProps) {
           {recipe.name}
         </h2>
       </div>
-      <main style={{ flex: 1, padding: 16, overflow: 'auto' }}>
+      <main
+        style={{
+          flex: 1,
+          padding: 16,
+          // 260812-drh: reserve clearance for the fixed BottomTabBar
+          // (48px min-height + safe-area inset) so content isn't hidden
+          // behind it.
+          paddingBottom: 'calc(16px + 48px + env(safe-area-inset-bottom))',
+          overflow: 'auto',
+        }}
+      >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <MakeableStatusBadge status={recipe.overallStatus} />
 

@@ -106,7 +106,17 @@ export function AddEditRecipeView({ recipe, onBack }: AddEditRecipeViewProps) {
         </Button>
         <h2 className="text-white">{isEditing ? 'Edit Recipe' : 'Add Recipe'}</h2>
       </div>
-      <main style={{ flex: 1, padding: 16, overflow: 'auto' }}>
+      <main
+        style={{
+          flex: 1,
+          padding: 16,
+          // 260812-drh: reserve clearance for the fixed BottomTabBar
+          // (48px min-height + safe-area inset) so the Save button isn't
+          // hidden behind it.
+          paddingBottom: 'calc(16px + 48px + env(safe-area-inset-bottom))',
+          overflow: 'auto',
+        }}
+      >
         {saveFailed && (
           <Alert type="error" title={saveErrorMessage} showIcon style={{ marginBottom: 16 }} />
         )}
