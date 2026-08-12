@@ -31,6 +31,12 @@ const TABS: { value: 'ingredients' | 'recipes' | 'settings'; label: string; icon
 // otherwise). The "clicking the already-active tab is a no-op" behavior,
 // previously a side effect of `Segmented`'s native radio-input semantics,
 // is now implemented explicitly via the `onClick` guard below.
+//
+// 260812-gcp: safe-area-inset-bottom is now reserved as flex-centered space
+// via `minHeight` on the wrapper rather than as trailing `paddingBottom`, so
+// the icon+label content centers within the bar's full visible height
+// instead of sitting flush at its top with the safe-area gap entirely below
+// it.
 export function BottomTabBar({ activeTab, onChange }: BottomTabBarProps) {
   return (
     <div
@@ -41,11 +47,13 @@ export function BottomTabBar({ activeTab, onChange }: BottomTabBarProps) {
         right: 0,
         width: '100%',
         zIndex: 10,
-        paddingBottom: 'env(safe-area-inset-bottom)',
+        display: 'flex',
+        alignItems: 'center',
+        minHeight: 'calc(48px + env(safe-area-inset-bottom))',
       }}
       className="border-t border-zinc-700 bg-bar-surface"
     >
-      <div className="flex">
+      <div className="flex w-full">
         {TABS.map((tab) => {
           const isActive = tab.value === activeTab
           return (
