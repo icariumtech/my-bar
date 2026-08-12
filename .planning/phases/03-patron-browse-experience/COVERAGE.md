@@ -1,0 +1,1 @@
+No external API integration: Phase 3 consumes the project's own internal Fastify REST API (`/api/recipes`) and Socket.IO channel (`inventory:changed`) — no third-party service or SDK is integrated this phase.
