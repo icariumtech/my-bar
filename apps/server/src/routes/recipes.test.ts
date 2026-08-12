@@ -3,7 +3,7 @@ import Fastify from 'fastify'
 import { serializerCompiler, validatorCompiler } from '@fastify/type-provider-zod'
 import { eq } from 'drizzle-orm'
 import { createTestDb } from '../db/test-helpers.js'
-import { categories, glassware, ingredients, recipeIngredients } from '../db/schema.js'
+import { categories, glassware, ingredients, recipeIngredients, recipeTags, tags } from '../db/schema.js'
 import { recipesRoutes } from './recipes.js'
 
 describe('GET /api/recipes', () => {
@@ -31,6 +31,49 @@ describe('GET /api/recipes', () => {
 
     expect(res.statusCode).toBe(200)
     expect(res.json()).toEqual([])
+  })
+
+  it('every recipe in the list response carries its own correct tags/description', async () => {
+    const categoryId = crypto.randomUUID()
+    testDb.db.insert(categories).values({ id: categoryId, name: 'Dry Gin' }).run()
+    testDb.db
+      .insert(ingredients)
+      .values({ id: crypto.randomUUID(), name: 'Bottle', categoryId, note: null, inStock: true })
+      .run()
+    const spiritTagId = crypto.randomUUID()
+    testDb.db.insert(tags).values({ id: spiritTagId, name: 'Gin', group: 'spirit' }).run()
+    const app = buildTestApp()
+
+    await app.inject({
+      method: 'POST',
+      url: '/api/recipes',
+      payload: {
+        name: 'Tagged Recipe',
+        ingredients: [{ categoryId, quantity: '2', unit: 'oz' }],
+        method: ['Stir'],
+        description: 'A tagged one.',
+        tagIds: [spiritTagId],
+      },
+    })
+    await app.inject({
+      method: 'POST',
+      url: '/api/recipes',
+      payload: {
+        name: 'Untagged Recipe',
+        ingredients: [{ categoryId, quantity: '2', unit: 'oz' }],
+        method: ['Stir'],
+      },
+    })
+
+    const res = await app.inject({ method: 'GET', url: '/api/recipes' })
+    expect(res.statusCode).toBe(200)
+    const body = res.json() as Array<{ name: string; tags: unknown[]; description: string | null }>
+    const taggedRecipe = body.find((r) => r.name === 'Tagged Recipe')
+    const untaggedRecipe = body.find((r) => r.name === 'Untagged Recipe')
+    expect(taggedRecipe?.tags).toEqual([{ id: spiritTagId, name: 'Gin', group: 'spirit' }])
+    expect(taggedRecipe?.description).toBe('A tagged one.')
+    expect(untaggedRecipe?.tags).toEqual([])
+    expect(untaggedRecipe?.description).toBeNull()
   })
 })
 
@@ -73,6 +116,116 @@ describe('POST /api/recipes', () => {
       .run()
     return ingredientId
   }
+
+  function seedTag(name: string, group: 'spirit' | 'type' | 'season' | 'flavor') {
+    const id = crypto.randomUUID()
+    testDb.db.insert(tags).values({ id, name, group }).run()
+    return id
+  }
+
+  it('creates a recipe with tagIds — persists recipeTags rows; response tags sorted by TAG_GROUP_ORDER regardless of submission order', async () => {
+    const categoryId = seedCategory('Dry Gin')
+    seedIngredient(categoryId)
+    const flavorTagId = seedTag('Sweet', 'flavor')
+    const spiritTagId = seedTag('Gin', 'spirit')
+    const app = buildTestApp()
+
+    // Submit flavor before spirit — response must still come back spirit
+    // before flavor (TAG_GROUP_ORDER), never submission order.
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/recipes',
+      payload: {
+        name: 'Tagged',
+        ingredients: [{ categoryId, quantity: '2', unit: 'oz' }],
+        method: ['Stir'],
+        tagIds: [flavorTagId, spiritTagId],
+      },
+    })
+
+    expect(res.statusCode).toBe(201)
+    const body = res.json()
+    expect(body.tags).toEqual([
+      { id: spiritTagId, name: 'Gin', group: 'spirit' },
+      { id: flavorTagId, name: 'Sweet', group: 'flavor' },
+    ])
+
+    const persisted = testDb.db
+      .select()
+      .from(recipeTags)
+      .where(eq(recipeTags.recipeId, body.id))
+      .all()
+    expect(persisted).toHaveLength(2)
+  })
+
+  it('creates a recipe with a description — persists and returns verbatim; omitting returns null, not undefined or empty string', async () => {
+    const categoryId = seedCategory('Dry Gin')
+    seedIngredient(categoryId)
+    const app = buildTestApp()
+
+    const withDescription = await app.inject({
+      method: 'POST',
+      url: '/api/recipes',
+      payload: {
+        name: 'Has Description',
+        ingredients: [{ categoryId, quantity: '2', unit: 'oz' }],
+        method: ['Stir'],
+        description: 'A smooth classic.',
+      },
+    })
+    expect(withDescription.statusCode).toBe(201)
+    expect(withDescription.json().description).toBe('A smooth classic.')
+
+    const withoutDescription = await app.inject({
+      method: 'POST',
+      url: '/api/recipes',
+      payload: {
+        name: 'No Description',
+        ingredients: [{ categoryId, quantity: '2', unit: 'oz' }],
+        method: ['Stir'],
+      },
+    })
+    expect(withoutDescription.statusCode).toBe(201)
+    expect(withoutDescription.json().description).toBeNull()
+  })
+
+  it('rejects an unknown tagId (well-formed uuid, no matching row) with 400, not 500', async () => {
+    const categoryId = seedCategory('Dry Gin')
+    seedIngredient(categoryId)
+    const app = buildTestApp()
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/recipes',
+      payload: {
+        name: 'Ghost Tag',
+        ingredients: [{ categoryId, quantity: '2', unit: 'oz' }],
+        method: ['Stir'],
+        tagIds: [crypto.randomUUID()],
+      },
+    })
+
+    expect(res.statusCode).toBe(400)
+  })
+
+  it('omitting tagIds entirely creates a recipe with tags: []', async () => {
+    const categoryId = seedCategory('Dry Gin')
+    seedIngredient(categoryId)
+    const app = buildTestApp()
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/recipes',
+      payload: {
+        name: 'No Tags',
+        ingredients: [{ categoryId, quantity: '2', unit: 'oz' }],
+        method: ['Stir'],
+      },
+    })
+
+    expect(res.statusCode).toBe(201)
+    expect(res.json().tags).toEqual([])
+  })
 
   it('creates a recipe with ingredients, method, glassware, and garnish; reports makeable true', async () => {
     const ginCategoryId = seedCategory('Dry Gin')
@@ -450,6 +603,12 @@ describe('PATCH /api/recipes/:id', () => {
       .run()
   }
 
+  function seedTag(name: string, group: 'spirit' | 'type' | 'season' | 'flavor') {
+    const id = crypto.randomUUID()
+    testDb.db.insert(tags).values({ id, name, group }).run()
+    return id
+  }
+
   async function createRecipe(app: ReturnType<typeof Fastify>) {
     const categoryId = seedCategory('Dry Gin')
     seedIngredient(categoryId)
@@ -464,6 +623,76 @@ describe('PATCH /api/recipes/:id', () => {
     })
     return res.json()
   }
+
+  it('replaces the tag set atomically — old recipeTags rows gone, new set present, verified by direct query and PATCH response', async () => {
+    const app = buildTestApp()
+    const created = await createRecipe(app)
+    const oldTagId = seedTag('Whiskey', 'spirit')
+    await app.inject({
+      method: 'PATCH',
+      url: `/api/recipes/${created.id}`,
+      payload: { tagIds: [oldTagId] },
+    })
+
+    const newTagId = seedTag('Classics', 'type')
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/recipes/${created.id}`,
+      payload: { tagIds: [newTagId] },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().tags).toEqual([{ id: newTagId, name: 'Classics', group: 'type' }])
+
+    const persisted = testDb.db
+      .select()
+      .from(recipeTags)
+      .where(eq(recipeTags.recipeId, created.id))
+      .all()
+    expect(persisted).toHaveLength(1)
+    expect(persisted[0].tagId).toBe(newTagId)
+  })
+
+  it('omitting tagIds from a patch body leaves the existing tag set untouched', async () => {
+    const app = buildTestApp()
+    const created = await createRecipe(app)
+    const tagId = seedTag('Whiskey', 'spirit')
+    await app.inject({
+      method: 'PATCH',
+      url: `/api/recipes/${created.id}`,
+      payload: { tagIds: [tagId] },
+    })
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/recipes/${created.id}`,
+      payload: { name: 'Renamed' },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().tags).toEqual([{ id: tagId, name: 'Whiskey', group: 'spirit' }])
+  })
+
+  it('updates description on PATCH; omitting it leaves the existing value untouched', async () => {
+    const app = buildTestApp()
+    const created = await createRecipe(app)
+
+    const withDescription = await app.inject({
+      method: 'PATCH',
+      url: `/api/recipes/${created.id}`,
+      payload: { description: 'Updated story.' },
+    })
+    expect(withDescription.statusCode).toBe(200)
+    expect(withDescription.json().description).toBe('Updated story.')
+
+    const untouched = await app.inject({
+      method: 'PATCH',
+      url: `/api/recipes/${created.id}`,
+      payload: { name: 'Renamed Again' },
+    })
+    expect(untouched.statusCode).toBe(200)
+    expect(untouched.json().description).toBe('Updated story.')
+  })
 
   it('updates only the name field, leaving ingredients/method/glassware/garnish untouched', async () => {
     const app = buildTestApp()
