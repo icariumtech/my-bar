@@ -3,6 +3,7 @@ import { Alert, Button, Form, Input } from 'antd'
 import type { Ingredient, IngredientInput } from '@my-bar/shared'
 import { useCreateIngredient, useUpdateIngredient } from '../../api/useIngredients.js'
 import { CategoryPicker } from '../pickers/CategoryPicker.js'
+import { FullScreenHeader } from '../FullScreenHeader.js'
 
 export interface AddEditIngredientViewProps {
   // Absent → create mode (submits through useCreateIngredient). Present →
@@ -70,20 +71,10 @@ export function AddEditIngredientView({ ingredient, onBack }: AddEditIngredientV
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: 16,
-          borderBottom: '1px solid rgba(255,255,255,0.1)',
-        }}
-      >
-        <Button type="text" onClick={onBack}>
-          ← Back
-        </Button>
-        <h2 className="text-white">{isEditing ? 'Edit Ingredient' : 'Add Ingredient'}</h2>
-      </div>
+      {/* (260812-m0i) inline header markup extracted to shared
+          FullScreenHeader — fixes off-center title + replaces the
+          plain-text "← Back" button with a circular icon-only one. */}
+      <FullScreenHeader onBack={onBack} title={isEditing ? 'Edit Ingredient' : 'Add Ingredient'} />
       <main
         style={{
           flex: 1,

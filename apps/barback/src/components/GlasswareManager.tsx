@@ -8,6 +8,7 @@ import {
   useGlassware,
   useUpdateGlassware,
 } from '../api/useGlassware.js'
+import { FullScreenHeader } from './FullScreenHeader.js'
 
 interface GlasswareManagerProps {
   onBack: () => void
@@ -101,12 +102,10 @@ export function GlasswareManager({ onBack }: GlasswareManagerProps) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <header style={{ padding: 16, borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <Button type="text" onClick={handleClose}>
-          ← Back
-        </Button>
-        <h2 className="text-white">Manage Glassware</h2>
-      </header>
+      {/* (260812-m0i) inline header markup extracted to shared
+          FullScreenHeader — fixes off-center title + replaces the
+          plain-text "← Back" button with a circular icon-only one. */}
+      <FullScreenHeader onBack={handleClose} title="Manage Glassware" />
       <main
         style={{
           flex: 1,

@@ -1,6 +1,7 @@
-import { Button, List } from 'antd'
+import { List } from 'antd'
 import type { Recipe, TriStateStatus } from '@my-bar/shared'
 import { MakeableStatusBadge } from '../MakeableStatusBadge.js'
+import { FullScreenHeader } from '../FullScreenHeader.js'
 
 interface RecipeDetailViewProps {
   recipe: Recipe
@@ -25,22 +26,14 @@ export function RecipeDetailView({ recipe, onBack }: RecipeDetailViewProps) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: 16,
-          borderBottom: '1px solid rgba(255,255,255,0.1)',
-        }}
-      >
-        <Button type="text" onClick={onBack}>
-          ← Back
-        </Button>
-        <h2 className="text-white" style={{ fontSize: 28, fontWeight: 600 }}>
-          {recipe.name}
-        </h2>
-      </div>
+      {/* (260812-m0i) inline header markup extracted to shared
+          FullScreenHeader — fixes off-center title + replaces the
+          plain-text "← Back" button with a circular icon-only one. */}
+      <FullScreenHeader
+        onBack={onBack}
+        title={recipe.name}
+        titleStyle={{ fontSize: 28, fontWeight: 600 }}
+      />
       <main
         style={{
           flex: 1,

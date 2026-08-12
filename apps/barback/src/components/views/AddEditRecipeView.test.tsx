@@ -172,12 +172,12 @@ describe('AddEditRecipeView', () => {
     capturedBody = undefined
   })
 
-  it('renders no role="dialog" element and does render a "← Back" button', async () => {
+  it('renders no role="dialog" element and does render a "Back" button', async () => {
     stubFetch()
     renderView()
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '← Back' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument()
   })
 
   it('submits the selected unit as its real value, not undefined (G-02-6)', async () => {

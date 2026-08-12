@@ -45,11 +45,11 @@ describe('GlasswareManager', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('renders a "← Back" button that calls onBack when clicked', () => {
+  it('renders a "Back" button that calls onBack when clicked', () => {
     stubFetch()
     const { onBack } = renderGlasswareManager()
 
-    fireEvent.click(screen.getByText('← Back'))
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
 
     expect(onBack).toHaveBeenCalledTimes(1)
   })

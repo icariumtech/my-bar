@@ -5,6 +5,7 @@ import { useCreateRecipe, useUpdateRecipe } from '../../api/useRecipes.js'
 import { IngredientListForm } from '../IngredientListForm.js'
 import { MethodStepList } from '../MethodStepList.js'
 import { GlasswarePicker } from '../pickers/GlasswarePicker.js'
+import { FullScreenHeader } from '../FullScreenHeader.js'
 
 export interface AddEditRecipeViewProps {
   // Absent → create mode (submits through useCreateRecipe). Present → edit
@@ -92,20 +93,10 @@ export function AddEditRecipeView({ recipe, onBack }: AddEditRecipeViewProps) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: 16,
-          borderBottom: '1px solid rgba(255,255,255,0.1)',
-        }}
-      >
-        <Button type="text" onClick={onBack}>
-          ← Back
-        </Button>
-        <h2 className="text-white">{isEditing ? 'Edit Recipe' : 'Add Recipe'}</h2>
-      </div>
+      {/* (260812-m0i) inline header markup extracted to shared
+          FullScreenHeader — fixes off-center title + replaces the
+          plain-text "← Back" button with a circular icon-only one. */}
+      <FullScreenHeader onBack={onBack} title={isEditing ? 'Edit Recipe' : 'Add Recipe'} />
       <main
         style={{
           flex: 1,
