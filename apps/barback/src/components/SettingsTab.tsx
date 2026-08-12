@@ -4,12 +4,23 @@ import { RightOutlined } from '@ant-design/icons'
 import { CategoryManager } from './CategoryManager.js'
 import { GlasswareManager } from './GlasswareManager.js'
 
-// D-24/BARBACK-01: Settings tab houses both Categories and Glassware
+// D-24/D-26/BARBACK-01: Settings tab houses both Categories and Glassware
 // management (previously separate header buttons) via a flat menu, each
-// item opening that entity's existing (still-Modal at this stage) manager.
-// Owns its OWN local menu/categories/glassware view state.
+// item opening that entity's full-screen manager view. Owns its OWN local
+// menu/categories/glassware view state. When a sub-page is active, it
+// replaces the Settings menu entirely (matching IngredientsTab's
+// established full-screen pattern from plan 02.1-02) — the menu is never
+// rendered underneath.
 export function SettingsTab() {
   const [view, setView] = useState<'menu' | 'categories' | 'glassware'>('menu')
+
+  if (view === 'categories') {
+    return <CategoryManager onBack={() => setView('menu')} />
+  }
+
+  if (view === 'glassware') {
+    return <GlasswareManager onBack={() => setView('menu')} />
+  }
 
   return (
     <div className="px-md pb-3xl">
@@ -34,8 +45,6 @@ export function SettingsTab() {
           <RightOutlined />
         </Button>
       </div>
-      <CategoryManager open={view === 'categories'} onClose={() => setView('menu')} />
-      <GlasswareManager open={view === 'glassware'} onClose={() => setView('menu')} />
     </div>
   )
 }

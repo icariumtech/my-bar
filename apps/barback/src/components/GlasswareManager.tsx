@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Alert, Button, Divider, Empty, Input, List, Modal } from 'antd'
+import { Alert, Button, Divider, Empty, Input, List } from 'antd'
 import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import {
   DeleteGlasswareError,
@@ -10,16 +10,18 @@ import {
 } from '../api/useGlassware.js'
 
 interface GlasswareManagerProps {
-  open: boolean
-  onClose: () => void
+  onBack: () => void
 }
 
 // D-17/D-22: the owner's full glassware-list management surface — add,
-// rename, and delete — reached from a secondary control in the App header
+// rename, and delete — reached from Settings tab's "Glassware" menu item
 // (never the accent color, which is reserved for primary CTAs like "Add
 // Recipe"/"Save Recipe" per 02-UI-SPEC.md's Color contract). Delete is
 // refuse-only, mirroring CategoryManager.tsx's identical pattern.
-export function GlasswareManager({ open, onClose }: GlasswareManagerProps) {
+// D-24/D-26: full-screen view (not Modal) with a back button, reached from
+// SettingsTab's menu — internal add/rename/delete UX is unchanged from
+// Phase 2, only the shell moved from Modal to full-screen.
+export function GlasswareManager({ onBack }: GlasswareManagerProps) {
   const { data: glasswareList } = useGlassware()
   const createGlassware = useCreateGlassware()
   const updateGlassware = useUpdateGlassware()
@@ -94,11 +96,18 @@ export function GlasswareManager({ open, onClose }: GlasswareManagerProps) {
     setNewName('')
     setCreateError(null)
     setDeleteRefusal(null)
-    onClose()
+    onBack()
   }
 
   return (
-    <Modal title="Manage Glassware" open={open} onCancel={handleClose} footer={null} destroyOnHidden>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <header style={{ padding: 16, borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Button type="text" onClick={handleClose}>
+          ← Back
+        </Button>
+        <h2 className="text-white">Manage Glassware</h2>
+      </header>
+      <main style={{ flex: 1, padding: 16, overflow: 'auto' }}>
       {deleteRefusal && (
         <Alert
           type="error"
@@ -207,6 +216,7 @@ export function GlasswareManager({ open, onClose }: GlasswareManagerProps) {
         </Button>
       </div>
       {createError && <div style={{ color: '#ef4444', marginTop: 8 }}>{createError}</div>}
-    </Modal>
+      </main>
+    </div>
   )
 }
