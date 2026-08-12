@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+/* D-33/D-42/D-43: Patron's own dark-neon token set — deliberately NOT
+   Barback's --color-bar-* values (01-UI-SPEC.md). Tokens match
+   03-UI-SPEC.md Color/Spacing exactly. */
+@theme {
+  --color-patron-bg: #1a2332;
+  --color-patron-surface: #2d3f52;
+  --color-patron-accent: #ff6b35;
+  --color-patron-success: #10b981;
+  --color-patron-accent-text: #4dd0e1;
+  --color-patron-destructive: #ef4444;
+  --color-patron-text-secondary: #b0b0b0;
+
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  --spacing-3xl: 64px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* Body role per UI-SPEC Typography. Exactly two weights (400/600), no
+   custom webfont — same constraint as Barback. */
+body {
+  margin: 0;
+  background-color: #1a2332;
+  color: #ffffff;
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+}
