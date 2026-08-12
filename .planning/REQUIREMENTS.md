@@ -32,7 +32,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [ ] **BARBACK-01**: Barback interface uses persistent bottom tab navigation (Ingredients / Recipes / Settings) instead of header buttons opening stacked modals; each item-list tab has an "Add {Item}" action in the upper-right corner
 - [ ] **BARBACK-02**: Add/edit/detail flows (ingredients, recipes, categories, glassware) are full-screen views with a back action, not modals-on-modals
-- [ ] **BARBACK-03**: Category, glassware, and recipe-ingredient pickers are a single autocomplete field (search-as-you-type over existing entries) with an inline "add new" option, replacing static dropdowns
+- [x] **BARBACK-03**: Category, glassware, and recipe-ingredient pickers are a single autocomplete field (search-as-you-type over existing entries) with an inline "add new" option, replacing static dropdowns
 
 ### Patron Interface
 
@@ -115,7 +115,7 @@ Populated during roadmap creation.
 | MATCH-05 | Phase 2.1 | Complete |
 | BARBACK-01 | Phase 2.1 | Pending |
 | BARBACK-02 | Phase 2.1 | Pending |
-| BARBACK-03 | Phase 2.1 | Pending |
+| BARBACK-03 | Phase 2.1 | Complete |
 | PATR-01 | Phase 3 | Pending |
 | PATR-02 | Phase 3 | Pending |
 | PATR-03 | Phase 3 | Pending |
