@@ -30,7 +30,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Barback Navigation
 
-- [ ] **BARBACK-01**: Barback interface uses persistent bottom tab navigation (Ingredients / Recipes / Settings) instead of header buttons opening stacked modals; each item-list tab has an "Add {Item}" action in the upper-right corner
+- [x] **BARBACK-01**: Barback interface uses persistent bottom tab navigation (Ingredients / Recipes / Settings) instead of header buttons opening stacked modals; each item-list tab has an "Add {Item}" action in the upper-right corner
 - [x] **BARBACK-02**: Add/edit/detail flows (ingredients, recipes, categories, glassware) are full-screen views with a back action, not modals-on-modals
 - [x] **BARBACK-03**: Category, glassware, and recipe-ingredient pickers are a single autocomplete field (search-as-you-type over existing entries) with an inline "add new" option, replacing static dropdowns
 
@@ -113,7 +113,7 @@ Populated during roadmap creation.
 | RECIPE-01 | Phase 2 | Complete |
 | RECIPE-02 | Phase 2 | Complete |
 | MATCH-05 | Phase 2.1 | Complete |
-| BARBACK-01 | Phase 2.1 | Pending |
+| BARBACK-01 | Phase 2.1 | Complete |
 | BARBACK-02 | Phase 2.1 | Complete |
 | BARBACK-03 | Phase 2.1 | Complete |
 | PATR-01 | Phase 3 | Pending |
