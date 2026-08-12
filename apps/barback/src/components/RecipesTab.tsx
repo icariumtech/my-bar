@@ -26,6 +26,10 @@ import { RecipeDetailView } from './views/RecipeDetailView.js'
 // active-tab state already communicates which tab is open, so the heading
 // was redundant. Also bumped the sticky wrapper's bottom padding from
 // `pb-sm` to `pb-md` for a clearer visual gap above the scrolling list.
+//
+// 260812-gcp: bumped the sticky wrapper's top padding from `pt-md` to
+// `pt-lg` for clearer breathing room above the Add-button row, matching
+// 260812-fpi's identical `pb-sm` → `pb-md` fix on the header's bottom edge.
 export function RecipesTab() {
   const [view, setView] = useState<'list' | 'add' | 'detail'>('list')
   const [editing, setEditing] = useState<Recipe>()
@@ -57,7 +61,7 @@ export function RecipesTab() {
 
   return (
     <div className="px-md pb-3xl">
-      <div className="sticky top-0 z-10 bg-bar-bg pt-md pb-md safe-area-inset-top">
+      <div className="sticky top-0 z-10 bg-bar-bg pt-lg pb-md safe-area-inset-top">
         <div className="flex justify-end pb-md">
           <Button
             type="primary"
