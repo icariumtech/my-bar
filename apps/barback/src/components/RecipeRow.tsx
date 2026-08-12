@@ -35,7 +35,7 @@ export function RecipeRow({ recipe, onEdit, onView }: RecipeRowProps) {
       <div className="relative flex items-center justify-between gap-md min-h-[48px] px-md rounded-lg bg-bar-surface">
         <div className="flex flex-col min-w-0 flex-1 py-sm gap-xs">
           <span className="text-base truncate text-white">{recipe.name}</span>
-          <MakeableStatusBadge makeable={recipe.makeable} />
+          <MakeableStatusBadge status={recipe.overallStatus} />
         </div>
 
         <div className="flex items-center gap-sm shrink-0">
