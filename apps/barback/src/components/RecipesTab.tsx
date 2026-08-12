@@ -4,18 +4,18 @@ import { PlusOutlined } from '@ant-design/icons'
 import type { Recipe } from '@my-bar/shared'
 import { RecipeList } from './RecipeList.js'
 import { AddEditRecipeView } from './views/AddEditRecipeView.js'
-import { RecipeDetailView } from './RecipeDetailView.js'
+import { RecipeDetailView } from './views/RecipeDetailView.js'
 
 // D-25/BARBACK-01/D-26: Recipes tab container — owns its OWN local
 // add/edit/detail view state so switching the active bottom tab never
-// resets this state. When view === 'add', the full-screen
-// AddEditRecipeView replaces this tab's entire content area (list is not
+// resets this state. When view === 'add' or 'detail', the corresponding
+// full-screen view replaces this tab's entire content area (list is not
 // rendered underneath it) — mirrors IngredientsTab's identical
 // conditional-full-screen-render pattern. 'edit' reuses the 'add' view with
 // `editing` populated, matching AddEditIngredientView/AddEditRecipeView's
-// existing create/edit-via-optional-prop convention. RecipeDetailView
-// remains a Modal (its own full-screen conversion is out of this plan's
-// scope).
+// existing create/edit-via-optional-prop convention. RecipeDetailView is
+// now full-screen too (02.1-07) — the last Modal-shelled view in this
+// phase's scope is retired.
 export function RecipesTab() {
   const [view, setView] = useState<'list' | 'add' | 'detail'>('list')
   const [editing, setEditing] = useState<Recipe>()
@@ -40,6 +40,10 @@ export function RecipesTab() {
     return <AddEditRecipeView recipe={editing} onBack={() => setView('list')} />
   }
 
+  if (view === 'detail' && viewing) {
+    return <RecipeDetailView recipe={viewing} onBack={() => setView('list')} />
+  }
+
   return (
     <div className="px-md pb-3xl">
       <div className="flex items-center justify-between pt-md pb-sm">
@@ -54,9 +58,6 @@ export function RecipesTab() {
         </Button>
       </div>
       <RecipeList onEdit={openEdit} onView={openDetail} />
-      {view === 'detail' && viewing && (
-        <RecipeDetailView recipe={viewing} open onClose={() => setView('list')} />
-      )}
     </div>
   )
 }
