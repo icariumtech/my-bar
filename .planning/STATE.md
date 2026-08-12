@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 02.1
 current_phase_name: recipe-ui-cleanup
 status: executing
-stopped_at: Completed 02.1-06-PLAN.md
-last_updated: "2026-08-12T04:23:03.018Z"
+stopped_at: Completed 02.1-07-PLAN.md
+last_updated: "2026-08-12T04:29:33.405Z"
 last_activity: 2026-08-11
 last_activity_desc: Phase 02 complete, transitioned to Phase 3
 progress:
   total_phases: 3
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 21
-  completed_plans: 20
+  completed_plans: 21
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 ## Current Position
 
 Phase: 02.1 (recipe-ui-cleanup) — EXECUTING
-Plan: 2 of 7
+Plan: 7 of 7
 Status: Ready to execute
 Last activity: 2026-08-11 — Phase 02.1 execution started
 
-Progress: [██████████] 95%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Progress: [██████████] 95%
 | Phase 02 P07 | 35min | 3 tasks | 10 files |
 | Phase 02 P08 | 8min | 2 tasks | 2 files |
 | Phase 02.1 P06 | 22min | 3 tasks | 10 files |
+| Phase 02.1 P07 | 12min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,8 @@ Recent decisions affecting current work:
 - [Phase ?]: Gap closure 02-08 (G-02-9): useToggleStock and useUpdateIngredient now invalidate ['recipes'] in onSettled, mirroring useUpdateGlassware/useRenameCategory's cross-entity-invalidation pattern — fixes stale makeable badge after Barback stock changes
 - [Phase ?]: [Phase 02.1-06]: form.setFieldValue() inside a Form.List row does NOT register a Field entity — composite-value pickers (IngredientPicker) need an invisible per-field Form.Item registration or their values are silently dropped from the submitted payload despite form.getFieldValue() reading them correctly
 - [Phase ?]: [Phase 02.1-06]: BARBACK-02 deliberately left unmarked in REQUIREMENTS.md pending plan 02.1-07's RecipeDetailView full-screen conversion, which explicitly closes out the requirement
+- [Phase ?]: [Phase 02.1-07]: RecipeDetailView converted from Modal to full-screen view (D-26) with per-line tri-state status dots and yellow-hint copy — closes MATCH-05's remaining UI surface and BARBACK-02 as the phase's final plan
+- [Phase ?]: [Phase 02.1-07]: Added RecipesTab.test.tsx (not in plan's file list) as a Rule 3 fix — the plan's verify command had no matching test file to run since no container-tab test precedent existed in the codebase
 
 ### Pending Todos
 
@@ -119,6 +122,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-12T04:23:03.007Z
-Stopped at: Completed 02.1-06-PLAN.md
+Last session: 2026-08-12T04:29:33.362Z
+Stopped at: Completed 02.1-07-PLAN.md
 Resume file: None
