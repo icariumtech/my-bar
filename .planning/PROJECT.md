@@ -13,7 +13,8 @@ The inventory must be the single source of truth: at any moment, the Patron and 
 ### Validated
 
 - [x] Manual recipe entry/editing (owner builds the recipe collection from scratch, no seeded dataset) — Validated in Phase 2: Barback recipe CRUD (name, ingredients, method, glassware, garnish)
-- [x] Makeable/not-makeable computation core: server-side, computed once from live inventory, exact missing-ingredient reporting — Validated in Phase 2 (`computeMakeable()` + recipes API); surfacing this on Patron/Bartender screens is still Active (Phase 3+)
+- [x] Makeable/not-makeable computation core: server-side, computed once from live inventory, exact missing-ingredient reporting — Validated in Phase 2 (`computeMakeable()` + recipes API); extended to tri-state (green/yellow/substitution-available/red) with per-line specific-ingredient locking in Phase 2.1; surfacing this on Patron/Bartender screens is still Active (Phase 3+)
+- [x] Barback navigation and data-entry UX: persistent bottom tab bar, full-screen add/edit/detail flows (no modal-on-modal), unified autocomplete-with-inline-create pickers for categories/glassware/ingredients — Validated in Phase 2.1
 
 ### Active
 
@@ -61,6 +62,7 @@ The inventory must be the single source of truth: at any moment, the Patron and 
 | Claude API for all AI features | Chosen provider for recommendations, substitutions, and recipe photo/screenshot parsing | — Pending |
 | Local home server deployment | No need for internet dependency on core features; keeps data private and on-premises | — Pending |
 | Patron order flow supports both browsing-only and full order submission to bartender queue | Owner wants flexibility — sometimes just look up a drink, sometimes place a real order | — Pending |
+| Recipe ingredient lines can lock to one specific, non-substitutable ingredient (not just a category) | Booze categories are naturally substitutable, but mixers like lemon vs. lime juice are not — a plain category match was too coarse | Validated in Phase 2.1 |
 
 ## Evolution
 
@@ -80,4 +82,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-11 — Phase 2 (Recipe Collection & Makeable Engine) complete, verified via UAT + security audit*
+*Last updated: 2026-08-11 — Phase 2.1 (Recipe UI Cleanup) complete, verified: 45/45 must-haves, 133/133 tests green*
