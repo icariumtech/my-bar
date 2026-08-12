@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Alert, Button, Divider, Empty, Input, List, Modal } from 'antd'
+import { Alert, Button, Divider, Empty, Input, List } from 'antd'
 import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons'
 import {
   DeleteCategoryError,
@@ -10,17 +10,19 @@ import {
 } from '../api/useCategories.js'
 
 interface CategoryManagerProps {
-  open: boolean
-  onClose: () => void
+  onBack: () => void
 }
 
 // D-03: the owner's full category-taxonomy management surface — add,
-// rename, and delete — reached from a secondary control in the App header
+// rename, and delete — reached from Settings tab's "Categories" menu item
 // (never the accent color, which is reserved for the "Add Ingredient"
 // primary CTA per 01-UI-SPEC.md's Color contract). Delete is refuse-only:
 // no guided reassignment flow is built here (01-RESEARCH.md Open Question
 // 2, this plan's Planner Assumptions).
-export function CategoryManager({ open, onClose }: CategoryManagerProps) {
+// D-24/D-26: full-screen view (not Modal) with a back button, reached from
+// SettingsTab's menu — internal add/rename/delete UX is unchanged from
+// Phase 1, only the shell moved from Modal to full-screen.
+export function CategoryManager({ onBack }: CategoryManagerProps) {
   const { data: categoryList } = useCategories()
   const createCategory = useCreateCategory()
   const renameCategory = useRenameCategory()
@@ -95,11 +97,18 @@ export function CategoryManager({ open, onClose }: CategoryManagerProps) {
     setNewName('')
     setCreateError(null)
     setDeleteRefusal(null)
-    onClose()
+    onBack()
   }
 
   return (
-    <Modal title="Manage Categories" open={open} onCancel={handleClose} footer={null} destroyOnHidden>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <header style={{ padding: 16, borderBottom: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Button type="text" onClick={handleClose}>
+          ← Back
+        </Button>
+        <h2 className="text-white">Manage Categories</h2>
+      </header>
+      <main style={{ flex: 1, padding: 16, overflow: 'auto' }}>
       {deleteRefusal && (
         <Alert
           type="error"
@@ -208,6 +217,7 @@ export function CategoryManager({ open, onClose }: CategoryManagerProps) {
         </Button>
       </div>
       {createError && <div style={{ color: '#ef4444', marginTop: 8 }}>{createError}</div>}
-    </Modal>
+      </main>
+    </div>
   )
 }
