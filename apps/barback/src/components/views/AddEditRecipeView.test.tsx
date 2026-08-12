@@ -1,19 +1,32 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import type { Category, Glassware, Recipe } from '@my-bar/shared'
-import { RecipeForm } from './RecipeForm.js'
+import type { Category, Glassware, Ingredient, Recipe } from '@my-bar/shared'
+import { AddEditRecipeView } from './AddEditRecipeView.js'
 
-// G-02-6 regression guard: UnitDropdown/GlasswareSelector used to discard
-// Form.Item's injected value/onChange, so every submitted ingredient's
-// `unit` and the recipe's `glasswareId` were always undefined at POST time.
-// These tests drive the real form through antd's Select interaction
-// pattern (mousedown to open, click the rendered option) and assert the
-// real chosen values reach the captured POST body — not undefined.
+// Re-implements RecipeForm.test.tsx's three prior cases (G-02-6 regression
+// guards) against AddEditRecipeView, updated for the new picker components:
+// the recipe-ingredient line's category-or-specific-ingredient field is now
+// the combined IngredientPicker (grouped AutoComplete, select a category
+// option) instead of the old plain category <Select>, and glassware is now
+// GlasswarePicker (AutoComplete) instead of the old GlasswareSelector
+// <Select>. Interaction pattern (mousedown to open, click the rendered
+// option by title — the dropdown's role="option" elements are a
+// virtualization-only accessibility mirror with no click handler) carried
+// over unchanged from RecipeForm.test.tsx/IngredientPicker.test.tsx.
 
 const fixtureCategory: Category = {
   id: '11111111-1111-1111-1111-111111111111',
   name: 'Spirits',
+}
+
+const fixtureIngredient: Ingredient = {
+  id: '55555555-5555-5555-5555-555555555555',
+  name: 'Bombay Sapphire',
+  categoryId: fixtureCategory.id,
+  categoryName: fixtureCategory.name,
+  note: null,
+  inStock: true,
 }
 
 const fixtureGlassware: Glassware = {
@@ -50,7 +63,9 @@ const fixtureRecipeResponse: Recipe = {
   updatedAt: new Date(),
 }
 
-let capturedBody: { ingredients: { unit?: string }[]; glasswareId?: string } | undefined
+let capturedBody:
+  | { ingredients: { unit?: string; ingredientId?: string | null; requiresSpecific?: boolean }[]; glasswareId?: string }
+  | undefined
 
 function stubFetch() {
   const fetchMock = vi.fn((url: string, init?: RequestInit) => {
@@ -61,6 +76,14 @@ function stubFetch() {
         ok: true,
         status: 200,
         json: async () => [fixtureCategory],
+      } as Response)
+    }
+
+    if (url === '/api/ingredients' && method === 'GET') {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => [fixtureIngredient],
       } as Response)
     }
 
@@ -87,41 +110,46 @@ function stubFetch() {
   return fetchMock
 }
 
-function renderForm() {
+function renderView() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <RecipeForm open onClose={vi.fn()} />
+      <AddEditRecipeView onBack={vi.fn()} />
     </QueryClientProvider>,
   )
 }
 
+// GlasswarePicker is rendered unconditionally, so /api/glassware fetches at
+// mount. IngredientPicker only mounts once a row exists (IngredientListForm
+// deliberately does not auto-seed a row — RECIPE-01's `.min(1)` requires
+// real owner-entered data), so /api/categories and /api/ingredients only
+// fetch after "Add Ingredient" is clicked — waited for separately inside
+// fillBaseRecipe below, not here.
 async function waitForReferenceDataLoaded(fetchMock: ReturnType<typeof stubFetch>) {
   await waitFor(() => {
-    expect(fetchMock.mock.calls.some(([url]) => url === '/api/categories')).toBe(true)
     expect(fetchMock.mock.calls.some(([url]) => url === '/api/glassware')).toBe(true)
   })
 }
 
-// Fills name + one ingredient row (category/qty/unit) + one method step.
-// Does NOT touch glassware — callers select it separately when needed.
-async function fillBaseRecipe() {
+async function waitForIngredientPickerDataLoaded(fetchMock: ReturnType<typeof stubFetch>) {
+  await waitFor(() => {
+    expect(fetchMock.mock.calls.some(([url]) => url === '/api/categories')).toBe(true)
+    expect(fetchMock.mock.calls.some(([url]) => url === '/api/ingredients')).toBe(true)
+  })
+}
+
+// Fills name + one ingredient row (category via IngredientPicker/qty/unit)
+// + one method step. Does NOT touch glassware — callers select it
+// separately when needed. Combobox DOM order: [0] IngredientPicker (row 0),
+// [1] UnitDropdown (row 0), [2] GlasswarePicker.
+async function fillBaseRecipe(fetchMock: ReturnType<typeof stubFetch>) {
   fireEvent.change(screen.getByLabelText('Recipe Name'), {
     target: { value: 'Test Cocktail' },
   })
 
   fireEvent.click(screen.getByRole('button', { name: /Add Ingredient/ }))
+  await waitForIngredientPickerDataLoaded(fetchMock)
 
-  // antd 6's Select renders its own inline markup (no rc-select
-  // `.ant-select-selector` class) — the reliable, version-stable hook to
-  // open a Select is the underlying `role="combobox"` input it renders.
-  // DOM order matches render order: category select, then unit select,
-  // then (once reached) the glassware select.
-  //
-  // The dropdown's `role="option"` elements are a virtualization-only
-  // accessibility mirror with no click handler (rc-virtual-list keeps the
-  // real, clickable item as a plain `.ant-select-item-option` div carrying
-  // a `title` attribute instead) — click by title, not by role.
   let comboboxes = screen.getAllByRole('combobox')
   fireEvent.mouseDown(comboboxes[0])
   fireEvent.click(await screen.findByTitle(fixtureCategory.name))
@@ -138,18 +166,26 @@ async function fillBaseRecipe() {
   })
 }
 
-describe('RecipeForm', () => {
+describe('AddEditRecipeView', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
     capturedBody = undefined
   })
 
+  it('renders no role="dialog" element and does render a "← Back" button', async () => {
+    stubFetch()
+    renderView()
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '← Back' })).toBeInTheDocument()
+  })
+
   it('submits the selected unit as its real value, not undefined (G-02-6)', async () => {
     const fetchMock = stubFetch()
-    renderForm()
+    renderView()
     await waitForReferenceDataLoaded(fetchMock)
 
-    await fillBaseRecipe()
+    await fillBaseRecipe(fetchMock)
 
     fireEvent.click(screen.getByRole('button', { name: 'Save Recipe' }))
 
@@ -159,10 +195,10 @@ describe('RecipeForm', () => {
 
   it('submits the selected glasswareId as its real value, not undefined (G-02-6)', async () => {
     const fetchMock = stubFetch()
-    renderForm()
+    renderView()
     await waitForReferenceDataLoaded(fetchMock)
 
-    await fillBaseRecipe()
+    await fillBaseRecipe(fetchMock)
 
     const comboboxes = screen.getAllByRole('combobox')
     fireEvent.mouseDown(comboboxes[2])
@@ -185,6 +221,13 @@ describe('RecipeForm', () => {
           json: async () => [fixtureCategory],
         } as Response)
       }
+      if (url === '/api/ingredients' && method === 'GET') {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => [fixtureIngredient],
+        } as Response)
+      }
       if (url === '/api/glassware' && method === 'GET') {
         return Promise.resolve({
           ok: true,
@@ -204,9 +247,9 @@ describe('RecipeForm', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    renderForm()
+    renderView()
     await waitForReferenceDataLoaded(fetchMock)
-    await fillBaseRecipe()
+    await fillBaseRecipe(fetchMock)
 
     fireEvent.click(screen.getByRole('button', { name: 'Save Recipe' }))
 
@@ -214,5 +257,41 @@ describe('RecipeForm', () => {
     expect(
       screen.queryByText("Couldn't save recipe — check your connection and try again."),
     ).not.toBeInTheDocument()
+  })
+
+  it('selecting a specific ingredient (not just a category) sends ingredientId/requiresSpecific: true in the POST body', async () => {
+    const fetchMock = stubFetch()
+    renderView()
+    await waitForReferenceDataLoaded(fetchMock)
+
+    fireEvent.change(screen.getByLabelText('Recipe Name'), {
+      target: { value: 'Test Cocktail' },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /Add Ingredient/ }))
+    await waitForIngredientPickerDataLoaded(fetchMock)
+
+    let comboboxes = screen.getAllByRole('combobox')
+    fireEvent.mouseDown(comboboxes[0])
+    fireEvent.click(
+      await screen.findByTitle(`${fixtureIngredient.name} (${fixtureCategory.name})`),
+    )
+
+    fireEvent.change(screen.getByPlaceholderText('Qty'), { target: { value: '2' } })
+
+    comboboxes = screen.getAllByRole('combobox')
+    fireEvent.mouseDown(comboboxes[1])
+    fireEvent.click(await screen.findByTitle('oz'))
+
+    fireEvent.click(screen.getByRole('button', { name: /Add Step/ }))
+    fireEvent.change(screen.getByPlaceholderText('Step 1'), {
+      target: { value: 'Shake and strain' },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save Recipe' }))
+
+    await waitFor(() => expect(capturedBody).toBeDefined())
+    expect(capturedBody!.ingredients[0].ingredientId).toBe(fixtureIngredient.id)
+    expect(capturedBody!.ingredients[0].requiresSpecific).toBe(true)
   })
 })

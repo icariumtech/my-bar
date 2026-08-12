@@ -18,6 +18,24 @@ import { UnitDropdown } from './UnitDropdown.js'
 // only carries one scalar). This component is always rendered inside
 // RecipeForm's/AddEditRecipeView's <Form>, so Form.useFormInstance()
 // always resolves to the surrounding form.
+//
+// [Rule 1 bug fix] antd/rc-component-form only includes a Form.List row's
+// field in the values object passed to onFinish/validateFields if that
+// exact name path is registered via a Form.Item somewhere in the tree —
+// form.setFieldValue() alone writes into the internal store but does NOT
+// register a field entity, so an unregistered path is silently dropped from
+// the *submitted* values even though form.getFieldValue() can still read it
+// directly (verified via a failing repro: onChange fired with the correct
+// composite value, form.getFieldValue() reflected it, but the recipe's
+// actual POST body omitted categoryId/ingredientId/requiresSpecific
+// entirely). Since IngredientPicker writes those three fields purely via
+// form.setFieldValue (no Form.Item name binding of its own — the composite-
+// value contract above), each needs its own invisible Form.Item
+// registration so recipe submission actually carries them.
+function NoRenderField() {
+  return null
+}
+
 export function IngredientListForm() {
   const form = Form.useFormInstance()
 
@@ -27,6 +45,15 @@ export function IngredientListForm() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {fields.map((field) => (
             <div key={field.key} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              <Form.Item name={[field.name, 'categoryId']} noStyle>
+                <NoRenderField />
+              </Form.Item>
+              <Form.Item name={[field.name, 'ingredientId']} noStyle>
+                <NoRenderField />
+              </Form.Item>
+              <Form.Item name={[field.name, 'requiresSpecific']} noStyle>
+                <NoRenderField />
+              </Form.Item>
               <div style={{ flex: 1, margin: 0 }}>
                 <Form.Item noStyle shouldUpdate key={`${field.key}-picker`}>
                   {() => {
