@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 Phase: 3 — Patron Browse Experience
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-08-12 - Completed quick task 260812-j0q: Fixed safe-area-inset-top CSS cascade-layer bug (real root cause of missing header top padding)
+Last activity: 2026-08-12 - Completed quick task 260812-jz9: Replaced full-width Add button with square icon button beside the search bar (Ingredients + Recipes)
 
 Progress: [██████████] 100%
 
@@ -113,6 +113,7 @@ None yet.
 | 260812-fpi | Barback UI polish: remove redundant tab titles, header gap, re-theme BottomTabBar with icons + color-based selection | 2026-08-12 | fa1bda4 | [260812-fpi-barback-ui-polish-1-add-a-small-gap-padd](./quick/260812-fpi-barback-ui-polish-1-add-a-small-gap-padd/) |
 | 260812-gcp | Barback UI polish round 2: vertically center BottomTabBar content, increase sticky header top padding | 2026-08-12 | 4a4415c | [260812-gcp-barback-ui-polish-round-2-based-on-user-](./quick/260812-gcp-barback-ui-polish-round-2-based-on-user-/) |
 | 260812-j0q | Fix safe-area-inset-top CSS cascade-layer bug that silently zeroed the sticky header's top padding | 2026-08-12 | e6cd035 | [260812-j0q-fix-css-specificity-bug-in-apps-barback-](./quick/260812-j0q-fix-css-specificity-bug-in-apps-barback-/) |
+| 260812-jz9 | Replace full-width Add Ingredient/Add Recipe button with a square icon-only button beside the search bar | 2026-08-12 | 5ded93e | [260812-jz9-barback-ui-change-replace-the-full-width](./quick/260812-jz9-barback-ui-change-replace-the-full-width/) |
 
 ### Roadmap Evolution
 
@@ -129,5 +130,5 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-08-12T04:29:33.362Z
-Stopped at: Completed quick task 260812-j0q: Fixed safe-area-inset-top CSS cascade-layer bug (real root cause of missing header top padding)
+Stopped at: Completed quick task 260812-jz9: Replaced full-width Add button with square icon button beside the search bar (Ingredients + Recipes)
 Resume file: None
