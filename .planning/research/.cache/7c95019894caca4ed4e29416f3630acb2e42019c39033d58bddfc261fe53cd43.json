@@ -1,0 +1,1 @@
+{"content":"pnpm workspace monorepo: apps/* (patron, bartender, barback, server) + packages/shared for cross-app types. Package names use @scope/name so pnpm resolves workspace:* protocol. Shared tsconfig at root, extended by each app.","source":"web","provider":"websearch","confidence":"MEDIUM","fetched_at":"2026-08-10T00:53:39.252Z","ttl":86400000,"kind":"web"}
