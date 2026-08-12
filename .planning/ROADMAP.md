@@ -104,11 +104,28 @@ Plans:
   4. Category, glassware, and recipe-ingredient pickers are a single autocomplete field searching existing entries, with an inline "add new" option, replacing today's static dropdowns
   5. A recipe ingredient line can lock to one specific ingredient (checkbox, defaults checked when a specific ingredient is selected); the specific-ingredient picker can also create a brand-new ingredient inline (name + category + stock)
   6. Makeable status is tri-state per ingredient line — green (exact/category match in stock), yellow (locked specific ingredient out of stock but another in-stock bottle exists in its category), red (nothing in stock) — and the recipe-level badge shows the worst state across all lines
-**Plans:** 0 plans
+**Plans:** 7 plans
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 02.1 to break down)
+**Wave 1**
+
+- [ ] 02.1-01-PLAN.md — Tracer: recipeIngredients schema, shared tri-state contracts, computeMakeable tri-state engine, GET/POST/PATCH /api/recipes + DB push (MATCH-05)
+- [ ] 02.1-02-PLAN.md — Navigation shell: BottomTabBar, App.tsx thin shell, Ingredients/Recipes/Settings tab containers (BARBACK-01)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 02.1-03-PLAN.md — Ingredient full-screen flow: CategoryPicker + AddEditIngredientView (BARBACK-02, BARBACK-03)
+- [ ] 02.1-04-PLAN.md — Settings full-screen flows: Category/Glassware management (BARBACK-02)
+- [ ] 02.1-05-PLAN.md — IngredientPicker: combined category-or-specific-ingredient autocomplete + lock checkbox + inline ingredient creation (MATCH-05, BARBACK-03)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 02.1-06-PLAN.md — Recipe full-screen flow: GlasswarePicker, IngredientPicker wired into IngredientListForm, AddEditRecipeView (MATCH-05, BARBACK-02, BARBACK-03)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 02.1-07-PLAN.md — Recipe detail full-screen conversion + per-line tri-state indicators (MATCH-05, BARBACK-02)
 
 ### Phase 3: Patron Browse Experience
 
