@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 Phase: 3 — Patron Browse Experience
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-08-12 - Completed quick task 260812-e8j: Fix Barback top-section anchoring (sticky header + bounded scroll container)
+Last activity: 2026-08-12 - Completed quick task 260812-fpi: Barback UI polish (removed redundant titles, header gap, re-themed BottomTabBar)
 
 Progress: [██████████] 100%
 
@@ -110,6 +110,7 @@ None yet.
 | 260810-nth | Restyle swipe Undo control in IngredientRow.tsx: plain text, centered in reveal area | 2026-08-10 | 40a1216 | [260810-nth-restyle-swipe-undo-control-in-ingredient](./quick/260810-nth-restyle-swipe-undo-control-in-ingredient/) |
 | 260812-drh | Fix Barback layout: BottomTabBar isn't visible on full-screen sub-views (sticky→fixed positioning) | 2026-08-12 | 7a1b178 | [260812-drh-fix-barback-layout-1-bottomtabbar-isn-t-](./quick/260812-drh-fix-barback-layout-1-bottomtabbar-isn-t-/) |
 | 260812-e8j | Fix Barback top-section anchoring: bounded scroll container + sticky title/Add/search/filter header per tab | 2026-08-12 | b62b744 | [260812-e8j-fix-barback-top-section-anchoring-on-eac](./quick/260812-e8j-fix-barback-top-section-anchoring-on-eac/) |
+| 260812-fpi | Barback UI polish: remove redundant tab titles, header gap, re-theme BottomTabBar with icons + color-based selection | 2026-08-12 | fa1bda4 | [260812-fpi-barback-ui-polish-1-add-a-small-gap-padd](./quick/260812-fpi-barback-ui-polish-1-add-a-small-gap-padd/) |
 
 ### Roadmap Evolution
 
@@ -126,5 +127,5 @@ Items acknowledged and carried forward from previous milestone close:
 ## Session Continuity
 
 Last session: 2026-08-12T04:29:33.362Z
-Stopped at: Completed quick task 260812-e8j: Fix Barback top-section anchoring (sticky header + bounded scroll container)
+Stopped at: Completed quick task 260812-fpi: Barback UI polish (removed redundant titles, header gap, re-themed BottomTabBar)
 Resume file: None
