@@ -8,18 +8,21 @@ interface RecipeDetailViewProps {
   onClose: () => void
 }
 
-// T-02-16: renders ONLY what the server already computed on `recipe` —
-// makeable, missingCategoryNames — never recomputes or estimates makeable
-// status client-side. The full "Can't make this right now. Missing:
-// [...]." sentence lives here (not on MakeableStatusBadge, which only ever
-// shows the two short strings).
+// T-02-16/D-31: renders ONLY what the server already computed on `recipe`
+// — overallStatus, missingCategoryNames — never recomputes or estimates
+// makeable status client-side. The full "Can't make this right now.
+// Missing: [...]." sentence lives here (not on MakeableStatusBadge, which
+// only ever shows the three short strings). Per-line tri-state indicators
+// and a yellow-state hint sentence are a later plan's scope — this is the
+// minimal, mechanical boolean-to-enum swap that keeps the red-case
+// behavior working unchanged.
 export function RecipeDetailView({ recipe, open, onClose }: RecipeDetailViewProps) {
   return (
     <Modal title={recipe.name} open={open} onCancel={onClose} footer={null} destroyOnHidden>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <MakeableStatusBadge makeable={recipe.makeable} />
+        <MakeableStatusBadge status={recipe.overallStatus} />
 
-        {!recipe.makeable && (
+        {recipe.overallStatus === 'red' && (
           <p style={{ color: '#ef4444', margin: 0 }}>
             {`Can't make this right now. Missing: ${recipe.missingCategoryNames.join(', ')}.`}
           </p>

@@ -1,12 +1,21 @@
 import { z } from 'zod'
+import { triStateStatus } from './makeable.js'
 
 // D-19: unit is chosen from a fixed dropdown, never free text — prevents
 // the same typo-drift Phase 1's D-01 avoided for categories.
 // D-20: quantity is stored and displayed exactly as entered (no unit
 // conversion) — the .max(20) bound is a DoS mitigation (T-02-02), not a
 // meaningful precision limit.
+// D-30/MATCH-05: ingredientId optionally locks this line to one specific
+// ingredient (nullable — a plain category line has no specific ingredient
+// selected). requiresSpecific defaults to true (locked) so new
+// specific-ingredient selections are non-substitutable by default; a line
+// with no ingredientId behaves as a plain category match regardless of
+// this flag's value.
 export const recipeIngredientInput = z.object({
   categoryId: z.string().uuid(),
+  ingredientId: z.string().uuid().nullable().optional(),
+  requiresSpecific: z.boolean().default(true),
   quantity: z.string().trim().min(1).max(20),
   unit: z.enum(['oz', 'dash', 'splash', 'barspoon', 'muddled', 'part']),
 })
@@ -29,20 +38,29 @@ export type RecipeInput = z.infer<typeof recipeInput>
 
 // Persisted/joined shape of a single recipe ingredient line: adds the row
 // id, the joined categoryName (display field, mirrors ingredient.ts's
-// categoryName pattern), and displayOrder (D-16 ordering).
+// categoryName pattern), displayOrder (D-16 ordering), the joined
+// ingredientName (D-30, null for category-only lines), and the per-line
+// tri-state status/alternativeIngredientName computed server-side by
+// computeMakeable() (D-31 — alternativeIngredientName is non-null only on
+// a 'yellow' line).
 export const recipeIngredient = recipeIngredientInput.extend({
   id: z.string().uuid(),
   categoryName: z.string(),
+  ingredientName: z.string().nullable(),
   displayOrder: z.number(),
+  status: triStateStatus,
+  alternativeIngredientName: z.string().nullable(),
 })
 export type RecipeIngredient = z.infer<typeof recipeIngredient>
 
-// Full recipe response. makeable/missingCategoryIds/missingCategoryNames
-// are computed exclusively server-side (MATCH-01/MATCH-02) — there is no
-// client-writable makeable field anywhere in this contract.
-// missingCategoryNames goes beyond 02-RESEARCH.md's sketch so MATCH-02's
-// "exactly which ingredients are missing" is satisfiable without the
-// frontend cross-referencing two separate lists.
+// Full recipe response. overallStatus/missingCategoryIds/missingCategoryNames
+// are computed exclusively server-side (MATCH-01/MATCH-02/MATCH-05) — there
+// is no client-writable status field anywhere in this contract. D-31/D-32:
+// overallStatus replaces the Phase 2 boolean `makeable` field entirely —
+// every consumer of the old field is updated atomically in this same plan.
+// missingCategoryIds/missingCategoryNames now represent only the categories
+// behind 'red' lines — a 'yellow' line's category is not "missing", it just
+// has a substitution caveat.
 export const recipe = z.object({
   id: z.string().uuid(),
   name: z.string(),
@@ -51,7 +69,7 @@ export const recipe = z.object({
   glasswareId: z.string().uuid().nullable(),
   glasswareName: z.string().nullable(),
   garnish: z.string().nullable(),
-  makeable: z.boolean(),
+  overallStatus: triStateStatus,
   missingCategoryIds: z.array(z.string().uuid()),
   missingCategoryNames: z.array(z.string()),
   createdAt: z.coerce.date(),

@@ -66,10 +66,12 @@ describe('POST /api/recipes', () => {
   }
 
   function seedIngredient(categoryId: string, inStock = true, name = 'Bottle') {
+    const ingredientId = crypto.randomUUID()
     testDb.db
       .insert(ingredients)
-      .values({ id: crypto.randomUUID(), name, categoryId, note: null, inStock })
+      .values({ id: ingredientId, name, categoryId, note: null, inStock })
       .run()
+    return ingredientId
   }
 
   it('creates a recipe with ingredients, method, glassware, and garnish; reports makeable true', async () => {
@@ -103,7 +105,7 @@ describe('POST /api/recipes', () => {
       glasswareId,
       glasswareName: 'Coupe',
       garnish: 'Lemon twist',
-      makeable: true,
+      overallStatus: 'green',
       missingCategoryIds: [],
       missingCategoryNames: [],
     })
@@ -146,7 +148,7 @@ describe('POST /api/recipes', () => {
     expect(body.garnish).toBeNull()
   })
 
-  it('reflects not-makeable with missing category ids/names once a required category has zero in-stock ingredients', async () => {
+  it('reflects a red overallStatus with missing category ids/names once a required category has zero in-stock ingredients', async () => {
     const ginCategoryId = seedCategory('Dry Gin')
     const vermouthCategoryId = seedCategory('Dry Vermouth')
     const ginIngredientId = crypto.randomUUID()
@@ -176,7 +178,7 @@ describe('POST /api/recipes', () => {
       },
     })
     expect(createRes.statusCode).toBe(201)
-    expect(createRes.json().makeable).toBe(true)
+    expect(createRes.json().overallStatus).toBe('green')
 
     // Toggle the gin ingredient out of stock
     testDb.db.update(ingredients).set({ inStock: false }).where(eq(ingredients.id, ginIngredientId)).run()
@@ -184,9 +186,114 @@ describe('POST /api/recipes', () => {
     const getRes = await app.inject({ method: 'GET', url: '/api/recipes' })
     expect(getRes.statusCode).toBe(200)
     const [recipeBody] = getRes.json()
-    expect(recipeBody.makeable).toBe(false)
+    expect(recipeBody.overallStatus).toBe('red')
     expect(recipeBody.missingCategoryIds).toEqual([ginCategoryId])
     expect(recipeBody.missingCategoryNames).toEqual(['Dry Gin'])
+  })
+
+  it('MATCH-05: creates a recipe with a category-only line and a locked-specific line; GET readback returns per-line tri-state status', async () => {
+    const ginCategoryId = seedCategory('Dry Gin')
+    seedIngredient(ginCategoryId, true, 'Bombay Sapphire')
+    const citrusCategoryId = seedCategory('Citrus')
+    const lemonId = seedIngredient(citrusCategoryId, false, 'Lemon Juice')
+    seedIngredient(citrusCategoryId, true, 'Lime Juice')
+    const app = buildTestApp()
+
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/recipes',
+      payload: {
+        name: 'Gin Sour',
+        ingredients: [
+          { categoryId: ginCategoryId, quantity: '2', unit: 'oz' },
+          {
+            categoryId: citrusCategoryId,
+            ingredientId: lemonId,
+            requiresSpecific: true,
+            quantity: '1',
+            unit: 'oz',
+          },
+        ],
+        method: ['Shake', 'Strain'],
+      },
+    })
+
+    expect(createRes.statusCode).toBe(201)
+    const created = createRes.json()
+    expect(created.overallStatus).toBe('yellow')
+    expect(created.ingredients[0]).toMatchObject({
+      categoryId: ginCategoryId,
+      ingredientId: null,
+      ingredientName: null,
+      status: 'green',
+      alternativeIngredientName: null,
+    })
+    expect(created.ingredients[1]).toMatchObject({
+      categoryId: citrusCategoryId,
+      ingredientId: lemonId,
+      ingredientName: 'Lemon Juice',
+      requiresSpecific: true,
+      status: 'yellow',
+      alternativeIngredientName: 'Lime Juice',
+    })
+
+    const getRes = await app.inject({ method: 'GET', url: '/api/recipes' })
+    const [recipeBody] = getRes.json()
+    expect(recipeBody.overallStatus).toBe('yellow')
+    expect(recipeBody.ingredients[1].status).toBe('yellow')
+  })
+
+  it('MATCH-05: deleting an ingredient locked to a recipe line degrades that line to category-only on the next GET (onDelete set null)', async () => {
+    const citrusCategoryId = seedCategory('Citrus')
+    const lemonId = seedIngredient(citrusCategoryId, true, 'Lemon Juice')
+    seedIngredient(citrusCategoryId, true, 'Lime Juice')
+    const app = buildTestApp()
+
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/recipes',
+      payload: {
+        name: 'Whiskey Sour',
+        ingredients: [
+          {
+            categoryId: citrusCategoryId,
+            ingredientId: lemonId,
+            requiresSpecific: true,
+            quantity: '1',
+            unit: 'oz',
+          },
+        ],
+        method: ['Shake'],
+      },
+    })
+    const created = createRes.json()
+    expect(created.ingredients[0].ingredientId).toBe(lemonId)
+
+    testDb.db.delete(ingredients).where(eq(ingredients.id, lemonId)).run()
+
+    const getRes = await app.inject({ method: 'GET', url: '/api/recipes' })
+    const [recipeBody] = getRes.json()
+    expect(recipeBody.ingredients[0].ingredientId).toBeNull()
+    expect(recipeBody.ingredients[0].status).toBe('green')
+  })
+
+  it('rejects an ingredient line with an unknown ingredientId with 400, not 500', async () => {
+    const categoryId = seedCategory('Dry Gin')
+    const app = buildTestApp()
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/recipes',
+      payload: {
+        name: 'Ghost Ingredient',
+        ingredients: [
+          { categoryId, ingredientId: crypto.randomUUID(), requiresSpecific: true, quantity: '2', unit: 'oz' },
+        ],
+        method: ['Step 1'],
+      },
+    })
+
+    expect(res.statusCode).toBe(400)
   })
 
   it('rejects an empty ingredients array with 400', async () => {
@@ -396,7 +503,7 @@ describe('PATCH /api/recipes/:id', () => {
     const body = res.json()
     expect(body.ingredients).toHaveLength(1)
     expect(body.ingredients[0]).toMatchObject({ categoryId: newCategoryId, displayOrder: 0 })
-    expect(body.makeable).toBe(false)
+    expect(body.overallStatus).toBe('red')
     expect(body.missingCategoryIds).toEqual([newCategoryId])
     expect(body.missingCategoryNames).toEqual(['Dry Vermouth'])
 
