@@ -2,7 +2,7 @@
   "name": "my-bar",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"pnpm --filter server dev\" \"pnpm --filter barback dev\"",
+    "dev": "concurrently \"pnpm --filter server dev\" \"pnpm --filter barback dev\" \"pnpm --filter patron dev\"",
     "build": "pnpm -r build",
     "test": "pnpm -r test"
   },

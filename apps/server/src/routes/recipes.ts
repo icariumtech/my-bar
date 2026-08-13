@@ -3,9 +3,17 @@ import type { ZodTypeProvider } from '@fastify/type-provider-zod'
 import { asc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import type { Recipe, RecipeIngredient } from '@my-bar/shared'
-import { recipe, recipeInput, recipePatch } from '@my-bar/shared'
+import { recipe, recipeInput, recipePatch, TAG_GROUP_ORDER } from '@my-bar/shared'
 import { db as defaultDb } from '../db/client.js'
-import { categories, glassware, ingredients, recipeIngredients, recipes } from '../db/schema.js'
+import {
+  categories,
+  glassware,
+  ingredients,
+  recipeIngredients,
+  recipeTags,
+  recipes,
+  tags,
+} from '../db/schema.js'
 import { computeMakeable } from '../services/makeableEngine.js'
 
 interface RecipesRoutesOptions extends FastifyPluginOptions {
@@ -37,6 +45,7 @@ function loadRecipe(db: typeof defaultDb, recipeId: string): Recipe {
       glasswareId: recipes.glasswareId,
       glasswareName: glassware.name,
       garnish: recipes.garnish,
+      description: recipes.description,
       createdAt: recipes.createdAt,
       updatedAt: recipes.updatedAt,
     })
@@ -70,6 +79,20 @@ function loadRecipe(db: typeof defaultDb, recipeId: string): Recipe {
     .where(eq(recipeIngredients.recipeId, recipeId))
     .orderBy(asc(recipeIngredients.displayOrder))
     .all()
+
+  // D-33: tags join, sorted with the identical TAG_GROUP_ORDER-then-name
+  // comparator used in tags.ts (small enough duplication to keep the two
+  // route files independently readable — no shared helper for a
+  // two-call-site, few-line comparator).
+  const tagRows = db
+    .select({ id: tags.id, name: tags.name, group: tags.group })
+    .from(recipeTags)
+    .innerJoin(tags, eq(recipeTags.tagId, tags.id))
+    .where(eq(recipeTags.recipeId, recipeId))
+    .all()
+  const tagsResponse = tagRows.sort(
+    (a, b) => TAG_GROUP_ORDER.indexOf(a.group) - TAG_GROUP_ORDER.indexOf(b.group) || a.name.localeCompare(b.name),
+  )
 
   // MATCH-01/MATCH-05: tri-state status is computed exclusively here,
   // server-side — never in the browser. The route's own resolved `db`
@@ -124,6 +147,8 @@ function loadRecipe(db: typeof defaultDb, recipeId: string): Recipe {
     glasswareId: row.glasswareId,
     glasswareName: row.glasswareName,
     garnish: row.garnish,
+    description: row.description,
+    tags: tagsResponse,
     overallStatus,
     missingCategoryIds,
     missingCategoryNames,
@@ -149,6 +174,36 @@ export const recipesRoutes: FastifyPluginAsync<RecipesRoutesOptions> = async (ap
     async () => {
       const rows = db.select({ id: recipes.id }).from(recipes).orderBy(asc(recipes.name)).all()
       return rows.map((r) => loadRecipe(db, r.id))
+    },
+  )
+
+  // D-39/03-04's useRecipeDetail: fetch a single recipe by id — Rule 2
+  // auto-add. Missing from Phase 2 and required by this plan's own
+  // must_haves ("GET /api/recipes and GET /api/recipes/:id both return a
+  // tags array... and a description field") plus 03-04-PLAN.md's
+  // useRecipeDetail hook, which already assumes this route exists. Same
+  // existence-check-before-loadRecipe pattern PATCH uses below, since
+  // loadRecipe throws (rather than returning undefined) on a miss.
+  app.withTypeProvider<ZodTypeProvider>().get(
+    '/:id',
+    {
+      schema: {
+        params: z.object({ id: z.string().uuid() }),
+        response: {
+          200: recipe,
+          404: z.object({ error: z.string() }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params
+
+      const [existing] = db.select({ id: recipes.id }).from(recipes).where(eq(recipes.id, id)).all()
+      if (!existing) {
+        return reply.status(404).send({ error: 'Recipe not found' })
+      }
+
+      return reply.status(200).send(loadRecipe(db, id))
     },
   )
 
@@ -182,6 +237,7 @@ export const recipesRoutes: FastifyPluginAsync<RecipesRoutesOptions> = async (ap
             method: JSON.stringify(request.body.method),
             glasswareId: request.body.glasswareId ?? null,
             garnish: request.body.garnish ?? null,
+            description: request.body.description ?? null,
             createdAt: now,
             updatedAt: now,
           })
@@ -205,14 +261,24 @@ export const recipesRoutes: FastifyPluginAsync<RecipesRoutesOptions> = async (ap
             })
             .run()
         })
+
+        // D-35: tags are optional at create time (owner assigns from
+        // Barback, possibly later) — omitting tagIds creates a recipe with
+        // tags: [].
+        const tagIds = request.body.tagIds ?? []
+        tagIds.forEach((tagId) => {
+          db.insert(recipeTags)
+            .values({ id: crypto.randomUUID(), recipeId, tagId })
+            .run()
+        })
       } catch (err) {
-        // T-02-01/T-02-03/T-02.1-01: an unknown categoryId, ingredientId,
-        // or glasswareId trips the FK constraint (enforced by the
-        // `foreign_keys = ON` pragma) — translate that into a 400 rather
-        // than letting a raw 500 (with SQLite's own error text/stack)
-        // escape to the client.
+        // T-02-01/T-02-03/T-02.1-01/T-03-01: an unknown categoryId,
+        // ingredientId, glasswareId, or tagId trips the FK constraint
+        // (enforced by the `foreign_keys = ON` pragma) — translate that
+        // into a 400 rather than letting a raw 500 (with SQLite's own
+        // error text/stack) escape to the client.
         if (err instanceof Error && /FOREIGN KEY constraint failed/i.test(err.message)) {
-          return reply.status(400).send({ error: 'Unknown category, ingredient, or glassware' })
+          return reply.status(400).send({ error: 'Unknown category, ingredient, glassware, or tag' })
         }
         throw err
       }
@@ -249,25 +315,41 @@ export const recipesRoutes: FastifyPluginAsync<RecipesRoutesOptions> = async (ap
         // is wrapped in a single db.transaction() call so a failed insert
         // mid-loop rolls back the delete too — never a partially-replaced
         // ingredient set. better-sqlite3's transaction wrapper is
-        // synchronous and invoked immediately.
+        // synchronous and invoked immediately. D-33: the tag replace shares
+        // this SAME transaction so a failure in either rolls back both,
+        // extending the existing atomicity guarantee rather than adding a
+        // second separate transaction. Omitting tagIds from a patch body
+        // leaves the existing tag set untouched.
         const newIngredients = patch.ingredients
-        if (newIngredients !== undefined) {
+        const newTagIds = patch.tagIds
+        if (newIngredients !== undefined || newTagIds !== undefined) {
           db.transaction((tx) => {
-            tx.delete(recipeIngredients).where(eq(recipeIngredients.recipeId, id)).run()
-            newIngredients.forEach((ing, idx) => {
-              tx.insert(recipeIngredients)
-                .values({
-                  id: crypto.randomUUID(),
-                  recipeId: id,
-                  categoryId: ing.categoryId,
-                  ingredientId: ing.ingredientId ?? null,
-                  requiresSpecific: ing.requiresSpecific ?? true,
-                  quantity: ing.quantity,
-                  unit: ing.unit,
-                  displayOrder: idx,
-                })
-                .run()
-            })
+            if (newIngredients !== undefined) {
+              tx.delete(recipeIngredients).where(eq(recipeIngredients.recipeId, id)).run()
+              newIngredients.forEach((ing, idx) => {
+                tx.insert(recipeIngredients)
+                  .values({
+                    id: crypto.randomUUID(),
+                    recipeId: id,
+                    categoryId: ing.categoryId,
+                    ingredientId: ing.ingredientId ?? null,
+                    requiresSpecific: ing.requiresSpecific ?? true,
+                    quantity: ing.quantity,
+                    unit: ing.unit,
+                    displayOrder: idx,
+                  })
+                  .run()
+              })
+            }
+
+            if (newTagIds !== undefined) {
+              tx.delete(recipeTags).where(eq(recipeTags.recipeId, id)).run()
+              newTagIds.forEach((tagId) => {
+                tx.insert(recipeTags)
+                  .values({ id: crypto.randomUUID(), recipeId: id, tagId })
+                  .run()
+              })
+            }
           })
         }
 
@@ -277,17 +359,19 @@ export const recipesRoutes: FastifyPluginAsync<RecipesRoutesOptions> = async (ap
             ...(patch.method !== undefined && { method: JSON.stringify(patch.method) }),
             ...(patch.glasswareId !== undefined && { glasswareId: patch.glasswareId }),
             ...(patch.garnish !== undefined && { garnish: patch.garnish }),
+            ...(patch.description !== undefined && { description: patch.description }),
             updatedAt: new Date(),
           })
           .where(eq(recipes.id, id))
           .run()
       } catch (err) {
-        // T-02-08/T-02.1-01: an unknown categoryId or ingredientId (in a
-        // replaced ingredients array) or an unknown glasswareId trips the
-        // FK constraint — translate to 400 rather than letting a raw 500
+        // T-02-08/T-02.1-01/T-03-01: an unknown categoryId or ingredientId
+        // (in a replaced ingredients array), an unknown glasswareId, or an
+        // unknown tagId (in a replaced tagIds array) trips the FK
+        // constraint — translate to 400 rather than letting a raw 500
         // escape.
         if (err instanceof Error && /FOREIGN KEY constraint failed/i.test(err.message)) {
-          return reply.status(400).send({ error: 'Unknown category, ingredient, or glassware' })
+          return reply.status(400).send({ error: 'Unknown category, ingredient, glassware, or tag' })
         }
         throw err
       }

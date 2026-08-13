@@ -56,6 +56,8 @@ const fixtureRecipeResponse: Recipe = {
   glasswareId: fixtureGlassware.id,
   glasswareName: fixtureGlassware.name,
   garnish: null,
+  description: null,
+  tags: [],
   overallStatus: 'green',
   missingCategoryIds: [],
   missingCategoryNames: [],

@@ -51,6 +51,8 @@ const FIXTURE_RECIPE: Recipe = {
   glasswareId: null,
   glasswareName: null,
   garnish: null,
+  description: null,
+  tags: [],
   overallStatus: 'red',
   missingCategoryIds: ['cccccccc-3333-3333-3333-333333333333'],
   missingCategoryNames: ['Simple Syrup'],

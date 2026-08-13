@@ -48,6 +48,7 @@ export function createTestDb() {
       method TEXT NOT NULL,
       glassware_id TEXT REFERENCES glassware(id) ON DELETE SET NULL,
       garnish TEXT,
+      description TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
@@ -61,6 +62,20 @@ export function createTestDb() {
       display_order INTEGER NOT NULL,
       ingredient_id TEXT REFERENCES ingredients(id) ON DELETE SET NULL,
       requires_specific INTEGER NOT NULL DEFAULT 1
+    );
+
+    CREATE TABLE tags (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      "group" TEXT NOT NULL,
+      UNIQUE("group", name)
+    );
+
+    CREATE TABLE recipe_tags (
+      id TEXT PRIMARY KEY,
+      recipe_id TEXT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+      tag_id TEXT NOT NULL REFERENCES tags(id) ON DELETE RESTRICT,
+      UNIQUE(recipe_id, tag_id)
     );
   `)
 

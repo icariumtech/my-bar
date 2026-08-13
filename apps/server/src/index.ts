@@ -8,6 +8,7 @@ import { ingredientsRoutes } from './routes/ingredients.js'
 import { categoriesRoutes } from './routes/categories.js'
 import { recipesRoutes } from './routes/recipes.js'
 import { glasswareRoutes } from './routes/glassware.js'
+import { tagsRoutes } from './routes/tags.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -30,12 +31,24 @@ export function buildApp() {
   app.register(categoriesRoutes, { prefix: '/api/categories' })
   app.register(recipesRoutes, { prefix: '/api/recipes' })
   app.register(glasswareRoutes, { prefix: '/api/glassware' })
+  app.register(tagsRoutes, { prefix: '/api/tags' })
 
   // T-01-05: root is confined to the built SPA directory only, never the
   // repo root — @fastify/static rejects path traversal outside `root`.
   app.register(fastifyStatic, {
     root: path.join(__dirname, '../../barback/dist'),
     prefix: '/barback/',
+  })
+
+  // decorateReply: false is REQUIRED on this second @fastify/static
+  // registration — @fastify/static only allows one `sendFile`
+  // reply-decorator to be installed per Fastify instance, and omitting
+  // this option on the second call throws a duplicate-decorator error at
+  // boot.
+  app.register(fastifyStatic, {
+    root: path.join(__dirname, '../../patron/dist'),
+    prefix: '/patron/',
+    decorateReply: false,
   })
 
   return app

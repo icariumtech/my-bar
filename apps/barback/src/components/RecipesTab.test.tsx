@@ -26,6 +26,8 @@ const FIXTURE_RECIPE: Recipe = {
   glasswareId: null,
   glasswareName: null,
   garnish: null,
+  description: null,
+  tags: [],
   overallStatus: 'green',
   missingCategoryIds: [],
   missingCategoryNames: [],
