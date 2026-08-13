@@ -15,9 +15,14 @@ export function MakeableIndicator({ status }: MakeableIndicatorProps) {
   const isAvailable = status === 'green'
 
   return (
+    // 260813-ea3 neon-glow restyle: rounded-full glow-hued pill; shrink-0
+    // keeps the badge from being squeezed by RecipeCard's flex header row.
+    // Text content and isAvailable boolean are unchanged.
     <div
-      className={`inline-block px-md py-xs rounded font-semibold text-sm ${
-        isAvailable ? 'bg-patron-success text-patron-bg' : 'bg-patron-destructive text-white'
+      className={`inline-block px-md py-xs rounded-full font-semibold text-sm uppercase tracking-wide shrink-0 ${
+        isAvailable
+          ? 'bg-patron-success text-patron-bg glow-success'
+          : 'bg-patron-destructive text-white glow-destructive'
       }`}
     >
       {isAvailable ? 'Available' : 'Not Available'}

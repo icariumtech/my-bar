@@ -1,4 +1,5 @@
 import type { Recipe } from '@my-bar/shared'
+import { ChevronRight } from 'lucide-react'
 import { MakeableIndicator } from './MakeableIndicator.js'
 
 interface RecipeCardProps {
@@ -11,37 +12,48 @@ interface RecipeCardProps {
 // cards (yellow AND red alike) are dimmed/desaturated AND carry the badge
 // — both together. D-45: not-makeable drinks are always visible and
 // tappable, never disabled.
+// 260813-ea3 neon-glow restyle: the badge now renders once in a header row
+// beside the name (not at the bottom), tags render as middot-separated
+// uppercase text instead of pill chips, and a "Tap to View" affordance was
+// added — D-38 (badge in place of price) and D-43 (dim/grayscale when
+// not-makeable) both still hold exactly as before.
 export function RecipeCard({ recipe, onSelect }: RecipeCardProps) {
   const isMakeable = recipe.overallStatus === 'green'
 
   return (
     <div
       onClick={() => onSelect(recipe)}
-      className={`cursor-pointer p-md rounded bg-patron-surface flex flex-col gap-sm ${
-        isMakeable ? '' : 'opacity-60 grayscale'
+      className={`cursor-pointer p-md rounded-2xl bg-patron-surface/70 backdrop-blur-sm border flex flex-col gap-sm transition-shadow ${
+        isMakeable
+          ? 'border-patron-accent/50 glow-orange-subtle'
+          : 'border-patron-text-secondary/20 opacity-60 grayscale'
       }`}
     >
-      <h3 className="text-white break-words">{recipe.name}</h3>
+      <div className="flex items-start justify-between gap-sm">
+        <h3 className="text-white font-semibold break-words">{recipe.name}</h3>
+        <MakeableIndicator status={recipe.overallStatus} />
+      </div>
+
+      <div className="h-px bg-patron-accent/30" />
 
       {/* D-38 tag triplet — already pre-sorted by TAG_GROUP_ORDER
           server-side, so .slice(0, 3) is deterministic. Empty tags render
           nothing in this row (PATR-02 zero-tags edge). */}
       {recipe.tags.length > 0 && (
-        <div className="flex flex-wrap gap-xs">
-          {recipe.tags.slice(0, 3).map((t) => (
-            <span key={t.id} className="text-xs bg-patron-accent text-white px-xs py-xs rounded">
-              {t.name}
-            </span>
-          ))}
-        </div>
+        <p className="text-xs uppercase tracking-wide text-patron-accent">
+          {recipe.tags.slice(0, 3).map((t) => t.name).join(' · ')}
+        </p>
       )}
 
-      {/* D-38: ingredient names without amounts, in secondary/dimmed text. */}
-      <p className="text-sm text-patron-text-secondary">
+      {/* D-38: ingredient names without amounts, in cyan-white text. */}
+      <p className="text-sm text-patron-accent-text">
         {recipe.ingredients.map((i) => i.categoryName).join(', ')}
       </p>
 
-      <MakeableIndicator status={recipe.overallStatus} />
+      <p className="text-[10px] uppercase tracking-wide text-patron-accent flex items-center gap-xs">
+        Tap to View
+        <ChevronRight size={12} aria-hidden="true" />
+      </p>
     </div>
   )
 }
