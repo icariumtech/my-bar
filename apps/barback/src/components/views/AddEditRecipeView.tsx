@@ -5,6 +5,7 @@ import { useCreateRecipe, useUpdateRecipe } from '../../api/useRecipes.js'
 import { IngredientListForm } from '../IngredientListForm.js'
 import { MethodStepList } from '../MethodStepList.js'
 import { GlasswarePicker } from '../pickers/GlasswarePicker.js'
+import { TagPicker } from '../pickers/TagPicker.js'
 import { FullScreenHeader } from '../FullScreenHeader.js'
 
 export interface AddEditRecipeViewProps {
@@ -71,6 +72,8 @@ export function AddEditRecipeView({ recipe, onBack }: AddEditRecipeViewProps) {
         method: recipe.method,
         glasswareId: recipe.glasswareId ?? undefined,
         garnish: recipe.garnish ?? undefined,
+        description: recipe.description ?? undefined,
+        tagIds: recipe.tags.map((t) => t.id),
       })
     } else {
       form.resetFields()
@@ -133,6 +136,22 @@ export function AddEditRecipeView({ recipe, onBack }: AddEditRecipeViewProps) {
               categories/ingredients. */}
           <Form.Item name="garnish" label="Garnish">
             <Input.TextArea placeholder="e.g. Lime wheel, salt rim" maxLength={200} />
+          </Form.Item>
+
+          {/* D-40: optional free text, no rules — description/story shown
+              on the Patron detail view. */}
+          <Form.Item name="description" label="Description / Story">
+            <Input.TextArea
+              placeholder="e.g. A smooth, sippable classic..."
+              maxLength={2000}
+              rows={4}
+            />
+          </Form.Item>
+
+          {/* D-33/D-35: optional — no rules — a recipe with zero tags
+              assigned saves successfully. */}
+          <Form.Item name="tagIds" label="Tags">
+            <TagPicker />
           </Form.Item>
 
           <div>

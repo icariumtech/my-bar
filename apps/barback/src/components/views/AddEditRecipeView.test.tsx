@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import type { Category, Glassware, Ingredient, Recipe } from '@my-bar/shared'
+import type { Category, Glassware, Ingredient, Recipe, Tag } from '@my-bar/shared'
 import { AddEditRecipeView } from './AddEditRecipeView.js'
 
 // Re-implements RecipeForm.test.tsx's three prior cases (G-02-6 regression
@@ -33,6 +33,11 @@ const fixtureGlassware: Glassware = {
   id: '22222222-2222-2222-2222-222222222222',
   name: 'Coupe',
 }
+
+const fixtureTags: Tag[] = [
+  { id: '77777777-7777-7777-7777-777777777777', name: 'Gin', group: 'spirit' },
+  { id: '88888888-8888-8888-8888-888888888888', name: 'Citrus', group: 'flavor' },
+]
 
 const fixtureRecipeResponse: Recipe = {
   id: '33333333-3333-3333-3333-333333333333',
@@ -66,10 +71,15 @@ const fixtureRecipeResponse: Recipe = {
 }
 
 let capturedBody:
-  | { ingredients: { unit?: string; ingredientId?: string | null; requiresSpecific?: boolean }[]; glasswareId?: string }
+  | {
+      ingredients: { unit?: string; ingredientId?: string | null; requiresSpecific?: boolean }[]
+      glasswareId?: string
+      description?: string
+      tagIds?: string[]
+    }
   | undefined
 
-function stubFetch() {
+function stubFetch(recipeResponse: Recipe = fixtureRecipeResponse) {
   const fetchMock = vi.fn((url: string, init?: RequestInit) => {
     const method = init?.method ?? 'GET'
 
@@ -97,12 +107,29 @@ function stubFetch() {
       } as Response)
     }
 
+    if (url === '/api/tags' && method === 'GET') {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => fixtureTags,
+      } as Response)
+    }
+
     if (url === '/api/recipes' && method === 'POST') {
       capturedBody = JSON.parse(init!.body as string)
       return Promise.resolve({
         ok: true,
         status: 201,
-        json: async () => fixtureRecipeResponse,
+        json: async () => recipeResponse,
+      } as Response)
+    }
+
+    if (url === `/api/recipes/${recipeResponse.id}` && method === 'PATCH') {
+      capturedBody = JSON.parse(init!.body as string)
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => recipeResponse,
       } as Response)
     }
 
@@ -112,24 +139,25 @@ function stubFetch() {
   return fetchMock
 }
 
-function renderView() {
+function renderView(recipe?: Recipe, onBack: () => void = vi.fn()) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>
-      <AddEditRecipeView onBack={vi.fn()} />
+      <AddEditRecipeView recipe={recipe} onBack={onBack} />
     </QueryClientProvider>,
   )
 }
 
-// GlasswarePicker is rendered unconditionally, so /api/glassware fetches at
-// mount. IngredientPicker only mounts once a row exists (IngredientListForm
-// deliberately does not auto-seed a row — RECIPE-01's `.min(1)` requires
-// real owner-entered data), so /api/categories and /api/ingredients only
-// fetch after "Add Ingredient" is clicked — waited for separately inside
-// fillBaseRecipe below, not here.
+// GlasswarePicker/TagPicker are both rendered unconditionally, so
+// /api/glassware and /api/tags fetch at mount. IngredientPicker only mounts
+// once a row exists (IngredientListForm deliberately does not auto-seed a
+// row — RECIPE-01's `.min(1)` requires real owner-entered data), so
+// /api/categories and /api/ingredients only fetch after "Add Ingredient" is
+// clicked — waited for separately inside fillBaseRecipe below, not here.
 async function waitForReferenceDataLoaded(fetchMock: ReturnType<typeof stubFetch>) {
   await waitFor(() => {
     expect(fetchMock.mock.calls.some(([url]) => url === '/api/glassware')).toBe(true)
+    expect(fetchMock.mock.calls.some(([url]) => url === '/api/tags')).toBe(true)
   })
 }
 
@@ -237,6 +265,13 @@ describe('AddEditRecipeView', () => {
           json: async () => [fixtureGlassware],
         } as Response)
       }
+      if (url === '/api/tags' && method === 'GET') {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: async () => fixtureTags,
+        } as Response)
+      }
       if (url === '/api/recipes' && method === 'POST') {
         return Promise.resolve({
           ok: false,
@@ -295,5 +330,61 @@ describe('AddEditRecipeView', () => {
     await waitFor(() => expect(capturedBody).toBeDefined())
     expect(capturedBody!.ingredients[0].ingredientId).toBe(fixtureIngredient.id)
     expect(capturedBody!.ingredients[0].requiresSpecific).toBe(true)
+  })
+
+  it('editing a recipe with 2 tags and a description pre-fills both fields from the server response', async () => {
+    const editRecipe: Recipe = {
+      ...fixtureRecipeResponse,
+      description: 'A smooth, sippable classic.',
+      tags: fixtureTags,
+    }
+    const fetchMock = stubFetch(editRecipe)
+    renderView(editRecipe)
+    await waitForReferenceDataLoaded(fetchMock)
+
+    expect(
+      await screen.findByDisplayValue('A smooth, sippable classic.'),
+    ).toBeInTheDocument()
+
+    for (const tag of fixtureTags) {
+      expect(await screen.findByTitle(tag.name)).toBeInTheDocument()
+    }
+  })
+
+  it('re-saving an edited recipe unchanged round-trips the same tagIds/description back (D-40/D-33)', async () => {
+    const editRecipe: Recipe = {
+      ...fixtureRecipeResponse,
+      description: 'A smooth, sippable classic.',
+      tags: fixtureTags,
+    }
+    const fetchMock = stubFetch(editRecipe)
+    renderView(editRecipe)
+    await waitForReferenceDataLoaded(fetchMock)
+    await screen.findByDisplayValue('A smooth, sippable classic.')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save Recipe' }))
+
+    await waitFor(() => expect(capturedBody).toBeDefined())
+    expect(capturedBody!.description).toBe('A smooth, sippable classic.')
+    expect([...capturedBody!.tagIds!].sort()).toEqual(
+      fixtureTags.map((t) => t.id).sort(),
+    )
+  })
+
+  it('saves successfully with zero tags and an empty description (D-35/D-40 — both optional)', async () => {
+    const fetchMock = stubFetch()
+    const onBack = vi.fn()
+    renderView(undefined, onBack)
+    await waitForReferenceDataLoaded(fetchMock)
+
+    await fillBaseRecipe(fetchMock)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save Recipe' }))
+
+    await waitFor(() => expect(onBack).toHaveBeenCalled())
+    expect(
+      screen.queryByText("Couldn't save recipe — check your connection and try again."),
+    ).not.toBeInTheDocument()
+    expect(capturedBody!.tagIds ?? []).toEqual([])
   })
 })
