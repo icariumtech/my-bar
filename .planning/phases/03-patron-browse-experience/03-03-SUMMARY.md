@@ -146,3 +146,7 @@ None — no external service configuration required. This plan is client-only ag
 ---
 *Phase: 03-patron-browse-experience*
 *Completed: 2026-08-13*
+
+## Self-Check: PASSED
+
+All created/modified files verified present on disk (`useTags.ts`, `TagPicker.tsx`, `TagPicker.test.tsx`, `AddEditRecipeView.tsx`, `AddEditRecipeView.test.tsx`, this SUMMARY.md). All commit hashes (`e01298b`, `918d2d6`, `ae5ab78`) verified present in `git log`.
