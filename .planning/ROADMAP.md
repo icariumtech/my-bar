@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Barback Inventory Foundation** - Owner can fully manage real bottle/ingredient inventory from their phone (completed 2026-08-10)
 - [x] **Phase 2: Recipe Collection & Makeable Engine** - Owner builds recipes; system computes correct, live makeable/not-makeable status (completed 2026-08-10)
-- [ ] **Phase 3: Patron Browse Experience** - Patron can browse the styled menu with a live, trustworthy makeable indicator
+- [x] **Phase 3: Patron Browse Experience** - Patron can browse the styled menu with a live, trustworthy makeable indicator (completed 2026-08-12)
 - [ ] **Phase 4: Bartender Console & Order Workflow** - Orders flow live from Patron to a working Bartender ticket queue
 
 ## Phase Details
@@ -187,5 +187,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Barback Inventory Foundation | 6/6 | Complete    | 2026-08-10 |
 | 2. Recipe Collection & Makeable Engine | 8/8 | Complete    | 2026-08-11 |
-| 3. Patron Browse Experience | 5/5 | In Progress|  |
+| 3. Patron Browse Experience | 5/5 | Complete    | 2026-08-12 |
 | 4. Bartender Console & Order Workflow | 0/TBD | Not started | - |
