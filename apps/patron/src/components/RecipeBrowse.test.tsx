@@ -4,6 +4,20 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { Recipe, Tag } from '@my-bar/shared'
 import { RecipeBrowse } from './RecipeBrowse.js'
 
+// RecipeDetail owns its own independent data fetch (useRecipeDetail) —
+// out of scope for this file's tests, which only assert that RecipeBrowse
+// navigates to it with the right id and returns to the grid on its
+// onBack callback. Mirrors App.test.tsx's identical mock-the-child
+// pattern used to decouple from RecipeBrowse's own network concerns.
+vi.mock('./RecipeDetail.js', () => ({
+  RecipeDetail: ({ recipeId, onBack }: { recipeId: string; onBack: () => void }) => (
+    <div>
+      <p>Viewing {recipeId}</p>
+      <button onClick={onBack}>Back</button>
+    </div>
+  ),
+}))
+
 const WHISKEY: Tag = { id: 'aaaaaaaa-0000-0000-0000-000000000001', name: 'Whiskey', group: 'spirit' }
 const SWEET: Tag = { id: 'bbbbbbbb-0000-0000-0000-000000000002', name: 'Sweet', group: 'flavor' }
 
@@ -133,5 +147,22 @@ describe('RecipeBrowse', () => {
     expect(await screen.findByText('Old Fashioned')).toBeInTheDocument()
     expect(screen.getByText('Daiquiri')).toBeInTheDocument()
     expect(screen.getAllByText('Not Available')).toHaveLength(1)
+  })
+
+  it('shows RecipeDetail for the tapped card\'s id, then returns to the grid via its back control', async () => {
+    stubFetch([BASE_RECIPE, OTHER_RECIPE])
+    renderBrowse()
+
+    expect(await screen.findByText('Old Fashioned')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Old Fashioned'))
+
+    expect(screen.getByText(`Viewing ${BASE_RECIPE.id}`)).toBeInTheDocument()
+    expect(screen.queryByText('Daiquiri')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+
+    expect(await screen.findByText('Old Fashioned')).toBeInTheDocument()
+    expect(screen.getByText('Daiquiri')).toBeInTheDocument()
   })
 })

@@ -1,17 +1,29 @@
 import { useState } from 'react'
 import { useRecipes } from '../api/useRecipes.js'
 import { RecipeCard } from './RecipeCard.js'
+import { RecipeDetail } from './RecipeDetail.js'
 import { TagRail, filterRecipesByTag } from './TagRail.js'
 
 // PATR-01/PATR-06: real browse container — TagRail (D-33/34/36/37) plus
 // the card grid, and every UI-SPEC loading/error/empty state. Owns the
-// single active tag filter (D-37); onSelect on RecipeCard stays the
-// 03-01 no-op stub, wired for real by plan 03-04 without touching this
-// component's structure. No order-submission/checkout affordance exists
-// here or anywhere below it — PATR-06's browse-freely guarantee.
+// single active tag filter (D-37). Also owns which recipe id (if any) is
+// being viewed in full-screen detail (03-04) — mirrors Barback's
+// RecipesTab `if (view === 'detail' ...) return <...DetailView />` early-
+// return pattern, adapted to Patron's simpler two-state model (no
+// add/edit view exists on Patron — browse-only, PATR-06). No order-
+// submission/checkout affordance exists here or anywhere below it —
+// PATR-06's browse-freely guarantee.
 export function RecipeBrowse() {
   const [selectedTagId, setSelectedTagId] = useState<string | undefined>(undefined)
+  const [viewingId, setViewingId] = useState<string | undefined>(undefined)
   const { data: recipes, isLoading, isError, refetch } = useRecipes()
+
+  if (viewingId) {
+    // Only the tapped card's id is ever passed on — never the full
+    // fetched-list Recipe object — so the detail view's own
+    // useRecipeDetail(recipeId) query is its sole data source (D-47).
+    return <RecipeDetail recipeId={viewingId} onBack={() => setViewingId(undefined)} />
+  }
 
   if (isLoading) {
     return (
@@ -61,7 +73,7 @@ export function RecipeBrowse() {
         ) : (
           <div className="grid grid-cols-2 gap-md">
             {filteredRecipes.map((recipe) => (
-              <RecipeCard key={recipe.id} recipe={recipe} onSelect={() => {}} />
+              <RecipeCard key={recipe.id} recipe={recipe} onSelect={(recipe) => setViewingId(recipe.id)} />
             ))}
           </div>
         )}
