@@ -142,7 +142,7 @@ Plans:
   4. For a not-makeable drink, the patron sees exactly which ingredient(s) are missing
   5. Patron can browse freely without being forced into an order, and when inventory changes on the Barback screen, the Patron screen's makeable status updates live without a manual refresh
 
-**Plans**: 4/5 plans executed
+**Plans**: 5/5 plans executed
 
 Plans:
 
@@ -158,7 +158,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 03-04-PLAN.md — Recipe detail view + missing ingredients + navigation (PATR-02, PATR-04, PATR-03)
+- [x] 03-04-PLAN.md — Recipe detail view + missing ingredients + navigation (PATR-02, PATR-04, PATR-03)
 
 **UI hint**: yes
 
@@ -187,5 +187,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Barback Inventory Foundation | 6/6 | Complete    | 2026-08-10 |
 | 2. Recipe Collection & Makeable Engine | 8/8 | Complete    | 2026-08-11 |
-| 3. Patron Browse Experience | 4/5 | In Progress|  |
+| 3. Patron Browse Experience | 5/5 | In Progress|  |
 | 4. Bartender Console & Order Workflow | 0/TBD | Not started | - |
