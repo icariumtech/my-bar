@@ -274,6 +274,28 @@ describe('POST /api/recipes', () => {
     expect(res.statusCode).toBe(400)
   })
 
+  it('de-duplicates a repeated tagId instead of crashing with a raw 500 (recipe_tags UNIQUE constraint)', async () => {
+    const categoryId = seedCategory('Dry Gin')
+    seedIngredient(categoryId)
+    const tagId = crypto.randomUUID()
+    testDb.db.insert(tags).values({ id: tagId, name: 'Gin', group: 'spirit' }).run()
+    const app = buildTestApp()
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/recipes',
+      payload: {
+        name: 'Duplicate Tag',
+        ingredients: [{ categoryId, quantity: '2', unit: 'oz' }],
+        method: ['Stir'],
+        tagIds: [tagId, tagId],
+      },
+    })
+
+    expect(res.statusCode).toBe(201)
+    expect(res.json().tags).toEqual([{ id: tagId, name: 'Gin', group: 'spirit' }])
+  })
+
   it('omitting tagIds entirely creates a recipe with tags: []', async () => {
     const categoryId = seedCategory('Dry Gin')
     seedIngredient(categoryId)
@@ -717,6 +739,21 @@ describe('PATCH /api/recipes/:id', () => {
       .all()
     expect(persisted).toHaveLength(1)
     expect(persisted[0].tagId).toBe(newTagId)
+  })
+
+  it('PATCH de-duplicates a repeated tagId instead of crashing with a raw 500', async () => {
+    const app = buildTestApp()
+    const created = await createRecipe(app)
+    const tagId = seedTag('Whiskey', 'spirit')
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/recipes/${created.id}`,
+      payload: { tagIds: [tagId, tagId] },
+    })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().tags).toEqual([{ id: tagId, name: 'Whiskey', group: 'spirit' }])
   })
 
   it('omitting tagIds from a patch body leaves the existing tag set untouched', async () => {

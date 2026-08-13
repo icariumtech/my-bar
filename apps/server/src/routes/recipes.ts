@@ -264,8 +264,9 @@ export const recipesRoutes: FastifyPluginAsync<RecipesRoutesOptions> = async (ap
 
         // D-35: tags are optional at create time (owner assigns from
         // Barback, possibly later) — omitting tagIds creates a recipe with
-        // tags: [].
-        const tagIds = request.body.tagIds ?? []
+        // tags: []. De-duplicated: a repeated id would otherwise trip the
+        // recipe_tags UNIQUE(recipe_id, tag_id) constraint below.
+        const tagIds = [...new Set(request.body.tagIds ?? [])]
         tagIds.forEach((tagId) => {
           db.insert(recipeTags)
             .values({ id: crypto.randomUUID(), recipeId, tagId })
@@ -277,7 +278,7 @@ export const recipesRoutes: FastifyPluginAsync<RecipesRoutesOptions> = async (ap
         // (enforced by the `foreign_keys = ON` pragma) — translate that
         // into a 400 rather than letting a raw 500 (with SQLite's own
         // error text/stack) escape to the client.
-        if (err instanceof Error && /FOREIGN KEY constraint failed/i.test(err.message)) {
+        if (err instanceof Error && /(FOREIGN KEY|UNIQUE) constraint failed/i.test(err.message)) {
           return reply.status(400).send({ error: 'Unknown category, ingredient, glassware, or tag' })
         }
         throw err
@@ -351,7 +352,9 @@ export const recipesRoutes: FastifyPluginAsync<RecipesRoutesOptions> = async (ap
 
             if (newTagIds !== undefined) {
               tx.delete(recipeTags).where(eq(recipeTags.recipeId, id)).run()
-              newTagIds.forEach((tagId) => {
+              // De-duplicated: a repeated id would otherwise trip the
+              // recipe_tags UNIQUE(recipe_id, tag_id) constraint below.
+              ;[...new Set(newTagIds)].forEach((tagId) => {
                 tx.insert(recipeTags)
                   .values({ id: crypto.randomUUID(), recipeId: id, tagId })
                   .run()
@@ -377,7 +380,7 @@ export const recipesRoutes: FastifyPluginAsync<RecipesRoutesOptions> = async (ap
         // unknown tagId (in a replaced tagIds array) trips the FK
         // constraint — translate to 400 rather than letting a raw 500
         // escape.
-        if (err instanceof Error && /FOREIGN KEY constraint failed/i.test(err.message)) {
+        if (err instanceof Error && /(FOREIGN KEY|UNIQUE) constraint failed/i.test(err.message)) {
           return reply.status(400).send({ error: 'Unknown category, ingredient, glassware, or tag' })
         }
         throw err
