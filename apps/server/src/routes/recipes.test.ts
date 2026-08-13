@@ -77,6 +77,72 @@ describe('GET /api/recipes', () => {
   })
 })
 
+// D-39/03-04's useRecipeDetail dependency: the Patron detail view fetches
+// its recipe independently by id, never from a static grid-row snapshot —
+// this endpoint is what makes that possible, and what 03-05's socket
+// invalidation of ['recipes', recipeId] has something to re-fetch.
+describe('GET /api/recipes/:id', () => {
+  let testDb: ReturnType<typeof createTestDb>
+
+  beforeEach(() => {
+    testDb = createTestDb()
+  })
+
+  afterEach(() => {
+    testDb.cleanup()
+  })
+
+  function buildTestApp() {
+    const app = Fastify()
+    app.setValidatorCompiler(validatorCompiler)
+    app.setSerializerCompiler(serializerCompiler)
+    app.register(recipesRoutes, { prefix: '/api/recipes', db: testDb.db })
+    return app
+  }
+
+  it('returns the single recipe with its tags/description, matching the list-response shape', async () => {
+    const categoryId = crypto.randomUUID()
+    testDb.db.insert(categories).values({ id: categoryId, name: 'Dry Gin' }).run()
+    testDb.db
+      .insert(ingredients)
+      .values({ id: crypto.randomUUID(), name: 'Bottle', categoryId, note: null, inStock: true })
+      .run()
+    const tagId = crypto.randomUUID()
+    testDb.db.insert(tags).values({ id: tagId, name: 'Gin', group: 'spirit' }).run()
+    const app = buildTestApp()
+
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/recipes',
+      payload: {
+        name: 'Martini',
+        ingredients: [{ categoryId, quantity: '2', unit: 'oz' }],
+        method: ['Stir'],
+        description: 'Classic.',
+        tagIds: [tagId],
+      },
+    })
+    const created = createRes.json()
+
+    const res = await app.inject({ method: 'GET', url: `/api/recipes/${created.id}` })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json()
+    expect(body.id).toBe(created.id)
+    expect(body.name).toBe('Martini')
+    expect(body.description).toBe('Classic.')
+    expect(body.tags).toEqual([{ id: tagId, name: 'Gin', group: 'spirit' }])
+  })
+
+  it('returns 404 for an unknown recipe id', async () => {
+    const app = buildTestApp()
+
+    const res = await app.inject({ method: 'GET', url: `/api/recipes/${crypto.randomUUID()}` })
+
+    expect(res.statusCode).toBe(404)
+  })
+})
+
 describe('POST /api/recipes', () => {
   let testDb: ReturnType<typeof createTestDb>
 

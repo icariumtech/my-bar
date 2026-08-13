@@ -177,6 +177,36 @@ export const recipesRoutes: FastifyPluginAsync<RecipesRoutesOptions> = async (ap
     },
   )
 
+  // D-39/03-04's useRecipeDetail: fetch a single recipe by id — Rule 2
+  // auto-add. Missing from Phase 2 and required by this plan's own
+  // must_haves ("GET /api/recipes and GET /api/recipes/:id both return a
+  // tags array... and a description field") plus 03-04-PLAN.md's
+  // useRecipeDetail hook, which already assumes this route exists. Same
+  // existence-check-before-loadRecipe pattern PATCH uses below, since
+  // loadRecipe throws (rather than returning undefined) on a miss.
+  app.withTypeProvider<ZodTypeProvider>().get(
+    '/:id',
+    {
+      schema: {
+        params: z.object({ id: z.string().uuid() }),
+        response: {
+          200: recipe,
+          404: z.object({ error: z.string() }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params
+
+      const [existing] = db.select({ id: recipes.id }).from(recipes).where(eq(recipes.id, id)).all()
+      if (!existing) {
+        return reply.status(404).send({ error: 'Recipe not found' })
+      }
+
+      return reply.status(200).send(loadRecipe(db, id))
+    },
+  )
+
   // RECIPE-01: POST /api/recipes — create a recipe. `schema.body` reuses
   // the shared `recipeInput` Zod object (not a restated local schema) so
   // the `.min(1)` empty-input rejections and `.max()` DoS bounds (T-02-02)
