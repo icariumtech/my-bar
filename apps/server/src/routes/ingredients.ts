@@ -104,6 +104,12 @@ export const ingredientsRoutes: FastifyPluginAsync<IngredientsRoutesOptions> = a
         .where(eq(ingredients.id, id))
         .all()
 
+      // SYNC-01: `?.` is REQUIRED, not stylistic — ingredients.test.ts
+      // builds a bare Fastify() with no hub registered, so `app.io` is
+      // undefined there; an unguarded `.emit()` would throw and break that
+      // whole existing suite. No payload — clients always just re-fetch.
+      app.io?.emit('inventory:changed')
+
       return reply.status(201).send(created)
     },
   )
@@ -170,6 +176,10 @@ export const ingredientsRoutes: FastifyPluginAsync<IngredientsRoutesOptions> = a
         return reply.status(404).send({ error: 'Ingredient not found' })
       }
 
+      // SYNC-01: same optional-chaining requirement as the POST handler
+      // above — a no-op when no hub is registered (bare-Fastify test apps).
+      app.io?.emit('inventory:changed')
+
       return reply.status(200).send(updated)
     },
   )
@@ -217,6 +227,10 @@ export const ingredientsRoutes: FastifyPluginAsync<IngredientsRoutesOptions> = a
       if (!updated) {
         return reply.status(404).send({ error: 'Ingredient not found' })
       }
+
+      // SYNC-01: same optional-chaining requirement as above — a no-op
+      // when no hub is registered (bare-Fastify test apps).
+      app.io?.emit('inventory:changed')
 
       return reply.status(200).send(updated)
     },

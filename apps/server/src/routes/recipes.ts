@@ -283,6 +283,13 @@ export const recipesRoutes: FastifyPluginAsync<RecipesRoutesOptions> = async (ap
         throw err
       }
 
+      // SYNC-01: `?.` is REQUIRED, not stylistic — recipes.test.ts builds a
+      // bare Fastify() with no hub registered, so `app.io` is undefined
+      // there; an unguarded `.emit()` would throw and break that whole
+      // existing suite. Payload carries only the id — clients re-fetch via
+      // REST, never trust a WS payload as the data itself.
+      app.io?.emit('recipe:updated', { recipeId })
+
       return reply.status(201).send(loadRecipe(db, recipeId))
     },
   )
@@ -385,6 +392,10 @@ export const recipesRoutes: FastifyPluginAsync<RecipesRoutesOptions> = async (ap
         return reply.status(404).send({ error: 'Recipe not found' })
       }
 
+      // SYNC-01: same optional-chaining requirement as the POST handler
+      // above — a no-op when no hub is registered (bare-Fastify test apps).
+      app.io?.emit('recipe:updated', { recipeId: id })
+
       return reply.status(200).send(loadRecipe(db, id))
     },
   )
@@ -416,6 +427,10 @@ export const recipesRoutes: FastifyPluginAsync<RecipesRoutesOptions> = async (ap
       }
 
       db.delete(recipes).where(eq(recipes.id, id)).run()
+
+      // SYNC-01: same optional-chaining requirement as above — a no-op
+      // when no hub is registered (bare-Fastify test apps).
+      app.io?.emit('recipe:updated', { recipeId: id })
 
       return reply.status(204).send()
     },

@@ -9,6 +9,7 @@ import { categoriesRoutes } from './routes/categories.js'
 import { recipesRoutes } from './routes/recipes.js'
 import { glasswareRoutes } from './routes/glassware.js'
 import { tagsRoutes } from './routes/tags.js'
+import { registerSocketHub } from './ws/hub.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -26,6 +27,13 @@ export function buildApp() {
       origin: ['http://localhost:5173'],
     })
   }
+
+  // Registered BEFORE the route plugins below — order matters. Fastify
+  // decorators set on the parent instance before a child plugin registers
+  // are visible inside that child's handlers via Fastify's parent-to-child
+  // encapsulation; registering the hub after the routes would leave
+  // `app.io` undefined inside them.
+  registerSocketHub(app)
 
   app.register(ingredientsRoutes, { prefix: '/api/ingredients' })
   app.register(categoriesRoutes, { prefix: '/api/categories' })

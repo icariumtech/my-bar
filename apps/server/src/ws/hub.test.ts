@@ -82,7 +82,6 @@ describe('Socket.IO hub — real client, real listening server', () => {
   it('emits recipe:updated with the created recipe id after a recipe POST', async () => {
     const categoryId = crypto.randomUUID()
     testDb.db.insert(categories).values({ id: categoryId, name: 'Dry Gin' }).run()
-    seedIngredient()
 
     const eventReceived = new Promise<{ recipeId: string }>((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error('Timed out waiting for recipe:updated')), 2000)
