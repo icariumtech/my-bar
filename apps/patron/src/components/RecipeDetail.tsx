@@ -1,4 +1,4 @@
-import { ChevronLeft } from 'lucide-react'
+import { X } from 'lucide-react'
 import { useRecipeDetail } from '../api/useRecipeDetail.js'
 import { MakeableIndicator } from './MakeableIndicator.js'
 
@@ -19,6 +19,13 @@ interface RecipeDetailProps {
 //
 // Patron builds its own minimal header rather than reusing Barback's
 // antd-based header component, since Patron has no antd dependency.
+//
+// 260813-ea3 neon-glow restyle: the header control is now a top-right
+// circular glow "X" (still aria-label="Back", still calls the same onBack
+// prop — a visual/position change only, not a behavior change), the
+// placeholder hero is now a radial-gradient vignette, and the content
+// area is now a single glow-bordered card matching RecipeCard's surface
+// treatment.
 export function RecipeDetail({ recipeId, onBack }: RecipeDetailProps) {
   const { data: recipe, isLoading, isError } = useRecipeDetail(recipeId)
 
@@ -51,63 +58,69 @@ export function RecipeDetail({ recipeId, onBack }: RecipeDetailProps) {
 
   return (
     <div className="h-dvh flex flex-col bg-patron-bg">
-      <div className="p-md shrink-0">
+      <div className="relative shrink-0">
+        {/* D-41: purely decorative radial-gradient hero vignette — not a
+            button/link. */}
+        <div
+          className="h-64 w-full"
+          style={{
+            background:
+              'radial-gradient(circle at center, rgba(255,107,53,0.18) 0%, rgba(26,35,50,0.9) 70%)',
+          }}
+        />
         <button
           type="button"
           onClick={onBack}
           aria-label="Back"
-          className="w-10 h-10 rounded-full bg-patron-success flex items-center justify-center"
+          className="absolute top-md right-md w-10 h-10 rounded-full bg-patron-bg/80 flex items-center justify-center glow-orange text-patron-accent"
         >
-          <ChevronLeft className="text-patron-bg" size={24} />
+          <X size={20} aria-hidden="true" />
         </button>
       </div>
 
       {/* UI-SPEC Overflow backstop: this content area (not the whole
           viewport) scrolls, so a long description never clips/overflows. */}
-      <div className="flex-1 overflow-y-auto px-lg pb-3xl flex flex-col gap-md">
-        {/* D-41: purely decorative placeholder hero — not a button/link. */}
-        <div className="h-56 rounded bg-gradient-to-br from-patron-accent/20 to-transparent" />
+      <div className="flex-1 overflow-y-auto px-lg pb-3xl -mt-lg">
+        <div className="rounded-2xl bg-patron-surface/70 backdrop-blur-sm glow-orange p-lg flex flex-col gap-md">
+          <h1 className="text-white text-[28px] font-semibold leading-tight">{recipe.name}</h1>
 
-        <h1 className="text-white text-[28px] font-semibold leading-tight">{recipe.name}</h1>
+          {recipe.tags.length > 0 && (
+            <p className="text-xs uppercase tracking-wide text-patron-accent">
+              {recipe.tags.map((t) => t.name).join(' · ')}
+            </p>
+          )}
 
-        {recipe.tags.length > 0 && (
-          <div className="flex flex-wrap gap-xs">
-            {recipe.tags.map((t) => (
-              <span key={t.id} className="text-xs bg-patron-accent text-white px-xs py-xs rounded">
-                {t.name}
-              </span>
-            ))}
-          </div>
-        )}
+          <MakeableIndicator status={recipe.overallStatus} />
 
-        <MakeableIndicator status={recipe.overallStatus} />
+          {showMissing && (
+            <p className="text-patron-destructive">
+              {`Not Available — ${recipe.missingCategoryNames.join(', ')} missing.`}
+            </p>
+          )}
 
-        {showMissing && (
-          <p className="text-patron-destructive">
-            {`Not Available — ${recipe.missingCategoryNames.join(', ')} missing.`}
-          </p>
-        )}
+          <div className="h-px bg-patron-accent/30" />
 
-        <div>
-          <h3 className="text-white mb-sm">Ingredients</h3>
-          {/* Ingredient lines are guaranteed non-empty by the existing
-              recipeInput.ingredients Zod boundary (min 1) — no empty
-              state needed here. Only the category name is ever shown. */}
-          <ul className="flex flex-col gap-xs">
-            {recipe.ingredients.map((i) => (
-              <li key={i.id} className="text-white">
-                {i.categoryName}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {showDescription && (
           <div>
-            <h3 className="text-white mb-sm">Description</h3>
-            <p className="text-patron-text-secondary">{recipe.description}</p>
+            <h3 className="text-white mb-sm">Ingredients</h3>
+            {/* Ingredient lines are guaranteed non-empty by the existing
+                recipeInput.ingredients Zod boundary (min 1) — no empty
+                state needed here. Only the category name is ever shown. */}
+            <ul className="flex flex-col gap-xs">
+              {recipe.ingredients.map((i) => (
+                <li key={i.id} className="text-patron-accent-text">
+                  {i.categoryName}
+                </li>
+              ))}
+            </ul>
           </div>
-        )}
+
+          {showDescription && (
+            <div>
+              <h3 className="text-white mb-sm">Description</h3>
+              <p className="text-patron-accent-text italic">{recipe.description}</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -47,7 +47,11 @@ export function TagRail({ recipes, selectedTagId, onSelectTag }: TagRailProps) {
   const [expandedGroupId, setExpandedGroupId] = useState<string | undefined>(undefined)
 
   return (
-    <div className="flex flex-col gap-md items-center w-16 shrink-0">
+    // 260813-ea3 neon-glow restyle: glowing rounded-full pill rail
+    // (self-start prevents flex-stretch from RecipeBrowse's row); D-36/D-37
+    // selection logic below is completely unchanged, only the container
+    // classes changed.
+    <div className="flex flex-col items-center gap-lg w-20 shrink-0 self-start py-lg rounded-full glow-orange bg-patron-bg/50">
       {TAG_GROUP_META.map((group) => {
         const groupTags = Array.from(
           recipes
@@ -72,14 +76,21 @@ export function TagRail({ recipes, selectedTagId, onSelectTag }: TagRailProps) {
                   ? () => setExpandedGroupId(isExpanded ? undefined : group.id)
                   : undefined
               }
-              className={`flex flex-col items-center gap-xs p-sm rounded w-full ${
-                isActive
-                  ? 'text-patron-accent cursor-pointer'
-                  : 'opacity-40 cursor-default text-patron-text-secondary'
+              // 260813-ea3 neon-glow restyle: three explicit visual states
+              // (muted / subtle-outlined / filled-selected) layered on the
+              // unchanged isActive/isExpanded booleans above — D-36's
+              // opacity-40 class is preserved verbatim for
+              // TagRail.test.tsx line 91.
+              className={`flex flex-col items-center justify-center gap-xs w-14 h-14 rounded-xl transition-colors ${
+                !isActive
+                  ? 'opacity-40 cursor-default text-patron-text-secondary'
+                  : isExpanded
+                    ? 'glow-orange bg-patron-accent/20 text-patron-accent cursor-pointer'
+                    : 'glow-orange-subtle text-patron-accent cursor-pointer'
               }`}
             >
-              <group.Icon size={24} aria-hidden="true" />
-              <span className="text-xs">{group.label}</span>
+              <group.Icon size={22} aria-hidden="true" />
+              <span className="text-[10px] uppercase tracking-wide">{group.label}</span>
             </button>
             {isExpanded && (
               <TagSubmenu

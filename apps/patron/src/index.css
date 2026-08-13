@@ -21,6 +21,43 @@
   --spacing-3xl: 64px;
 }
 
+/* 260813-ea3: reusable neon-glow treatment — the single source of truth
+   for the layered orange/success/destructive box-shadow glow motif, so no
+   other component ever repeats these box-shadow values inline. */
+.glow-orange {
+  border: 1px solid rgba(255, 107, 53, 0.7);
+  box-shadow:
+    0 0 4px rgba(255, 107, 53, 0.85),
+    0 0 12px rgba(255, 107, 53, 0.55),
+    0 0 24px rgba(255, 107, 53, 0.3);
+}
+
+/* 260813-ea3: resting/subtle variant of the neon-glow treatment above. */
+.glow-orange-subtle {
+  border: 1px solid rgba(255, 107, 53, 0.45);
+  box-shadow:
+    0 0 3px rgba(255, 107, 53, 0.5),
+    0 0 8px rgba(255, 107, 53, 0.3);
+}
+
+/* 260813-ea3: shadow-only glow (rgba decomposition of --color-patron-success)
+   layered on top of the existing bg-patron-success fill — never touches
+   fill color, preserving D-42's locked green/red semantic mapping. */
+.glow-success {
+  box-shadow:
+    0 0 4px rgba(16, 185, 129, 0.85),
+    0 0 12px rgba(16, 185, 129, 0.5);
+}
+
+/* 260813-ea3: shadow-only glow (rgba decomposition of --color-patron-destructive)
+   layered on top of the existing bg-patron-destructive fill — never touches
+   fill color, preserving D-42's locked green/red semantic mapping. */
+.glow-destructive {
+  box-shadow:
+    0 0 4px rgba(239, 68, 68, 0.85),
+    0 0 12px rgba(239, 68, 68, 0.5);
+}
+
 html,
 body,
 #root {
