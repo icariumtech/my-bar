@@ -18,10 +18,12 @@ export function TagSubmenu({ tags, selectedTagId, onSelectTag }: TagSubmenuProps
           key={tag.id}
           type="button"
           onClick={() => onSelectTag(tag.id)}
-          className={`text-xs px-sm py-xs rounded whitespace-nowrap ${
+          // 260813-ea3 neon-glow restyle: chip visual treatment only —
+          // selection logic (tag.id === selectedTagId) is unchanged.
+          className={`text-xs px-sm py-xs rounded-lg whitespace-nowrap uppercase tracking-wide transition-colors ${
             tag.id === selectedTagId
-              ? 'bg-patron-accent text-white'
-              : 'bg-patron-surface text-patron-text-secondary'
+              ? 'bg-patron-accent text-white glow-orange-subtle'
+              : 'bg-patron-bg/60 text-patron-text-secondary border border-patron-accent/30'
           }`}
         >
           {tag.name}
