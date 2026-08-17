@@ -17,16 +17,19 @@ interface RecipeCardProps {
 // uppercase text instead of pill chips, and a "Tap to View" affordance was
 // added — D-38 (badge in place of price) and D-43 (dim/grayscale when
 // not-makeable) both still hold exactly as before.
+// 260817-fkv: converted from a bordered/glow card to an unbordered list
+// row — RecipeBrowse now renders rows in a single-column divide-y list
+// instead of a 2-col grid, so per-row border/glow/background/rounded
+// classes were dropped here; D-43 dimming (opacity-60 grayscale) is
+// preserved unchanged.
 export function RecipeCard({ recipe, onSelect }: RecipeCardProps) {
   const isMakeable = recipe.overallStatus === 'green'
 
   return (
     <div
       onClick={() => onSelect(recipe)}
-      className={`cursor-pointer p-md rounded-2xl bg-patron-surface/70 backdrop-blur-sm border flex flex-col gap-sm transition-shadow ${
-        isMakeable
-          ? 'border-patron-accent/50 glow-orange-subtle'
-          : 'border-patron-text-secondary/20 opacity-60 grayscale'
+      className={`cursor-pointer py-lg flex flex-col gap-sm transition-opacity ${
+        isMakeable ? '' : 'opacity-60 grayscale'
       }`}
     >
       <div className="flex items-start justify-between gap-sm">
