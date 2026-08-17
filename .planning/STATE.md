@@ -5,8 +5,8 @@ milestone_name: milestone
 current_phase: 4
 current_phase_name: Bartender Console & Order Workflow
 status: planning
-stopped_at: Phase 3 UI-SPEC approved
-last_updated: "2026-08-17T18:20:37.408Z"
+stopped_at: "Completed quick task 260817-k8o: Fix IngredientPicker.tsx search-as-you-type filtering"
+last_updated: "2026-08-17T19:38:40.061Z"
 last_activity: 2026-08-17
 last_activity_desc: "Completed quick task 260817-fkv: Convert Patron browse grid to continuous list layout matching reference screenshots"
 progress:
@@ -71,6 +71,7 @@ Progress: [██████████] 100%
 | Phase 02 P08 | 8min | 2 tasks | 2 files |
 | Phase 02.1 P06 | 22min | 3 tasks | 10 files |
 | Phase 02.1 P07 | 12min | 2 tasks | 5 files |
+| Phase quick P260817-k8o | 8min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -124,6 +125,7 @@ None yet.
 | 260817-g39 | Remove makeable badge and add availability toggle to Patron rail | 2026-08-17 | bab1d3a | [260817-g39-remove-available-not-available-badge-eve](./quick/260817-g39-remove-available-not-available-badge-eve/) |
 | 260817-hpy | Convert Patron tag submenus and settings to flyout popovers with persistent selection highlight | 2026-08-17 | d2a1c52 | [260817-hpy-convert-patron-tag-submenus-and-settings](./quick/260817-hpy-convert-patron-tag-submenus-and-settings/) |
 | 18 | Close tag flyout on selection; remove settings button label and flyout heading | 2026-08-17 | 7c7c1f6 | — |
+| 19 | Fix IngredientPicker.tsx: filter categoryOptions/ingredientOptions by typed search text (recipe ingredient combobox now search-as-you-type like CategoryPicker/GlasswarePicker) | 2026-08-17 | 80c0fa2 | — |
 
 ### Roadmap Evolution
 
@@ -139,6 +141,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-12T21:54:08.973Z
-Stopped at: Phase 3 UI-SPEC approved
-Resume file: .planning/phases/03-patron-browse-experience/03-UI-SPEC.md
+Last session: 2026-08-17T19:38:40.049Z
+Stopped at: Completed quick task 260817-k8o: Fix IngredientPicker.tsx search-as-you-type filtering
+Resume file: None
