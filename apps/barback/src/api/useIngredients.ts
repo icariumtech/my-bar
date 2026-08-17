@@ -3,6 +3,15 @@ import { message } from 'antd'
 import type { Ingredient, IngredientInput, IngredientPatch } from '@my-bar/shared'
 import { apiFetch } from './client.js'
 
+// Surfaces the server's error body rather than collapsing a delete failure
+// into a generic Error — mirrors useRecipes.ts's DeleteRecipeError.
+export class DeleteIngredientError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'DeleteIngredientError'
+  }
+}
+
 export function useIngredients() {
   return useQuery({
     queryKey: ['ingredients'],
@@ -78,6 +87,37 @@ export function useToggleStock() {
       }),
     onError: () => {
       message.error("Couldn't update stock — try again.")
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['ingredients'] })
+      queryClient.invalidateQueries({ queryKey: ['recipes'] })
+    },
+  })
+}
+
+// Removes a bottle from inventory (mirrors useRecipes.ts's useDeleteRecipe
+// shape exactly). Does not use the shared apiFetch() wrapper — calls
+// fetch() directly so a non-204 failure body's `error` field can be read
+// and thrown as a named DeleteIngredientError instead of apiFetch's generic
+// Error. Invalidates BOTH ['ingredients'] and ['recipes'] on settle — a
+// deleted ingredient can change a recipe's makeable/requiresSpecific
+// display server-side (mirrors useUpdateIngredient/useToggleStock's
+// cross-entity-invalidation precedent above).
+export function useDeleteIngredient() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/ingredients/${id}`, { method: 'DELETE' })
+
+      if (res.status === 204) {
+        return
+      }
+
+      const body = (await res.json().catch(() => ({}))) as { error?: string }
+      throw new DeleteIngredientError(
+        body.error ?? `Request to /ingredients/${id} failed: ${res.status} ${res.statusText}`,
+      )
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['ingredients'] })

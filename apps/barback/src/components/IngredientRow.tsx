@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { LEFT, RIGHT, useSwipeable } from 'react-swipeable'
-import { Button } from 'antd'
-import { EditOutlined } from '@ant-design/icons'
+import { Button, Modal } from 'antd'
+import { DeleteOutlined, EditOutlined } from '@ant-design/icons'
 import type { Ingredient } from '@my-bar/shared'
+import { useDeleteIngredient } from '../api/useIngredients.js'
 import { getRevealColorClass, getRowSurfaceClasses } from './swipeVisuals.js'
 
 // D-08: 3s is the concrete reading of "brief (~few seconds)" — a named,
@@ -30,6 +31,21 @@ interface IngredientRowProps {
 // target, or an immediate write with a compensating undo offered
 // afterwards — see 01-RESEARCH.md "Anti-Patterns to Avoid".
 export function IngredientRow({ ingredient, onCommitToggle, onEdit }: IngredientRowProps) {
+  const deleteIngredient = useDeleteIngredient()
+
+  function handleDelete() {
+    // Mirrors RecipeRow's Copywriting Contract exactly — exact
+    // confirmation title/body, named to this ingredient, never a
+    // single-tap delete.
+    Modal.confirm({
+      title: `Delete ${ingredient.name}?`,
+      content: "This can't be undone.",
+      okText: 'Delete',
+      okButtonProps: { danger: true },
+      onOk: () => deleteIngredient.mutate(ingredient.id),
+    })
+  }
+
   // The target stock state a swipe is currently pending toward, or null
   // when no toggle is in flight.
   const [pending, setPending] = useState<boolean | null>(null)
@@ -208,6 +224,18 @@ export function IngredientRow({ ingredient, onCommitToggle, onEdit }: Ingredient
               }}
             />
           )}
+          <Button
+            type="text"
+            danger
+            icon={<DeleteOutlined />}
+            aria-label={`Delete ${ingredient.name}`}
+            loading={deleteIngredient.isPending}
+            style={{ minHeight: 48, minWidth: 48 }}
+            onClick={(event) => {
+              event.stopPropagation()
+              handleDelete()
+            }}
+          />
         </div>
       </div>
     </div>
