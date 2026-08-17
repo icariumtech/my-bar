@@ -3,7 +3,7 @@ import Fastify from 'fastify'
 import { serializerCompiler, validatorCompiler } from '@fastify/type-provider-zod'
 import { eq } from 'drizzle-orm'
 import { createTestDb } from '../db/test-helpers.js'
-import { categories, ingredients } from '../db/schema.js'
+import { categories, ingredients, recipeIngredients, recipes } from '../db/schema.js'
 import { ingredientsRoutes } from './ingredients.js'
 
 describe('GET /api/ingredients', () => {
@@ -451,5 +451,124 @@ describe('PATCH /api/ingredients/:id/stock', () => {
     })
 
     expect(res.statusCode).toBe(404)
+  })
+})
+
+describe('DELETE /api/ingredients/:id', () => {
+  let testDb: ReturnType<typeof createTestDb>
+
+  beforeEach(() => {
+    testDb = createTestDb()
+  })
+
+  afterEach(() => {
+    testDb.cleanup()
+  })
+
+  function buildTestApp() {
+    const app = Fastify()
+    app.setValidatorCompiler(validatorCompiler)
+    app.setSerializerCompiler(serializerCompiler)
+    app.register(ingredientsRoutes, { prefix: '/api/ingredients', db: testDb.db })
+    return app
+  }
+
+  function seedIngredient() {
+    const categoryId = crypto.randomUUID()
+    testDb.db.insert(categories).values({ id: categoryId, name: 'Dry Gin' }).run()
+
+    const ingredientId = crypto.randomUUID()
+    testDb.db
+      .insert(ingredients)
+      .values({
+        id: ingredientId,
+        name: 'Bombay Sapphire Gin',
+        categoryId,
+        note: '750ml',
+      })
+      .run()
+
+    return { ingredientId, categoryId }
+  }
+
+  it('deletes an existing ingredient and returns 204; a direct query finds zero rows', async () => {
+    const { ingredientId } = seedIngredient()
+    const app = buildTestApp()
+
+    const res = await app.inject({ method: 'DELETE', url: `/api/ingredients/${ingredientId}` })
+    expect(res.statusCode).toBe(204)
+
+    const remaining = testDb.db
+      .select()
+      .from(ingredients)
+      .where(eq(ingredients.id, ingredientId))
+      .all()
+    expect(remaining).toHaveLength(0)
+  })
+
+  it('returns 404 for an unknown ingredient id', async () => {
+    const app = buildTestApp()
+
+    const res = await app.inject({ method: 'DELETE', url: `/api/ingredients/${crypto.randomUUID()}` })
+    expect(res.statusCode).toBe(404)
+    expect(res.json()).toMatchObject({ error: 'Ingredient not found' })
+  })
+
+  it('returns 204 then 404 on a repeated delete — never a repeated 204', async () => {
+    const { ingredientId } = seedIngredient()
+    const app = buildTestApp()
+
+    const first = await app.inject({ method: 'DELETE', url: `/api/ingredients/${ingredientId}` })
+    expect(first.statusCode).toBe(204)
+
+    const second = await app.inject({ method: 'DELETE', url: `/api/ingredients/${ingredientId}` })
+    expect(second.statusCode).toBe(404)
+  })
+
+  it('MATCH-05 via HTTP: deleting an ingredient locked to a recipe line degrades that line to category-only (ingredientId null), no 409/guard', async () => {
+    const { ingredientId, categoryId } = seedIngredient()
+
+    const recipeId = crypto.randomUUID()
+    const now = new Date()
+    testDb.db
+      .insert(recipes)
+      .values({
+        id: recipeId,
+        name: 'Martini',
+        method: JSON.stringify(['Stir']),
+        glasswareId: null,
+        garnish: null,
+        description: null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run()
+
+    const recipeIngredientId = crypto.randomUUID()
+    testDb.db
+      .insert(recipeIngredients)
+      .values({
+        id: recipeIngredientId,
+        recipeId,
+        categoryId,
+        ingredientId,
+        requiresSpecific: true,
+        quantity: '2',
+        unit: 'oz',
+        displayOrder: 0,
+      })
+      .run()
+
+    const app = buildTestApp()
+
+    const res = await app.inject({ method: 'DELETE', url: `/api/ingredients/${ingredientId}` })
+    expect(res.statusCode).toBe(204)
+
+    const [line] = testDb.db
+      .select()
+      .from(recipeIngredients)
+      .where(eq(recipeIngredients.id, recipeIngredientId))
+      .all()
+    expect(line?.ingredientId).toBeNull()
   })
 })
