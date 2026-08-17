@@ -235,4 +235,40 @@ export const ingredientsRoutes: FastifyPluginAsync<IngredientsRoutesOptions> = a
       return reply.status(200).send(updated)
     },
   )
+
+  // DELETE /api/ingredients/:id — remove a bottle from inventory. No
+  // reference-count guard is added here (unlike categories/glassware):
+  // recipeIngredients.ingredientId is onDelete: 'set null' (schema.ts:75),
+  // so a recipe line locked to this ingredient degrades gracefully to
+  // category-only matching rather than blocking the delete.
+  app.withTypeProvider<ZodTypeProvider>().delete(
+    '/:id',
+    {
+      schema: {
+        params: z.object({ id: z.string().uuid() }),
+        response: {
+          204: z.void(),
+          404: z.object({ error: z.string() }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params
+
+      const [existing] = db.select({ id: ingredients.id }).from(ingredients).where(eq(ingredients.id, id)).all()
+      // Repeated DELETE on an already-gone id must 404, never a
+      // false-success 204.
+      if (!existing) {
+        return reply.status(404).send({ error: 'Ingredient not found' })
+      }
+
+      db.delete(ingredients).where(eq(ingredients.id, id)).run()
+
+      // SYNC-01: same optional-chaining requirement as above — a no-op
+      // when no hub is registered (bare-Fastify test apps).
+      app.io?.emit('inventory:changed')
+
+      return reply.status(204).send()
+    },
+  )
 }
