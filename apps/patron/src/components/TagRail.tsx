@@ -47,11 +47,12 @@ export function TagRail({ recipes, selectedTagId, onSelectTag }: TagRailProps) {
   const [expandedGroupId, setExpandedGroupId] = useState<string | undefined>(undefined)
 
   return (
-    // 260813-ea3 neon-glow restyle: glowing rounded-full pill rail
-    // (self-start prevents flex-stretch from RecipeBrowse's row); D-36/D-37
-    // selection logic below is completely unchanged, only the container
-    // classes changed.
-    <div className="flex flex-col items-center gap-lg w-20 shrink-0 self-start py-lg rounded-full glow-orange bg-patron-bg/50">
+    // 260813-ea3 neon-glow restyle: glowing rounded-full pill rail; stretches
+    // to the full height of RecipeBrowse's min-h-dvh row (default flex
+    // align-items: stretch) so it fills the left side of the screen, while
+    // the icon buttons stay top-anchored via flex-col's default
+    // justify-start. D-36/D-37 selection logic below is unchanged.
+    <div className="flex flex-col items-center gap-lg w-20 shrink-0 py-lg rounded-full glow-orange bg-patron-bg/50">
       {TAG_GROUP_META.map((group) => {
         const groupTags = Array.from(
           recipes
