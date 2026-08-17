@@ -58,6 +58,18 @@
     0 0 12px rgba(239, 68, 68, 0.5);
 }
 
+/* 260817: bright glowing divider between Patron recipe list rows, replacing
+   the dim divide-y border — rendered as an explicit element (not a CSS
+   border) since box-shadow glow can't be applied to a single border edge. */
+.glow-divider {
+  height: 2px;
+  background: rgba(255, 107, 53, 0.9);
+  box-shadow:
+    0 0 4px rgba(255, 107, 53, 0.85),
+    0 0 12px rgba(255, 107, 53, 0.5),
+    0 0 24px rgba(255, 107, 53, 0.25);
+}
+
 html,
 body,
 #root {

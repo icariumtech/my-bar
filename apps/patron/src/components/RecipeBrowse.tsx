@@ -71,9 +71,12 @@ export function RecipeBrowse() {
             </p>
           </div>
         ) : (
-          <div className="flex flex-col divide-y divide-white/10">
-            {filteredRecipes.map((recipe) => (
-              <RecipeCard key={recipe.id} recipe={recipe} onSelect={(recipe) => setViewingId(recipe.id)} />
+          <div className="flex flex-col">
+            {filteredRecipes.map((recipe, index) => (
+              <div key={recipe.id}>
+                {index > 0 && <div className="glow-divider" />}
+                <RecipeCard recipe={recipe} onSelect={(recipe) => setViewingId(recipe.id)} />
+              </div>
             ))}
           </div>
         )}
