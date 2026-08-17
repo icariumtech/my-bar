@@ -5,10 +5,10 @@ milestone_name: milestone
 current_phase: 4
 current_phase_name: Bartender Console & Order Workflow
 status: planning
-stopped_at: "Completed quick task 260817-k8o: Fix IngredientPicker.tsx search-as-you-type filtering"
-last_updated: "2026-08-17T19:38:40.061Z"
+stopped_at: "Completed quick task 260817-l46: Add inline create-new-category option to IngredientPicker"
+last_updated: "2026-08-17T20:35:00.000Z"
 last_activity: 2026-08-17
-last_activity_desc: "Completed quick task 260817-fkv: Convert Patron browse grid to continuous list layout matching reference screenshots"
+last_activity_desc: "Completed quick task 260817-l46: Add inline create-new-category option to IngredientPicker"
 progress:
   total_phases: 4
   completed_phases: 4
@@ -126,6 +126,7 @@ None yet.
 | 260817-hpy | Convert Patron tag submenus and settings to flyout popovers with persistent selection highlight | 2026-08-17 | d2a1c52 | [260817-hpy-convert-patron-tag-submenus-and-settings](./quick/260817-hpy-convert-patron-tag-submenus-and-settings/) |
 | 18 | Close tag flyout on selection; remove settings button label and flyout heading | 2026-08-17 | 7c7c1f6 | — |
 | 19 | Fix IngredientPicker.tsx: filter categoryOptions/ingredientOptions by typed search text (recipe ingredient combobox now search-as-you-type like CategoryPicker/GlasswarePicker) | 2026-08-17 | 80c0fa2 | — |
+| 260817-l46 | Add inline "+ Add new category" option to IngredientPicker's top-level recipe ingredient-line search, alongside the existing create-new-ingredient option | 2026-08-17 | 26d4a1e | [260817-l46-add-inline-create-new-category-option-to](./quick/260817-l46-add-inline-create-new-category-option-to/) |
 
 ### Roadmap Evolution
 
@@ -141,6 +142,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-17T19:38:40.049Z
-Stopped at: Completed quick task 260817-k8o: Fix IngredientPicker.tsx search-as-you-type filtering
+Last session: 2026-08-17T20:35:00.000Z
+Stopped at: Completed quick task 260817-l46: Add inline create-new-category option to IngredientPicker
 Resume file: None
