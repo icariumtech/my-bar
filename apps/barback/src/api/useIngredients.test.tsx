@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
-import { useToggleStock, useUpdateIngredient } from './useIngredients.js'
+import { DeleteIngredientError, useDeleteIngredient, useToggleStock, useUpdateIngredient } from './useIngredients.js'
 
 // G-02-9 regression guard: useToggleStock's onSettled invalidated only
 // ['ingredients'], never ['recipes'] — so the recipes list/detail's
@@ -74,6 +74,42 @@ describe('useIngredients cross-entity invalidation (G-02-9)', () => {
     const keys = invalidatedQueryKeys(invalidateSpy)
     expect(keys).toContainEqual(['ingredients'])
     expect(keys).toContainEqual(['categories'])
+    expect(keys).toContainEqual(['recipes'])
+  })
+
+  it("useDeleteIngredient invalidates both ['ingredients'] and ['recipes'] on settle (success)", async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ status: 204 }))
+    const { result, invalidateSpy } = renderWithClient(() => useDeleteIngredient())
+
+    result.current.mutate('i1')
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+    const keys = invalidatedQueryKeys(invalidateSpy)
+    expect(keys).toContainEqual(['ingredients'])
+    expect(keys).toContainEqual(['recipes'])
+  })
+
+  it('useDeleteIngredient throws a DeleteIngredientError carrying the server message on non-204, and still invalidates on settle', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        status: 409,
+        statusText: 'Conflict',
+        json: async () => ({ error: 'Ingredient not found' }),
+      }),
+    )
+    const { result, invalidateSpy } = renderWithClient(() => useDeleteIngredient())
+
+    result.current.mutate('i1')
+
+    await waitFor(() => expect(result.current.isError).toBe(true))
+
+    expect(result.current.error).toBeInstanceOf(DeleteIngredientError)
+    expect(result.current.error?.message).toBe('Ingredient not found')
+
+    const keys = invalidatedQueryKeys(invalidateSpy)
+    expect(keys).toContainEqual(['ingredients'])
     expect(keys).toContainEqual(['recipes'])
   })
 })
