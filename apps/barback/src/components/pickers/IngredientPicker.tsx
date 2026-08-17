@@ -84,14 +84,18 @@ export function IngredientPicker({ value, onChange }: IngredientPickerProps) {
   // under separate headings, and an ingredient's label includes its
   // category name, so the owner cannot mistake selecting a category for
   // selecting a specific bottle.
-  const categoryOptions = (categories ?? []).map((c) => ({
-    value: `${CATEGORY_PREFIX}${c.id}`,
-    label: c.name,
-  }))
-  const ingredientOptions = (ingredients ?? []).map((i) => ({
-    value: `${INGREDIENT_PREFIX}${i.id}`,
-    label: `${i.name} (${i.categoryName})`,
-  }))
+  const categoryOptions = (categories ?? [])
+    .filter((c) => c.name.toLowerCase().includes(trimmed.toLowerCase()))
+    .map((c) => ({
+      value: `${CATEGORY_PREFIX}${c.id}`,
+      label: c.name,
+    }))
+  const ingredientOptions = (ingredients ?? [])
+    .filter((i) => i.name.toLowerCase().includes(trimmed.toLowerCase()))
+    .map((i) => ({
+      value: `${INGREDIENT_PREFIX}${i.id}`,
+      label: `${i.name} (${i.categoryName})`,
+    }))
 
   const options: { label: string; options: { value: string; label: string }[] }[] = [
     { label: 'Categories', options: categoryOptions },
