@@ -10,6 +10,12 @@ interface TagSubmenuProps {
 // already-selected tag clears the filter) lives in the PARENT (TagRail),
 // which wraps onSelectTag before passing it down. This component only
 // ever calls onSelectTag(tag.id), nothing else.
+//
+// 260817-hpy: rendered inside an absolutely-positioned flyout wrapper owned
+// by TagRail (anchored beside the trigger button, not inline-pushed below
+// it) — positioning/card-chrome is TagRail's responsibility entirely.
+// TagSubmenu itself remains a dumb, unpositioned list renderer; its own
+// wrapper div and all button/selection logic below are unchanged.
 export function TagSubmenu({ tags, selectedTagId, onSelectTag }: TagSubmenuProps) {
   return (
     <div className="flex flex-col gap-xs w-full">

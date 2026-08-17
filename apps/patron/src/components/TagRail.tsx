@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Martini, Sparkles, Leaf, Flame, Eye, EyeOff } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Martini, Sparkles, Leaf, Flame, Settings } from 'lucide-react'
 import type { Recipe, Tag } from '@my-bar/shared'
 import { TagSubmenu } from './TagSubmenu.js'
 
@@ -63,9 +63,42 @@ export function TagRail({
   onToggleAvailableOnly,
 }: TagRailProps) {
   const activeTagIds = useMemo(() => getActiveTagIds(recipes), [recipes])
-  // Only one group's submenu open at a time — ordinary accordion
-  // behavior, not part of D-37's tag-selection rule.
-  const [expandedGroupId, setExpandedGroupId] = useState<string | undefined>(undefined)
+  // openFlyoutId is the single source of truth for which flyout (any tag
+  // group's id, or the literal 'settings') is currently open — mutual
+  // exclusivity across every control on the rail (all 4 groups + Settings)
+  // falls out naturally from using one shared variable rather than one
+  // boolean per control; there's no separate "close the others" logic
+  // anywhere in this component.
+  const [openFlyoutId, setOpenFlyoutId] = useState<string | undefined>(undefined)
+  const railRef = useRef<HTMLDivElement>(null)
+
+  // Generic outside-click/Escape close: works for ANY open flyout (a tag
+  // group's or Settings') since it only checks "is the click inside the
+  // whole rail" — never needs to know which flyout is open. Listeners are
+  // only attached while something is open and removed on close/unmount.
+  useEffect(() => {
+    if (openFlyoutId === undefined) return
+
+    function handlePointerDown(event: MouseEvent) {
+      if (railRef.current && !railRef.current.contains(event.target as Node)) {
+        setOpenFlyoutId(undefined)
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setOpenFlyoutId(undefined)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [openFlyoutId])
 
   return (
     // 260813-ea3 neon-glow restyle: glowing rounded-full pill rail; stretches
@@ -73,7 +106,10 @@ export function TagRail({
     // align-items: stretch) so it fills the left side of the screen, while
     // the icon buttons stay top-anchored via flex-col's default
     // justify-start. D-36/D-37 selection logic below is unchanged.
-    <div className="flex flex-col items-center gap-lg w-20 shrink-0 py-lg rounded-full glow-orange bg-patron-bg/50">
+    <div
+      ref={railRef}
+      className="flex flex-col items-center gap-lg w-20 shrink-0 py-lg rounded-full glow-orange bg-patron-bg/50"
+    >
       <div className="flex flex-col items-center gap-lg w-full">
         {TAG_GROUP_META.map((group) => {
           const groupTags = Array.from(
@@ -85,29 +121,36 @@ export function TagRail({
           )
 
           // D-36: zero active tags -> muted, non-interactive icon, no
-          // expand state, never reveals an empty-result TagSubmenu.
+          // flyout, never reveals an empty-result TagSubmenu.
           const isActive = groupTags.length > 0
-          const isExpanded = isActive && expandedGroupId === group.id
+          const isFlyoutOpen = isActive && openFlyoutId === group.id
+          // Selection highlight persists independent of flyout open/closed
+          // state — it only depends on whether selectedTagId belongs to
+          // this group's own tags.
+          const groupHasSelection =
+            selectedTagId !== undefined && groupTags.some((t) => t.id === selectedTagId)
+          const isSelectedState = isActive && (isFlyoutOpen || groupHasSelection)
 
           return (
-            <div key={group.id} className="flex flex-col items-center gap-sm w-full">
+            <div key={group.id} className="relative flex flex-col items-center gap-sm w-full">
               <button
                 type="button"
                 aria-label={group.label}
+                aria-pressed={isSelectedState}
                 onClick={
                   isActive
-                    ? () => setExpandedGroupId(isExpanded ? undefined : group.id)
+                    ? () => setOpenFlyoutId(isFlyoutOpen ? undefined : group.id)
                     : undefined
                 }
                 // 260813-ea3 neon-glow restyle: three explicit visual states
                 // (muted / subtle-outlined / filled-selected) layered on the
-                // unchanged isActive/isExpanded booleans above — D-36's
+                // unchanged isActive/isSelectedState booleans above — D-36's
                 // opacity-40 class is preserved verbatim for
                 // TagRail.test.tsx line 91.
                 className={`flex flex-col items-center justify-center gap-xs w-14 h-14 rounded-xl transition-colors ${
                   !isActive
                     ? 'opacity-40 cursor-default text-patron-text-secondary'
-                    : isExpanded
+                    : isSelectedState
                       ? 'glow-orange bg-patron-accent/20 text-patron-accent cursor-pointer'
                       : 'glow-orange-subtle text-patron-accent cursor-pointer'
                 }`}
@@ -115,47 +158,61 @@ export function TagRail({
                 <group.Icon size={22} aria-hidden="true" />
                 <span className="text-[10px] uppercase tracking-wide">{group.label}</span>
               </button>
-              {isExpanded && (
-                <TagSubmenu
-                  tags={groupTags}
-                  selectedTagId={selectedTagId}
-                  // Toggle-to-clear: re-tapping the already-selected tag
-                  // clears the filter (onSelectTag(undefined)); tapping any
-                  // other tag replaces it (D-37, never combined).
-                  onSelectTag={(tagId) =>
-                    onSelectTag(tagId === selectedTagId ? undefined : tagId)
-                  }
-                />
+              {isFlyoutOpen && (
+                <div className="absolute left-full top-0 ml-sm z-50 min-w-[160px] rounded-2xl bg-patron-surface/95 backdrop-blur-sm glow-orange p-sm">
+                  <TagSubmenu
+                    tags={groupTags}
+                    selectedTagId={selectedTagId}
+                    // Toggle-to-clear: re-tapping the already-selected tag
+                    // clears the filter (onSelectTag(undefined)); tapping
+                    // any other tag replaces it (D-37, never combined).
+                    onSelectTag={(tagId) =>
+                      onSelectTag(tagId === selectedTagId ? undefined : tagId)
+                    }
+                  />
+                </div>
               )}
             </div>
           )
         })}
       </div>
 
-      {/* 260817-g39: bottom-pinned availability toggle — mt-auto pushes it
-          to the bottom of this full-height rail. Defaults to
-          showAvailableOnly=true (RecipeBrowse's initial state), combining
-          with the tag filter above via AND, never OR. */}
-      <button
-        type="button"
-        aria-label="Availability filter"
-        aria-pressed={showAvailableOnly}
-        onClick={onToggleAvailableOnly}
-        className={`flex flex-col items-center justify-center gap-xs w-14 h-14 rounded-xl mt-auto transition-colors ${
-          showAvailableOnly
-            ? 'glow-orange bg-patron-accent/20 text-patron-accent'
-            : 'glow-orange-subtle text-patron-accent'
-        }`}
-      >
-        {showAvailableOnly ? (
-          <EyeOff size={22} aria-hidden="true" />
-        ) : (
-          <Eye size={22} aria-hidden="true" />
+      {/* 260817-hpy: bottom-pinned Settings gear — mt-auto pushes it to the
+          bottom of this full-height rail, same footprint the removed
+          Eye/EyeOff availability toggle occupied. Opens a flyout containing
+          the "Show all recipes" checkbox (Task 2), sharing the same
+          openFlyoutId mechanism as the tag groups above. */}
+      <div className="relative flex flex-col items-center gap-sm w-full mt-auto">
+        <button
+          type="button"
+          aria-label="Settings"
+          aria-pressed={openFlyoutId === 'settings'}
+          onClick={() => setOpenFlyoutId(openFlyoutId === 'settings' ? undefined : 'settings')}
+          className={`flex flex-col items-center justify-center gap-xs w-14 h-14 rounded-xl transition-colors ${
+            openFlyoutId === 'settings'
+              ? 'glow-orange bg-patron-accent/20 text-patron-accent'
+              : 'glow-orange-subtle text-patron-accent'
+          }`}
+        >
+          <Settings size={22} aria-hidden="true" />
+          <span className="text-[10px] uppercase tracking-wide">SETTINGS</span>
+        </button>
+        {openFlyoutId === 'settings' && (
+          <div className="absolute left-full bottom-0 ml-sm z-50 min-w-[200px] rounded-2xl bg-patron-surface/95 backdrop-blur-sm glow-orange p-md flex flex-col gap-sm">
+            <h2 className="text-white text-sm">Settings</h2>
+            <label className="flex items-center gap-sm cursor-pointer text-sm text-patron-text-secondary">
+              <input
+                type="checkbox"
+                aria-label="Show all recipes"
+                checked={!showAvailableOnly}
+                onChange={onToggleAvailableOnly}
+                className="w-5 h-5 rounded accent-patron-accent"
+              />
+              Show all recipes
+            </label>
+          </div>
         )}
-        <span className="text-[10px] uppercase tracking-wide">
-          {showAvailableOnly ? 'AVAILABLE' : 'ALL'}
-        </span>
-      </button>
+      </div>
     </div>
   )
 }

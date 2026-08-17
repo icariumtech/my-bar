@@ -147,7 +147,8 @@ describe('RecipeBrowse', () => {
     expect(await screen.findByText('Old Fashioned')).toBeInTheDocument()
     expect(screen.queryByText('Daiquiri')).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Availability filter' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    fireEvent.click(screen.getByLabelText('Show all recipes'))
 
     expect(screen.getByText('Old Fashioned')).toBeInTheDocument()
     expect(screen.getByText('Daiquiri')).toBeInTheDocument()
@@ -160,7 +161,8 @@ describe('RecipeBrowse', () => {
 
     expect(await screen.findByText('Old Fashioned')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Availability filter' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    fireEvent.click(screen.getByLabelText('Show all recipes'))
     expect(screen.getByText('Daiquiri')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Spirit' }))

@@ -177,8 +177,8 @@ describe('TagRail', () => {
     expect(onSelectTag).toHaveBeenCalledWith(SWEET.id)
   })
 
-  describe('availability toggle', () => {
-    it('renders aria-pressed="true" and the "AVAILABLE" label when showAvailableOnly is true', () => {
+  describe('flyout mechanics', () => {
+    it('clicking a different group button closes the first flyout and opens the second', () => {
       render(
         <TagRail
           recipes={fixtureRecipes}
@@ -189,12 +189,177 @@ describe('TagRail', () => {
         />,
       )
 
-      const toggle = screen.getByRole('button', { name: 'Availability filter' })
-      expect(toggle).toHaveAttribute('aria-pressed', 'true')
-      expect(screen.getByText('AVAILABLE')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Spirit' }))
+      expect(screen.getByText('Whiskey')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Flavor' }))
+      expect(screen.queryByText('Whiskey')).not.toBeInTheDocument()
+      expect(screen.getByText('Sweet')).toBeInTheDocument()
     })
 
-    it('renders aria-pressed="false" and the "ALL" label when showAvailableOnly is false', () => {
+    it('clicking the same group button twice closes its own flyout (toggle-to-close)', () => {
+      render(
+        <TagRail
+          recipes={fixtureRecipes}
+          selectedTagId={undefined}
+          onSelectTag={vi.fn()}
+          showAvailableOnly={true}
+          onToggleAvailableOnly={vi.fn()}
+        />,
+      )
+
+      const spiritButton = screen.getByRole('button', { name: 'Spirit' })
+      fireEvent.click(spiritButton)
+      expect(screen.getByText('Whiskey')).toBeInTheDocument()
+
+      fireEvent.click(spiritButton)
+      expect(screen.queryByText('Whiskey')).not.toBeInTheDocument()
+    })
+
+    it('mousedown outside the rail closes the open flyout', () => {
+      render(
+        <TagRail
+          recipes={fixtureRecipes}
+          selectedTagId={undefined}
+          onSelectTag={vi.fn()}
+          showAvailableOnly={true}
+          onToggleAvailableOnly={vi.fn()}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'Spirit' }))
+      expect(screen.getByText('Whiskey')).toBeInTheDocument()
+
+      fireEvent.mouseDown(document.body)
+      expect(screen.queryByText('Whiskey')).not.toBeInTheDocument()
+    })
+
+    it('Escape keydown closes the open flyout', () => {
+      render(
+        <TagRail
+          recipes={fixtureRecipes}
+          selectedTagId={undefined}
+          onSelectTag={vi.fn()}
+          showAvailableOnly={true}
+          onToggleAvailableOnly={vi.fn()}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'Spirit' }))
+      expect(screen.getByText('Whiskey')).toBeInTheDocument()
+
+      fireEvent.keyDown(document, { key: 'Escape' })
+      expect(screen.queryByText('Whiskey')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('persistent selection highlight', () => {
+    it('shows aria-pressed="true" on the owning group button with no flyout opened at all', () => {
+      render(
+        <TagRail
+          recipes={fixtureRecipes}
+          selectedTagId={WHISKEY.id}
+          onSelectTag={vi.fn()}
+          showAvailableOnly={true}
+          onToggleAvailableOnly={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: 'Spirit' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+    })
+
+    it('keeps aria-pressed="true" on the owning group button after opening a different group flyout', () => {
+      render(
+        <TagRail
+          recipes={fixtureRecipes}
+          selectedTagId={WHISKEY.id}
+          onSelectTag={vi.fn()}
+          showAvailableOnly={true}
+          onToggleAvailableOnly={vi.fn()}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'Flavor' }))
+
+      expect(screen.getByRole('button', { name: 'Spirit' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+    })
+
+    it('shows aria-pressed="false" on every active group button when selectedTagId is undefined', () => {
+      render(
+        <TagRail
+          recipes={fixtureRecipes}
+          selectedTagId={undefined}
+          onSelectTag={vi.fn()}
+          showAvailableOnly={true}
+          onToggleAvailableOnly={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: 'Spirit' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
+      expect(screen.getByRole('button', { name: 'Flavor' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
+    })
+  })
+
+  describe('settings flyout', () => {
+    it('renders a gear button labeled "Settings" and shows no flyout content before clicking', () => {
+      render(
+        <TagRail
+          recipes={fixtureRecipes}
+          selectedTagId={undefined}
+          onSelectTag={vi.fn()}
+          showAvailableOnly={true}
+          onToggleAvailableOnly={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument()
+      expect(screen.queryByText('Settings', { selector: 'h2' })).not.toBeInTheDocument()
+      expect(screen.queryByLabelText('Show all recipes')).not.toBeInTheDocument()
+    })
+
+    it('opens a flyout with a heading and checkbox when the gear button is clicked', () => {
+      render(
+        <TagRail
+          recipes={fixtureRecipes}
+          selectedTagId={undefined}
+          onSelectTag={vi.fn()}
+          showAvailableOnly={true}
+          onToggleAvailableOnly={vi.fn()}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+
+      expect(screen.getByText('Settings', { selector: 'h2' })).toBeInTheDocument()
+      expect(screen.getByLabelText('Show all recipes')).toBeInTheDocument()
+    })
+
+    it('checkbox is unchecked when showAvailableOnly is true and checked when showAvailableOnly is false', () => {
+      const { unmount } = render(
+        <TagRail
+          recipes={fixtureRecipes}
+          selectedTagId={undefined}
+          onSelectTag={vi.fn()}
+          showAvailableOnly={true}
+          onToggleAvailableOnly={vi.fn()}
+        />,
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+      expect(screen.getByLabelText('Show all recipes')).not.toBeChecked()
+      unmount()
+
       render(
         <TagRail
           recipes={fixtureRecipes}
@@ -204,13 +369,11 @@ describe('TagRail', () => {
           onToggleAvailableOnly={vi.fn()}
         />,
       )
-
-      const toggle = screen.getByRole('button', { name: 'Availability filter' })
-      expect(toggle).toHaveAttribute('aria-pressed', 'false')
-      expect(screen.getByText('ALL')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+      expect(screen.getByLabelText('Show all recipes')).toBeChecked()
     })
 
-    it('calls onToggleAvailableOnly exactly once when tapped', () => {
+    it('calls onToggleAvailableOnly exactly once when the checkbox is clicked, and keeps the flyout open', () => {
       const onToggleAvailableOnly = vi.fn()
       render(
         <TagRail
@@ -222,9 +385,53 @@ describe('TagRail', () => {
         />,
       )
 
-      fireEvent.click(screen.getByRole('button', { name: 'Availability filter' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+      fireEvent.click(screen.getByLabelText('Show all recipes'))
 
       expect(onToggleAvailableOnly).toHaveBeenCalledTimes(1)
+      expect(screen.getByText('Settings', { selector: 'h2' })).toBeInTheDocument()
+    })
+
+    it('opening a tag-group flyout while Settings is open closes Settings, and vice versa', () => {
+      render(
+        <TagRail
+          recipes={fixtureRecipes}
+          selectedTagId={undefined}
+          onSelectTag={vi.fn()}
+          showAvailableOnly={true}
+          onToggleAvailableOnly={vi.fn()}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'Spirit' }))
+      expect(screen.getByText('Whiskey')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+      expect(screen.queryByText('Whiskey')).not.toBeInTheDocument()
+      expect(screen.getByText('Settings', { selector: 'h2' })).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Spirit' }))
+      expect(screen.getByText('Whiskey')).toBeInTheDocument()
+      expect(screen.queryByText('Settings', { selector: 'h2' })).not.toBeInTheDocument()
+    })
+
+    it('clicking the gear button twice closes its own flyout (toggle-to-close)', () => {
+      render(
+        <TagRail
+          recipes={fixtureRecipes}
+          selectedTagId={undefined}
+          onSelectTag={vi.fn()}
+          showAvailableOnly={true}
+          onToggleAvailableOnly={vi.fn()}
+        />,
+      )
+
+      const settingsButton = screen.getByRole('button', { name: 'Settings' })
+      fireEvent.click(settingsButton)
+      expect(screen.getByText('Settings', { selector: 'h2' })).toBeInTheDocument()
+
+      fireEvent.click(settingsButton)
+      expect(screen.queryByText('Settings', { selector: 'h2' })).not.toBeInTheDocument()
     })
   })
 })
