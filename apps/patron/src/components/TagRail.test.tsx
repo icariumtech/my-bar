@@ -177,6 +177,141 @@ describe('TagRail', () => {
     expect(onSelectTag).toHaveBeenCalledWith(SWEET.id)
   })
 
+  describe('flyout mechanics', () => {
+    it('clicking a different group button closes the first flyout and opens the second', () => {
+      render(
+        <TagRail
+          recipes={fixtureRecipes}
+          selectedTagId={undefined}
+          onSelectTag={vi.fn()}
+          showAvailableOnly={true}
+          onToggleAvailableOnly={vi.fn()}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'Spirit' }))
+      expect(screen.getByText('Whiskey')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Flavor' }))
+      expect(screen.queryByText('Whiskey')).not.toBeInTheDocument()
+      expect(screen.getByText('Sweet')).toBeInTheDocument()
+    })
+
+    it('clicking the same group button twice closes its own flyout (toggle-to-close)', () => {
+      render(
+        <TagRail
+          recipes={fixtureRecipes}
+          selectedTagId={undefined}
+          onSelectTag={vi.fn()}
+          showAvailableOnly={true}
+          onToggleAvailableOnly={vi.fn()}
+        />,
+      )
+
+      const spiritButton = screen.getByRole('button', { name: 'Spirit' })
+      fireEvent.click(spiritButton)
+      expect(screen.getByText('Whiskey')).toBeInTheDocument()
+
+      fireEvent.click(spiritButton)
+      expect(screen.queryByText('Whiskey')).not.toBeInTheDocument()
+    })
+
+    it('mousedown outside the rail closes the open flyout', () => {
+      render(
+        <TagRail
+          recipes={fixtureRecipes}
+          selectedTagId={undefined}
+          onSelectTag={vi.fn()}
+          showAvailableOnly={true}
+          onToggleAvailableOnly={vi.fn()}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'Spirit' }))
+      expect(screen.getByText('Whiskey')).toBeInTheDocument()
+
+      fireEvent.mouseDown(document.body)
+      expect(screen.queryByText('Whiskey')).not.toBeInTheDocument()
+    })
+
+    it('Escape keydown closes the open flyout', () => {
+      render(
+        <TagRail
+          recipes={fixtureRecipes}
+          selectedTagId={undefined}
+          onSelectTag={vi.fn()}
+          showAvailableOnly={true}
+          onToggleAvailableOnly={vi.fn()}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'Spirit' }))
+      expect(screen.getByText('Whiskey')).toBeInTheDocument()
+
+      fireEvent.keyDown(document, { key: 'Escape' })
+      expect(screen.queryByText('Whiskey')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('persistent selection highlight', () => {
+    it('shows aria-pressed="true" on the owning group button with no flyout opened at all', () => {
+      render(
+        <TagRail
+          recipes={fixtureRecipes}
+          selectedTagId={WHISKEY.id}
+          onSelectTag={vi.fn()}
+          showAvailableOnly={true}
+          onToggleAvailableOnly={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: 'Spirit' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+    })
+
+    it('keeps aria-pressed="true" on the owning group button after opening a different group flyout', () => {
+      render(
+        <TagRail
+          recipes={fixtureRecipes}
+          selectedTagId={WHISKEY.id}
+          onSelectTag={vi.fn()}
+          showAvailableOnly={true}
+          onToggleAvailableOnly={vi.fn()}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'Flavor' }))
+
+      expect(screen.getByRole('button', { name: 'Spirit' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      )
+    })
+
+    it('shows aria-pressed="false" on every active group button when selectedTagId is undefined', () => {
+      render(
+        <TagRail
+          recipes={fixtureRecipes}
+          selectedTagId={undefined}
+          onSelectTag={vi.fn()}
+          showAvailableOnly={true}
+          onToggleAvailableOnly={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: 'Spirit' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
+      expect(screen.getByRole('button', { name: 'Flavor' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
+    })
+  })
+
   describe('availability toggle', () => {
     it('renders aria-pressed="true" and the "AVAILABLE" label when showAvailableOnly is true', () => {
       render(
