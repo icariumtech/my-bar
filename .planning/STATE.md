@@ -6,7 +6,7 @@ current_phase: 4
 current_phase_name: Bartender Console & Order Workflow
 status: planning
 stopped_at: Phase 3 UI-SPEC approved
-last_updated: "2026-08-17T16:31:15.555Z"
+last_updated: "2026-08-17T18:20:37.408Z"
 last_activity: 2026-08-17
 last_activity_desc: "Completed quick task 260817-fkv: Convert Patron browse grid to continuous list layout matching reference screenshots"
 progress:
@@ -123,6 +123,7 @@ None yet.
 | 15 | Remove Patron name-row divider line; fade row divider at left/right edges | 2026-08-17 | 9936c37 | — |
 | 260817-g39 | Remove makeable badge and add availability toggle to Patron rail | 2026-08-17 | bab1d3a | [260817-g39-remove-available-not-available-badge-eve](./quick/260817-g39-remove-available-not-available-badge-eve/) |
 | 260817-hpy | Convert Patron tag submenus and settings to flyout popovers with persistent selection highlight | 2026-08-17 | d2a1c52 | [260817-hpy-convert-patron-tag-submenus-and-settings](./quick/260817-hpy-convert-patron-tag-submenus-and-settings/) |
+| 18 | Close tag flyout on selection; remove settings button label and flyout heading | 2026-08-17 | 7c7c1f6 | — |
 
 ### Roadmap Evolution
 
