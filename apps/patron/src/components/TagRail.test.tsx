@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import type { Recipe, Tag } from '@my-bar/shared'
-import { TagRail, getActiveTagIds, filterRecipesByTag } from './TagRail.js'
+import { TagRail, getActiveTagIds, filterRecipesByTag, filterRecipesByAvailability } from './TagRail.js'
 
 // D-33/D-34: fixed 4-group taxonomy. WHISKEY sits in 'spirit', SWEET in
 // 'flavor' — the fixtures below deliberately never populate 'type' or
@@ -78,6 +78,22 @@ describe('filterRecipesByTag', () => {
   })
 })
 
+describe('filterRecipesByAvailability', () => {
+  const recipes = [
+    recipe({ id: 'r1', overallStatus: 'green' }),
+    recipe({ id: 'r2', overallStatus: 'yellow' }),
+    recipe({ id: 'r3', overallStatus: 'red' }),
+  ]
+
+  it('returns all recipes unchanged (same array reference) when showAvailableOnly is false', () => {
+    expect(filterRecipesByAvailability(recipes, false)).toBe(recipes)
+  })
+
+  it('returns only overallStatus "green" recipes when showAvailableOnly is true', () => {
+    expect(filterRecipesByAvailability(recipes, true)).toEqual([recipes[0]])
+  })
+})
+
 describe('TagRail', () => {
   const fixtureRecipes = [
     recipe({ id: 'r1', tags: [WHISKEY] }),
@@ -85,7 +101,15 @@ describe('TagRail', () => {
   ]
 
   it('renders an inactive group (zero active tags) muted, and tapping it never reveals a TagSubmenu (D-36)', () => {
-    render(<TagRail recipes={fixtureRecipes} selectedTagId={undefined} onSelectTag={vi.fn()} />)
+    render(
+      <TagRail
+        recipes={fixtureRecipes}
+        selectedTagId={undefined}
+        onSelectTag={vi.fn()}
+        showAvailableOnly={true}
+        onToggleAvailableOnly={vi.fn()}
+      />,
+    )
 
     const typeButton = screen.getByRole('button', { name: 'Type' })
     expect(typeButton).toHaveClass('opacity-40')
@@ -98,7 +122,15 @@ describe('TagRail', () => {
 
   it('calls onSelectTag(tagId) exactly once when tapping an active tag inside an expanded submenu', () => {
     const onSelectTag = vi.fn()
-    render(<TagRail recipes={fixtureRecipes} selectedTagId={undefined} onSelectTag={onSelectTag} />)
+    render(
+      <TagRail
+        recipes={fixtureRecipes}
+        selectedTagId={undefined}
+        onSelectTag={onSelectTag}
+        showAvailableOnly={true}
+        onToggleAvailableOnly={vi.fn()}
+      />,
+    )
 
     fireEvent.click(screen.getByRole('button', { name: 'Spirit' }))
     fireEvent.click(screen.getByText('Whiskey'))
@@ -110,7 +142,13 @@ describe('TagRail', () => {
   it('calls onSelectTag(undefined) when re-tapping the already-selected tag (clear, distinct from D-37 replace)', () => {
     const onSelectTag = vi.fn()
     render(
-      <TagRail recipes={fixtureRecipes} selectedTagId={WHISKEY.id} onSelectTag={onSelectTag} />,
+      <TagRail
+        recipes={fixtureRecipes}
+        selectedTagId={WHISKEY.id}
+        onSelectTag={onSelectTag}
+        showAvailableOnly={true}
+        onToggleAvailableOnly={vi.fn()}
+      />,
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Spirit' }))
@@ -123,7 +161,13 @@ describe('TagRail', () => {
   it('calls onSelectTag(newTagId) when tapping a different tag while one is already selected (D-37 replace, never combine)', () => {
     const onSelectTag = vi.fn()
     render(
-      <TagRail recipes={fixtureRecipes} selectedTagId={WHISKEY.id} onSelectTag={onSelectTag} />,
+      <TagRail
+        recipes={fixtureRecipes}
+        selectedTagId={WHISKEY.id}
+        onSelectTag={onSelectTag}
+        showAvailableOnly={true}
+        onToggleAvailableOnly={vi.fn()}
+      />,
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Flavor' }))
@@ -131,5 +175,56 @@ describe('TagRail', () => {
 
     expect(onSelectTag).toHaveBeenCalledTimes(1)
     expect(onSelectTag).toHaveBeenCalledWith(SWEET.id)
+  })
+
+  describe('availability toggle', () => {
+    it('renders aria-pressed="true" and the "AVAILABLE" label when showAvailableOnly is true', () => {
+      render(
+        <TagRail
+          recipes={fixtureRecipes}
+          selectedTagId={undefined}
+          onSelectTag={vi.fn()}
+          showAvailableOnly={true}
+          onToggleAvailableOnly={vi.fn()}
+        />,
+      )
+
+      const toggle = screen.getByRole('button', { name: 'Availability filter' })
+      expect(toggle).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.getByText('AVAILABLE')).toBeInTheDocument()
+    })
+
+    it('renders aria-pressed="false" and the "ALL" label when showAvailableOnly is false', () => {
+      render(
+        <TagRail
+          recipes={fixtureRecipes}
+          selectedTagId={undefined}
+          onSelectTag={vi.fn()}
+          showAvailableOnly={false}
+          onToggleAvailableOnly={vi.fn()}
+        />,
+      )
+
+      const toggle = screen.getByRole('button', { name: 'Availability filter' })
+      expect(toggle).toHaveAttribute('aria-pressed', 'false')
+      expect(screen.getByText('ALL')).toBeInTheDocument()
+    })
+
+    it('calls onToggleAvailableOnly exactly once when tapped', () => {
+      const onToggleAvailableOnly = vi.fn()
+      render(
+        <TagRail
+          recipes={fixtureRecipes}
+          selectedTagId={undefined}
+          onSelectTag={vi.fn()}
+          showAvailableOnly={true}
+          onToggleAvailableOnly={onToggleAvailableOnly}
+        />,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'Availability filter' }))
+
+      expect(onToggleAvailableOnly).toHaveBeenCalledTimes(1)
+    })
   })
 })

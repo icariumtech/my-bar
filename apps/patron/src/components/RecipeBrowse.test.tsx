@@ -139,14 +139,35 @@ describe('RecipeBrowse', () => {
     expect(screen.queryByText('Daiquiri')).not.toBeInTheDocument()
   })
 
-  it('keeps not-makeable recipes visible and tappable in the grid (never hidden by filter/status)', async () => {
+  it('hides a not-makeable recipe by default (available-only) and reveals it after toggling the availability filter', async () => {
     const notMakeable: Recipe = { ...OTHER_RECIPE, overallStatus: 'red' }
     stubFetch([BASE_RECIPE, notMakeable])
     renderBrowse()
 
     expect(await screen.findByText('Old Fashioned')).toBeInTheDocument()
+    expect(screen.queryByText('Daiquiri')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Availability filter' }))
+
+    expect(screen.getByText('Old Fashioned')).toBeInTheDocument()
     expect(screen.getByText('Daiquiri')).toBeInTheDocument()
-    expect(screen.getAllByText('Not Available')).toHaveLength(1)
+  })
+
+  it('combines the availability toggle and the tag filter with AND, not OR', async () => {
+    const notMakeable: Recipe = { ...OTHER_RECIPE, overallStatus: 'red' }
+    stubFetch([BASE_RECIPE, notMakeable])
+    renderBrowse()
+
+    expect(await screen.findByText('Old Fashioned')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Availability filter' }))
+    expect(screen.getByText('Daiquiri')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Spirit' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Whiskey' }))
+
+    expect(screen.getByText('Old Fashioned')).toBeInTheDocument()
+    expect(screen.queryByText('Daiquiri')).not.toBeInTheDocument()
   })
 
   it('shows RecipeDetail for the tapped card\'s id, then returns to the grid via its back control', async () => {
