@@ -37,8 +37,6 @@ export function RecipeCard({ recipe, onSelect }: RecipeCardProps) {
         <MakeableIndicator status={recipe.overallStatus} />
       </div>
 
-      <div className="h-px bg-patron-accent/30" />
-
       {/* D-38 tag triplet — already pre-sorted by TAG_GROUP_ORDER
           server-side, so .slice(0, 3) is deterministic. Empty tags render
           nothing in this row (PATR-02 zero-tags edge). */}

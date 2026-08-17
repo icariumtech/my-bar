@@ -60,14 +60,24 @@
 
 /* 260817: bright glowing divider between Patron recipe list rows, replacing
    the dim divide-y border — rendered as an explicit element (not a CSS
-   border) since box-shadow glow can't be applied to a single border edge. */
+   border) since box-shadow glow can't be applied to a single border edge.
+   Fades to transparent at both ends (reference screenshot's row-separator
+   style). box-shadow follows the element's box geometry, not its content's
+   alpha, so it can't fade with the gradient — drop-shadow() reads alpha,
+   so the glow is layered via filter instead. */
 .glow-divider {
   height: 2px;
-  background: rgba(255, 107, 53, 0.9);
-  box-shadow:
-    0 0 4px rgba(255, 107, 53, 0.85),
-    0 0 12px rgba(255, 107, 53, 0.5),
-    0 0 24px rgba(255, 107, 53, 0.25);
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(255, 107, 53, 0.9) 15%,
+    rgba(255, 107, 53, 0.9) 85%,
+    transparent
+  );
+  filter:
+    drop-shadow(0 0 4px rgba(255, 107, 53, 0.85))
+    drop-shadow(0 0 12px rgba(255, 107, 53, 0.5))
+    drop-shadow(0 0 24px rgba(255, 107, 53, 0.25));
 }
 
 html,
