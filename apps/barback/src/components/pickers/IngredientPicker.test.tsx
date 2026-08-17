@@ -28,10 +28,13 @@ const fixtureIngredient: Ingredient = {
 }
 
 const createdIngredientId = '33333333-3333-3333-3333-333333333333'
+const createdCategoryId = '44444444-4444-4444-4444-444444444444'
 
 interface StubOptions {
   onCreateIngredient?: (body: { name: string; categoryId: string }) => void
   onToggleStock?: (id: string, inStock: boolean) => void
+  onCreateCategory?: (body: { name: string }) => void
+  createCategoryStatus?: number
 }
 
 function stubFetch(options: StubOptions = {}) {
@@ -69,6 +72,23 @@ function stubFetch(options: StubOptions = {}) {
         ok: true,
         status: 201,
         json: async () => created,
+      } as Response)
+    }
+
+    if (url === '/api/categories' && method === 'POST') {
+      const body = JSON.parse(init!.body as string) as { name: string }
+      options.onCreateCategory?.(body)
+      if (options.createCategoryStatus && options.createCategoryStatus >= 400) {
+        return Promise.resolve({
+          ok: false,
+          status: options.createCategoryStatus,
+          json: async () => ({ error: 'boom' }),
+        } as Response)
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 201,
+        json: async () => ({ id: createdCategoryId, name: body.name }),
       } as Response)
     }
 
@@ -396,6 +416,71 @@ describe('IngredientPicker', () => {
           ([url, init]) => url === '/api/ingredients' && init?.method === 'POST',
         ),
       ).toBe(false)
+    })
+  })
+
+  describe('inline category creation', () => {
+    it('shows "+ Add new category" when typed text matches no existing category', async () => {
+      stubFetch()
+      renderPicker({ categoryId: undefined, ingredientId: null, requiresSpecific: false })
+
+      const combobox = await screen.findByRole('combobox')
+      openPicker()
+      await userEvent.type(combobox, 'Whiskey')
+
+      expect(await screen.findByTitle('+ Add new category "Whiskey"')).toBeInTheDocument()
+    })
+
+    it('hides "+ Add new category" when typed text exactly matches an existing category name (any case)', async () => {
+      stubFetch()
+      renderPicker({ categoryId: undefined, ingredientId: null, requiresSpecific: false })
+
+      const combobox = await screen.findByRole('combobox')
+      openPicker()
+      await userEvent.type(combobox, 'rum')
+
+      await screen.findByTitle('Rum')
+      expect(screen.queryByText(/\+ Add new category/)).not.toBeInTheDocument()
+    })
+
+    it('selecting "+ Add new category" creates and selects the category directly, without opening the ingredient sub-flow', async () => {
+      const onCreateCategory = vi.fn()
+      stubFetch({ onCreateCategory })
+      const { onChange } = renderPicker({
+        categoryId: undefined,
+        ingredientId: null,
+        requiresSpecific: false,
+      })
+
+      const combobox = await screen.findByRole('combobox')
+      openPicker()
+      await userEvent.type(combobox, 'Whiskey')
+      fireEvent.click(await screen.findByTitle('+ Add new category "Whiskey"'))
+
+      await waitFor(() => expect(onCreateCategory).toHaveBeenCalledWith({ name: 'Whiskey' }))
+      await waitFor(() =>
+        expect(onChange).toHaveBeenCalledWith({
+          categoryId: createdCategoryId,
+          ingredientId: null,
+          requiresSpecific: false,
+        }),
+      )
+      expect(screen.queryByText('New ingredient:')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Create' })).not.toBeInTheDocument()
+    })
+
+    it('surfaces an error message if category creation fails', async () => {
+      stubFetch({ createCategoryStatus: 500 })
+      renderPicker({ categoryId: undefined, ingredientId: null, requiresSpecific: false })
+
+      const combobox = await screen.findByRole('combobox')
+      openPicker()
+      await userEvent.type(combobox, 'Whiskey')
+      fireEvent.click(await screen.findByTitle('+ Add new category "Whiskey"'))
+
+      expect(
+        await screen.findByText("Couldn't create category — check the name and try again."),
+      ).toBeInTheDocument()
     })
   })
 })
