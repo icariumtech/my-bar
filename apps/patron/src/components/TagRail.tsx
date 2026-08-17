@@ -166,9 +166,11 @@ export function TagRail({
                     // Toggle-to-clear: re-tapping the already-selected tag
                     // clears the filter (onSelectTag(undefined)); tapping
                     // any other tag replaces it (D-37, never combined).
-                    onSelectTag={(tagId) =>
+                    // Selecting any tag also closes this flyout immediately.
+                    onSelectTag={(tagId) => {
                       onSelectTag(tagId === selectedTagId ? undefined : tagId)
-                    }
+                      setOpenFlyoutId(undefined)
+                    }}
                   />
                 </div>
               )}
@@ -195,11 +197,9 @@ export function TagRail({
           }`}
         >
           <Settings size={22} aria-hidden="true" />
-          <span className="text-[10px] uppercase tracking-wide">SETTINGS</span>
         </button>
         {openFlyoutId === 'settings' && (
           <div className="absolute left-full bottom-0 ml-sm z-50 min-w-[200px] rounded-2xl bg-patron-surface/95 backdrop-blur-sm glow-orange p-md flex flex-col gap-sm">
-            <h2 className="text-white text-sm">Settings</h2>
             <label className="flex items-center gap-sm cursor-pointer text-sm text-patron-text-secondary">
               <input
                 type="checkbox"
