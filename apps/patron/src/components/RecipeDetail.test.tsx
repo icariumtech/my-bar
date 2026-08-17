@@ -64,18 +64,13 @@ describe('RecipeDetail', () => {
     stub({ overallStatus: 'red', missingCategoryNames: ['Dry Vermouth'] })
     render(<RecipeDetail recipeId={BASE_RECIPE.id} onBack={() => {}} />)
 
-    // Both the badge (MakeableIndicator) and the missing-ingredients line
-    // render "Not Available" text — assert the missing line specifically
-    // by its distinguishing "missing." suffix + ingredient name.
     expect(screen.getByText(/Dry Vermouth missing\./)).toBeInTheDocument()
-    expect(screen.getAllByText(/Not Available/).length).toBeGreaterThanOrEqual(1)
   })
 
-  it('renders the "Not Available" badge but NO missing-ingredients section for a yellow recipe with nothing truly missing', () => {
+  it('renders no missing-ingredients section for a yellow recipe with nothing truly missing (D-44)', () => {
     stub({ overallStatus: 'yellow', missingCategoryNames: [] })
     render(<RecipeDetail recipeId={BASE_RECIPE.id} onBack={() => {}} />)
 
-    expect(screen.getByText('Not Available')).toBeInTheDocument()
     expect(screen.queryByText(/missing/i)).not.toBeInTheDocument()
   })
 
