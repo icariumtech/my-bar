@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AutoComplete, Button, Checkbox, Switch } from 'antd'
-import { useCategories } from '../../api/useCategories.js'
+import { useCategories, useCreateCategory } from '../../api/useCategories.js'
 import { useCreateIngredient, useIngredients, useToggleStock } from '../../api/useIngredients.js'
 import { CategoryPicker } from './CategoryPicker.js'
 
@@ -30,11 +30,13 @@ export interface IngredientPickerProps {
 const CATEGORY_PREFIX = 'cat:'
 const INGREDIENT_PREFIX = 'ing:'
 const CREATE_INGREDIENT_VALUE = '__create_ingredient__'
+const CREATE_CATEGORY_VALUE = '__create_category__'
 
 export function IngredientPicker({ value, onChange }: IngredientPickerProps) {
   const { data: categories } = useCategories()
   const { data: ingredients } = useIngredients()
   const createIngredient = useCreateIngredient()
+  const createCategory = useCreateCategory()
   const toggleStock = useToggleStock()
   const [search, setSearch] = useState('')
   // D-29: inline ingredient creation sub-flow, fully self-contained in this
@@ -109,18 +111,47 @@ export function IngredientPicker({ value, onChange }: IngredientPickerProps) {
     (i) => i.name.toLowerCase() === trimmed.toLowerCase(),
   )
 
+  // Parallel prohibition for categories — mirrors CategoryPicker.tsx's own
+  // `hasExactMatch` guard: never offer "+ Add new category" for a name that
+  // already exists among categories under a case-insensitive comparison.
+  const hasExactCategoryMatch = (categories ?? []).some(
+    (c) => c.name.toLowerCase() === trimmed.toLowerCase(),
+  )
+
+  const addNewOptions: { value: string; label: string }[] = []
+  if (trimmed.length > 0 && !hasExactCategoryMatch) {
+    addNewOptions.push({ value: CREATE_CATEGORY_VALUE, label: `+ Add new category "${trimmed}"` })
+  }
   if (trimmed.length > 0 && !hasExactIngredientMatch) {
-    options.push({
-      label: 'Add New',
-      options: [{ value: CREATE_INGREDIENT_VALUE, label: `+ Add new ingredient "${trimmed}"` }],
+    addNewOptions.push({
+      value: CREATE_INGREDIENT_VALUE,
+      label: `+ Add new ingredient "${trimmed}"`,
     })
+  }
+  if (addNewOptions.length > 0) {
+    options.push({ label: 'Add New', options: addNewOptions })
   }
 
   function handleSearch(text: string) {
     setSearch(text)
   }
 
-  function handleSelect(selectedValue: string) {
+  async function handleSelect(selectedValue: string) {
+    if (selectedValue === CREATE_CATEGORY_VALUE) {
+      setCreateError(null)
+      try {
+        // CategoryPicker's own inline "+ Add" pattern — immediate
+        // create+select, no confirmation sub-form — applied here as a
+        // direct path instead of opening the `creating` sub-flow.
+        const created = await createCategory.mutateAsync({ name: trimmed })
+        onChange({ categoryId: created.id, ingredientId: null, requiresSpecific: false })
+        setSearch(created.name)
+      } catch {
+        setCreateError("Couldn't create category — check the name and try again.")
+      }
+      return
+    }
+
     if (selectedValue === CREATE_INGREDIENT_VALUE) {
       setCreateError(null)
       setCreating({ name: trimmed })
@@ -190,6 +221,9 @@ export function IngredientPicker({ value, onChange }: IngredientPickerProps) {
         onSelect={handleSelect}
         placeholder="Search categories or ingredients"
       />
+      {!creating && createError && (
+        <div style={{ color: '#ef4444', marginTop: 8 }}>{createError}</div>
+      )}
       {value.ingredientId && (
         <Checkbox
           checked={value.requiresSpecific}
