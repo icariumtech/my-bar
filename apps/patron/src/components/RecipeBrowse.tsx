@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useRecipes } from '../api/useRecipes.js'
 import { RecipeCard } from './RecipeCard.js'
 import { RecipeDetail } from './RecipeDetail.js'
-import { TagRail, filterRecipesByTag } from './TagRail.js'
+import { TagRail, filterRecipesByTag, filterRecipesByAvailability } from './TagRail.js'
 
 // PATR-01/PATR-06: real browse container — TagRail (D-33/34/36/37) plus
 // the card grid, and every UI-SPEC loading/error/empty state. Owns the
@@ -13,9 +13,16 @@ import { TagRail, filterRecipesByTag } from './TagRail.js'
 // add/edit view exists on Patron — browse-only, PATR-06). No order-
 // submission/checkout affordance exists here or anywhere below it —
 // PATR-06's browse-freely guarantee.
+//
+// 260817-g39: supersedes 03-CONTEXT.md's D-45 ("not-makeable drinks remain
+// fully visible... no hide/filter toggle") per a confirmed product
+// decision — showAvailableOnly now defaults to true and combines with the
+// tag filter via AND (never OR), toggled from TagRail's bottom-pinned
+// availability button.
 export function RecipeBrowse() {
   const [selectedTagId, setSelectedTagId] = useState<string | undefined>(undefined)
   const [viewingId, setViewingId] = useState<string | undefined>(undefined)
+  const [showAvailableOnly, setShowAvailableOnly] = useState(true)
   const { data: recipes, isLoading, isError, refetch } = useRecipes()
 
   if (viewingId) {
@@ -51,14 +58,25 @@ export function RecipeBrowse() {
   }
 
   const allRecipes = recipes ?? []
-  // D-45/PATR-03-ordering: filtered from the array's existing (server-
+  // PATR-03-ordering: filtered from the array's existing (server-
   // sorted-by-name) order — never re-sorted client-side, so makeable
-  // status can't reorder or hide a card.
-  const filteredRecipes = filterRecipesByTag(allRecipes, selectedTagId)
+  // status can't reorder a card. Tag and availability filters combine via
+  // AND (260817-g39) — narrowing by tag while available-only is active
+  // only shows recipes matching both.
+  const filteredRecipes = filterRecipesByAvailability(
+    filterRecipesByTag(allRecipes, selectedTagId),
+    showAvailableOnly,
+  )
 
   return (
     <div className="min-h-dvh bg-patron-bg flex gap-xl p-lg">
-      <TagRail recipes={allRecipes} selectedTagId={selectedTagId} onSelectTag={setSelectedTagId} />
+      <TagRail
+        recipes={allRecipes}
+        selectedTagId={selectedTagId}
+        onSelectTag={setSelectedTagId}
+        showAvailableOnly={showAvailableOnly}
+        onToggleAvailableOnly={() => setShowAvailableOnly((prev) => !prev)}
+      />
 
       <div className="flex-1">
         {filteredRecipes.length === 0 ? (

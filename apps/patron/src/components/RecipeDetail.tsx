@@ -1,6 +1,5 @@
 import { X } from 'lucide-react'
 import { useRecipeDetail } from '../api/useRecipeDetail.js'
-import { MakeableIndicator } from './MakeableIndicator.js'
 
 interface RecipeDetailProps {
   recipeId: string
@@ -89,8 +88,6 @@ export function RecipeDetail({ recipeId, onBack }: RecipeDetailProps) {
               {recipe.tags.map((t) => t.name).join(' · ')}
             </p>
           )}
-
-          <MakeableIndicator status={recipe.overallStatus} />
 
           {showMissing && (
             <p className="text-patron-destructive">
