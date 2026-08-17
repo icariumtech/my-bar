@@ -6,9 +6,9 @@ current_phase: 4
 current_phase_name: Bartender Console & Order Workflow
 status: planning
 stopped_at: Phase 3 UI-SPEC approved
-last_updated: "2026-08-13T04:27:52.656Z"
-last_activity: 2026-08-12
-last_activity_desc: "Completed quick task 260812-m0i: Extracted shared FullScreenHeader (centered titles, circular green back button) across all 5 full-screen views"
+last_updated: "2026-08-17T16:22:39.440Z"
+last_activity: 2026-08-17
+last_activity_desc: "Completed quick task 260817-fkv: Convert Patron browse grid to continuous list layout matching reference screenshots"
 progress:
   total_phases: 4
   completed_phases: 4
@@ -118,6 +118,7 @@ None yet.
 | 260812-m0i | Extract shared FullScreenHeader: centered titles + circular green back button across all 5 full-screen views | 2026-08-12 | a193d4c | [260812-m0i-barback-full-screen-view-headers-fix-two](./quick/260812-m0i-barback-full-screen-view-headers-fix-two/) |
 | 260813-ea3 | Restyle Patron app to match neon-glow dark-bar-menu reference screenshots | 2026-08-13 | 6554942 | [260813-ea3-restyle-patron-app-to-match-neon-glow-da](./quick/260813-ea3-restyle-patron-app-to-match-neon-glow-da/) |
 | 260817-fkv | Convert Patron browse grid to continuous list layout matching reference screenshots | 2026-08-17 | a1cea8d | [260817-fkv-convert-patron-browse-grid-to-continuous](./quick/260817-fkv-convert-patron-browse-grid-to-continuous/) |
+| 13 | Make Patron TagRail stretch to full screen height, icons stay top-anchored | 2026-08-17 | 72af407 | — |
 
 ### Roadmap Evolution
 
