@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 Phase: 4 — Bartender Console & Order Workflow
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-08-13 - Completed quick task 260813-ea3: Restyle Patron app to match neon-glow dark-bar-menu reference screenshots
+Last activity: 2026-08-17 - Completed quick task 260817-fkv: Convert Patron browse grid to continuous list layout matching reference screenshots
 
 Progress: [██████████] 100%
 
@@ -117,6 +117,7 @@ None yet.
 | 260812-jz9 | Replace full-width Add Ingredient/Add Recipe button with a square icon-only button beside the search bar | 2026-08-12 | 5ded93e | [260812-jz9-barback-ui-change-replace-the-full-width](./quick/260812-jz9-barback-ui-change-replace-the-full-width/) |
 | 260812-m0i | Extract shared FullScreenHeader: centered titles + circular green back button across all 5 full-screen views | 2026-08-12 | a193d4c | [260812-m0i-barback-full-screen-view-headers-fix-two](./quick/260812-m0i-barback-full-screen-view-headers-fix-two/) |
 | 260813-ea3 | Restyle Patron app to match neon-glow dark-bar-menu reference screenshots | 2026-08-13 | 6554942 | [260813-ea3-restyle-patron-app-to-match-neon-glow-da](./quick/260813-ea3-restyle-patron-app-to-match-neon-glow-da/) |
+| 260817-fkv | Convert Patron browse grid to continuous list layout matching reference screenshots | 2026-08-17 | a1cea8d | [260817-fkv-convert-patron-browse-grid-to-continuous](./quick/260817-fkv-convert-patron-browse-grid-to-continuous/) |
 
 ### Roadmap Evolution
 
