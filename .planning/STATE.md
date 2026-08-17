@@ -122,7 +122,7 @@ None yet.
 | 14 | Add bright glowing divider between Patron recipe rows | 2026-08-17 | 3b44a95 | — |
 | 15 | Remove Patron name-row divider line; fade row divider at left/right edges | 2026-08-17 | 9936c37 | — |
 | 260817-g39 | Remove makeable badge and add availability toggle to Patron rail | 2026-08-17 | bab1d3a | [260817-g39-remove-available-not-available-badge-eve](./quick/260817-g39-remove-available-not-available-badge-eve/) |
-| 260817-hpy | Convert Patron tag submenus and settings to flyout popovers with persistent selection highlight | 2026-08-17 | (pending) | [260817-hpy-convert-patron-tag-submenus-and-settings](./quick/260817-hpy-convert-patron-tag-submenus-and-settings/) |
+| 260817-hpy | Convert Patron tag submenus and settings to flyout popovers with persistent selection highlight | 2026-08-17 | d2a1c52 | [260817-hpy-convert-patron-tag-submenus-and-settings](./quick/260817-hpy-convert-patron-tag-submenus-and-settings/) |
 
 ### Roadmap Evolution
 
