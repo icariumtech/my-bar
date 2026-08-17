@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 Phase: 4 — Bartender Console & Order Workflow
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-08-17 - Completed quick task 260817-fkv: Convert Patron browse grid to continuous list layout matching reference screenshots
+Last activity: 2026-08-17 - Completed quick task 260817-g39: Remove makeable badge and add availability toggle to Patron rail
 
 Progress: [██████████] 100%
 
@@ -121,6 +121,7 @@ None yet.
 | 13 | Make Patron TagRail stretch to full screen height, icons stay top-anchored | 2026-08-17 | 72af407 | — |
 | 14 | Add bright glowing divider between Patron recipe rows | 2026-08-17 | 3b44a95 | — |
 | 15 | Remove Patron name-row divider line; fade row divider at left/right edges | 2026-08-17 | 9936c37 | — |
+| 260817-g39 | Remove makeable badge and add availability toggle to Patron rail | 2026-08-17 | bab1d3a | [260817-g39-remove-available-not-available-badge-eve](./quick/260817-g39-remove-available-not-available-badge-eve/) |
 
 ### Roadmap Evolution
 
