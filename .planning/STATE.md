@@ -5,10 +5,10 @@ milestone_name: milestone
 current_phase: 4
 current_phase_name: Bartender Console & Order Workflow
 status: planning
-stopped_at: "Completed quick task 260817-l46: Add inline create-new-category option to IngredientPicker"
-last_updated: "2026-08-17T20:35:00.000Z"
+stopped_at: "Completed quick task 260817-o11: Add ingredient delete (DELETE /api/ingredients/:id, useDeleteIngredient, Delete button on IngredientRow)"
+last_updated: "2026-08-17T22:35:00.000Z"
 last_activity: 2026-08-17
-last_activity_desc: "Completed quick task 260817-l46: Add inline create-new-category option to IngredientPicker"
+last_activity_desc: "Completed quick task 260817-o11: Add ingredient delete (DELETE /api/ingredients/:id, useDeleteIngredient, Delete button on IngredientRow)"
 progress:
   total_phases: 4
   completed_phases: 4
@@ -127,6 +127,7 @@ None yet.
 | 18 | Close tag flyout on selection; remove settings button label and flyout heading | 2026-08-17 | 7c7c1f6 | — |
 | 19 | Fix IngredientPicker.tsx: filter categoryOptions/ingredientOptions by typed search text (recipe ingredient combobox now search-as-you-type like CategoryPicker/GlasswarePicker) | 2026-08-17 | 80c0fa2 | — |
 | 260817-l46 | Add inline "+ Add new category" option to IngredientPicker's top-level recipe ingredient-line search, alongside the existing create-new-ingredient option | 2026-08-17 | 26d4a1e | [260817-l46-add-inline-create-new-category-option-to](./quick/260817-l46-add-inline-create-new-category-option-to/) |
+| 260817-o11 | Add ingredient delete: DELETE /api/ingredients/:id endpoint, useDeleteIngredient hook, and a Delete button on IngredientRow mirroring the existing recipe-delete pattern | 2026-08-17 | f4a051c | [260817-o11-add-ingredient-delete-delete-api-ingredi](./quick/260817-o11-add-ingredient-delete-delete-api-ingredi/) |
 
 ### Roadmap Evolution
 
@@ -142,6 +143,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-17T20:35:00.000Z
-Stopped at: Completed quick task 260817-l46: Add inline create-new-category option to IngredientPicker
+Last session: 2026-08-17T22:35:00.000Z
+Stopped at: Completed quick task 260817-o11: Add ingredient delete (DELETE /api/ingredients/:id, useDeleteIngredient, Delete button on IngredientRow)
 Resume file: None
