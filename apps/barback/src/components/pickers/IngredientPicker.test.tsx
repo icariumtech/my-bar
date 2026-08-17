@@ -248,6 +248,31 @@ describe('IngredientPicker', () => {
     expect(screen.queryByText(/\+ Add new ingredient/)).not.toBeInTheDocument()
   })
 
+  it('typing search text that matches neither the fixture category nor ingredient hides both from the dropdown', async () => {
+    stubFetch()
+    renderPicker({ categoryId: undefined, ingredientId: null, requiresSpecific: false })
+
+    const combobox = await screen.findByRole('combobox')
+    openPicker()
+    await userEvent.type(combobox, 'zzz-no-match')
+
+    expect(screen.queryByTitle('Rum')).not.toBeInTheDocument()
+    expect(screen.queryByTitle('Havana Club (Rum)')).not.toBeInTheDocument()
+    expect(await screen.findByTitle('+ Add new ingredient "zzz-no-match"')).toBeInTheDocument()
+  })
+
+  it('typing text that matches only the ingredient name hides the non-matching category option', async () => {
+    stubFetch()
+    renderPicker({ categoryId: undefined, ingredientId: null, requiresSpecific: false })
+
+    const combobox = await screen.findByRole('combobox')
+    openPicker()
+    await userEvent.type(combobox, 'Havana')
+
+    expect(screen.queryByTitle('Rum')).not.toBeInTheDocument()
+    expect(await screen.findByTitle('Havana Club (Rum)')).toBeInTheDocument()
+  })
+
   describe('inline ingredient creation (D-29)', () => {
     it('selecting "+ Add new ingredient" reveals an inline sub-form with an empty required category field, no Modal', async () => {
       stubFetch()
