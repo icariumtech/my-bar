@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 Phase: 4 — Bartender Console & Order Workflow
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-08-17 - Completed quick task 260817-g39: Remove makeable badge and add availability toggle to Patron rail
+Last activity: 2026-08-17 - Completed quick task 260817-hpy: Convert Patron tag submenus and settings to flyout popovers with persistent selection highlight
 
 Progress: [██████████] 100%
 
@@ -122,6 +122,7 @@ None yet.
 | 14 | Add bright glowing divider between Patron recipe rows | 2026-08-17 | 3b44a95 | — |
 | 15 | Remove Patron name-row divider line; fade row divider at left/right edges | 2026-08-17 | 9936c37 | — |
 | 260817-g39 | Remove makeable badge and add availability toggle to Patron rail | 2026-08-17 | bab1d3a | [260817-g39-remove-available-not-available-badge-eve](./quick/260817-g39-remove-available-not-available-badge-eve/) |
+| 260817-hpy | Convert Patron tag submenus and settings to flyout popovers with persistent selection highlight | 2026-08-17 | (pending) | [260817-hpy-convert-patron-tag-submenus-and-settings](./quick/260817-hpy-convert-patron-tag-submenus-and-settings/) |
 
 ### Roadmap Evolution
 
