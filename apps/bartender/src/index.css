@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+/* D-64: Bartender joins Barback's existing utilitarian dark visual family
+   (same --color-bar-* token names/values) rather than inventing a parallel
+   token namespace — this file is otherwise byte-identical to
+   apps/barback/src/index.css. */
+@theme {
+  --color-bar-bg: #18181b;
+  --color-bar-surface: #27272a;
+  --color-bar-accent: #22c55e;
+  --color-bar-destructive: #ef4444;
+
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  --spacing-3xl: 64px;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: #18181b;
+  color: #ffffff;
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.safe-area-inset-top {
+  padding-top: calc(env(safe-area-inset-top) + var(--spacing-lg));
+}
+
+.safe-area-inset-bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 16px);
+}
