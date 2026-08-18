@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 04
 current_phase_name: bartender-console-order-workflow
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-08-18T17:55:45.016Z"
+stopped_at: Completed 04-05-PLAN.md
+last_updated: "2026-08-18T18:04:05.094Z"
 last_activity: 2026-08-18
 last_activity_desc: Phase 04 execution started
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 31
-  completed_plans: 27
+  completed_plans: 28
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 ## Current Position
 
 Phase: 04 (bartender-console-order-workflow) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-08-18 — Phase 04 execution started
 
-Progress: [█████████░] 87%
+Progress: [█████████░] 90%
 
 ## Performance Metrics
 
@@ -73,6 +73,7 @@ Progress: [█████████░] 87%
 | Phase 02.1 P07 | 12min | 2 tasks | 5 files |
 | Phase quick P260817-k8o | 8min | 2 tasks | 2 files |
 | Phase 04 P01 | 25min | 3 tasks | 31 files |
+| Phase 04 P05 | 10min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 02.1-07]: Added RecipesTab.test.tsx (not in plan's file list) as a Rule 3 fix — the plan's verify command had no matching test file to run since no container-tab test precedent existed in the codebase
 - [Phase ?]: [Phase 04-01]: POST /api/orders recomputes overallStatus server-side via loadRecipe()/computeMakeable() and rejects 400 when not green — never trusts client-cached makeable state
 - [Phase ?]: [Phase 04-01]: apps/bartender scaffolded structurally identical to apps/barback (Vite+React 19+antd darkAlgorithm, D-64); useSubmitOrder.test.tsx uses .tsx (not plan's .test.ts) since JSX requires it, matching apps/barback's useIngredients.test.tsx precedent
+- [Phase ?]: [Phase 04-05]: useKioskInactivity's setTimeout self-chains (fires onTimeout, then calls resetTimer() again) rather than being one-shot, so it repeats every subsequent idle window with no intervening activity
+- [Phase ?]: [Phase 04-05]: useRef<ReturnType<typeof setTimeout>>() fails TS strict mode's argument-required check; use useRef<ReturnType<typeof setTimeout> | undefined>(undefined) instead — caught only by tsc --noEmit, not vitest's esbuild transform
 
 ### Pending Todos
 
@@ -146,6 +149,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-18T17:55:45.003Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-08-18T18:04:05.081Z
+Stopped at: Completed 04-05-PLAN.md
 Resume file: None
