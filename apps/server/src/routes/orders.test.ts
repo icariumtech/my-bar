@@ -190,9 +190,10 @@ describe('POST/GET /api/orders', () => {
     expect(res.json()).toEqual({ error: 'Unknown recipe' })
   })
 
-  it('GET /api/orders excludes done orders', async () => {
+  it('GET /api/orders excludes a done order past the D-60 retention window', async () => {
     const recipeId = seedMakeableRecipe()
     const now = new Date()
+    const staleDoneUpdatedAt = new Date(Date.now() - (5 * 60 * 1000 + 1000))
     testDb.db
       .insert(orders)
       .values({
@@ -200,8 +201,8 @@ describe('POST/GET /api/orders', () => {
         recipeId,
         patronName: null,
         status: 'done',
-        createdAt: now,
-        updatedAt: now,
+        createdAt: staleDoneUpdatedAt,
+        updatedAt: staleDoneUpdatedAt,
       })
       .run()
     const newOrderId = crypto.randomUUID()

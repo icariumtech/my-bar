@@ -1,12 +1,18 @@
 import type { FastifyPluginAsync, FastifyPluginOptions } from 'fastify'
 import type { ZodTypeProvider } from '@fastify/type-provider-zod'
-import { asc, eq, ne } from 'drizzle-orm'
+import { and, asc, eq, gte, ne, or } from 'drizzle-orm'
 import { z } from 'zod'
 import type { Order, OrderStatus } from '@my-bar/shared'
 import { order, orderInput } from '@my-bar/shared'
 import { db as defaultDb } from '../db/client.js'
 import { orders } from '../db/schema.js'
 import { loadRecipe } from './recipes.js'
+
+// D-60: once marked done, a ticket stays visible in GET /api/orders for a
+// bounded 5-minute window (inclusive) instead of vanishing instantly or
+// accumulating forever (Pitfall 3: Done Orders Not Auto-Clearing Grows the
+// Queue Unbounded).
+const DONE_RETENTION_MS = 5 * 60 * 1000
 
 interface OrdersRoutesOptions extends FastifyPluginOptions {
   // Injection point for tests (src/routes/orders.test.ts) so the route can
@@ -116,9 +122,12 @@ export const ordersRoutes: FastifyPluginAsync<OrdersRoutesOptions> = async (app,
     },
   )
 
-  // BART-04: GET /api/orders — open orders only (Pitfall 3 mitigation),
-  // sorted ascending by createdAt with id as a stable secondary tiebreaker
-  // for two orders created in the same millisecond.
+  // BART-04/D-60: GET /api/orders — non-done orders (unconditionally
+  // included) PLUS done orders whose updatedAt is within the
+  // DONE_RETENTION_MS window (inclusive lower bound via gte, so an order
+  // marked done exactly 5 minutes ago still shows), sorted ascending by
+  // createdAt with id as a stable secondary tiebreaker for two orders
+  // created in the same millisecond.
   app.withTypeProvider<ZodTypeProvider>().get(
     '/',
     {
@@ -132,7 +141,12 @@ export const ordersRoutes: FastifyPluginAsync<OrdersRoutesOptions> = async (app,
       const rows = db
         .select({ id: orders.id })
         .from(orders)
-        .where(ne(orders.status, 'done'))
+        .where(
+          or(
+            ne(orders.status, 'done'),
+            and(eq(orders.status, 'done'), gte(orders.updatedAt, new Date(Date.now() - DONE_RETENTION_MS))),
+          ),
+        )
         .orderBy(asc(orders.createdAt), asc(orders.id))
         .all()
       return rows.map((r) => loadOrder(db, r.id))
