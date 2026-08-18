@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 04
 current_phase_name: bartender-console-order-workflow
 status: executing
-stopped_at: Completed 04-05-PLAN.md
-last_updated: "2026-08-18T18:04:05.094Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-08-18T18:17:30.620Z"
 last_activity: 2026-08-18
 last_activity_desc: Phase 04 execution started
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 31
-  completed_plans: 28
+  completed_plans: 29
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 ## Current Position
 
 Phase: 04 (bartender-console-order-workflow) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-08-18 — Phase 04 execution started
 
-Progress: [█████████░] 90%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
@@ -74,6 +74,7 @@ Progress: [█████████░] 90%
 | Phase quick P260817-k8o | 8min | 2 tasks | 2 files |
 | Phase 04 P01 | 25min | 3 tasks | 31 files |
 | Phase 04 P05 | 10min | 2 tasks | 9 files |
+| Phase 04 P02 | 16min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -100,6 +101,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 04-01]: apps/bartender scaffolded structurally identical to apps/barback (Vite+React 19+antd darkAlgorithm, D-64); useSubmitOrder.test.tsx uses .tsx (not plan's .test.ts) since JSX requires it, matching apps/barback's useIngredients.test.tsx precedent
 - [Phase ?]: [Phase 04-05]: useKioskInactivity's setTimeout self-chains (fires onTimeout, then calls resetTimer() again) rather than being one-shot, so it repeats every subsequent idle window with no intervening activity
 - [Phase ?]: [Phase 04-05]: useRef<ReturnType<typeof setTimeout>>() fails TS strict mode's argument-required check; use useRef<ReturnType<typeof setTimeout> | undefined>(undefined) instead — caught only by tsc --noEmit, not vitest's esbuild transform
+- [Phase ?]: [Phase 04-02]: Created minimal real placeholder implementations of MakeableStatusBadge/RecipeSearchFilter/RecipeOrOrderDetail in Task 1 (Rule 3) since this project's Vite/Vitest setup can't vi.mock an import path that doesn't resolve to a file on disk; Task 2 fully replaced each with a real TDD-driven implementation
+- [Phase ?]: [Phase 04-02]: RecipeOrOrderDetail order caption used formatElapsed()'s output directly (already ends in 'ago') rather than appending a redundant literal ' ago'
 
 ### Pending Todos
 
@@ -149,6 +152,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-18T18:04:05.081Z
-Stopped at: Completed 04-05-PLAN.md
+Last session: 2026-08-18T18:17:30.607Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None
