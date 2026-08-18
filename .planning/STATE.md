@@ -4,16 +4,16 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 04
 current_phase_name: bartender-console-order-workflow
-status: executing
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-08-18T22:02:58.470Z"
+status: verifying
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-08-18T22:10:57.583Z"
 last_activity: 2026-08-18
 last_activity_desc: Phase 04 execution started
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 31
-  completed_plans: 30
+  completed_plans: 31
 ---
 
 # Project State
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 
 Phase: 04 (bartender-console-order-workflow) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-18 — Phase 04 execution started
 
-Progress: [██████████] 97%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -76,6 +76,7 @@ Progress: [██████████] 97%
 | Phase 04 P05 | 10min | 2 tasks | 9 files |
 | Phase 04 P02 | 16min | 2 tasks | 13 files |
 | Phase 04 P03 | 12min | 2 tasks | 2 files |
+| Phase 04 P04 | 15min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 04-02]: RecipeOrOrderDetail order caption used formatElapsed()'s output directly (already ends in 'ago') rather than appending a redundant literal ' ago'
 - [Phase ?]: [Phase 04-03]: Conditional-write idempotency pattern for PATCH status-transition endpoints — only write when existing.status differs from target, so a repeat call is a true no-op (no updatedAt bump) while the Socket.IO emit still fires unconditionally
 - [Phase ?]: [Phase 04-03]: Updated Plan 04-01's 'GET /api/orders excludes done orders' test to use a stale (>5min) done order — D-60's retention window makes a freshly-done order correctly appear now, so the original unconditional-exclusion assertion no longer holds
+- [Phase ?]: [Phase 04-04]: batchOrders() groups the flat GET /api/orders response into a Record keyed by `${recipe.id}:${status}`, sorted descending by elapsedSeconds with a stable orderId tiebreak — never merges across statuses, matching D-58/BART-04
+- [Phase ?]: [Phase 04-04]: useOpenOrder/useMarkOrderDone.test.tsx use .test.tsx (plan said .test.ts) since renderHook's QueryClientProvider wrapper requires JSX, matching Plan 04-01/04-03's own precedent
 
 ### Pending Todos
 
@@ -155,6 +158,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-18T22:02:58.457Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-08-18T22:10:57.568Z
+Stopped at: Completed 04-04-PLAN.md
 Resume file: None

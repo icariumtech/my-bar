@@ -48,7 +48,7 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Bartender Interface
 
 - [x] **BART-01**: Bartender can view full recipe detail (ingredients + quantities, method, glassware, garnish)
-- [ ] **BART-02**: New patron orders appear in a live queue without manual refresh
+- [x] **BART-02**: New patron orders appear in a live queue without manual refresh
 - [x] **BART-03**: Bartender can move a ticket through a status lifecycle (new → in progress → done)
 - [x] **BART-04**: Each ticket shows elapsed time since submission
 - [x] **BART-05**: Bartender can search/filter recipes by name or base spirit
@@ -125,7 +125,7 @@ Populated during roadmap creation.
 | PATR-07 | Phase 4 | Complete |
 | PATR-08 | Phase 4 | Complete |
 | BART-01 | Phase 4 | Complete |
-| BART-02 | Phase 4 | Pending |
+| BART-02 | Phase 4 | Complete |
 | BART-03 | Phase 4 | Complete |
 | BART-04 | Phase 4 | Complete |
 | BART-05 | Phase 4 | Complete |
