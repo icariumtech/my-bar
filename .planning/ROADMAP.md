@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Barback Inventory Foundation** - Owner can fully manage real bottle/ingredient inventory from their phone (completed 2026-08-10)
 - [x] **Phase 2: Recipe Collection & Makeable Engine** - Owner builds recipes; system computes correct, live makeable/not-makeable status (completed 2026-08-10)
 - [x] **Phase 3: Patron Browse Experience** - Patron can browse the styled menu with a live, trustworthy makeable indicator (completed 2026-08-12)
-- [ ] **Phase 4: Bartender Console & Order Workflow** - Orders flow live from Patron to a working Bartender ticket queue
+- [x] **Phase 4: Bartender Console & Order Workflow** - Orders flow live from Patron to a working Bartender ticket queue (completed 2026-08-18)
 
 ## Phase Details
 
@@ -181,17 +181,17 @@ Plans:
 
 **Wave 1**
 
-- [ ] 04-01-PLAN.md — Tracer: orders schema/API + Socket.IO push + Patron order submission + Bartender scaffold with a live Orders view (PATR-05, BART-02)
-- [ ] 04-05-PLAN.md — Patron kiosk lockdown: fullscreen, wake-lock, inactivity timeout (PATR-07, PATR-08)
+- [x] 04-01-PLAN.md — Tracer: orders schema/API + Socket.IO push + Patron order submission + Bartender scaffold with a live Orders view (PATR-05, BART-02)
+- [x] 04-05-PLAN.md — Patron kiosk lockdown: fullscreen, wake-lock, inactivity timeout (PATR-07, PATR-08)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 04-02-PLAN.md — Bartender Recipes tab, name+tag search/filter, shared tri-state detail view (BART-01, BART-05, BART-06)
-- [ ] 04-03-PLAN.md — Order lifecycle backend: start/done endpoints + done-order retention window (BART-03, BART-04, SYNC-02)
+- [x] 04-02-PLAN.md — Bartender Recipes tab, name+tag search/filter, shared tri-state detail view (BART-01, BART-05, BART-06)
+- [x] 04-03-PLAN.md — Order lifecycle backend: start/done endpoints + done-order retention window (BART-03, BART-04, SYNC-02)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 04-04-PLAN.md — Bartender Orders tab: batching, auto-advance-on-open, Done wiring (BART-02, BART-03, BART-04)
+- [x] 04-04-PLAN.md — Bartender Orders tab: batching, auto-advance-on-open, Done wiring (BART-02, BART-03, BART-04)
 
 **UI hint**: yes
 
@@ -205,4 +205,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Barback Inventory Foundation | 6/6 | Complete    | 2026-08-10 |
 | 2. Recipe Collection & Makeable Engine | 8/8 | Complete    | 2026-08-11 |
 | 3. Patron Browse Experience | 5/5 | Complete    | 2026-08-12 |
-| 4. Bartender Console & Order Workflow | 0/TBD | Not started | - |
+| 4. Bartender Console & Order Workflow | 5/5 | Complete    | 2026-08-18 |
