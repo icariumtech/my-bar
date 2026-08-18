@@ -227,50 +227,59 @@ export const recipesRoutes: FastifyPluginAsync<RecipesRoutesOptions> = async (ap
       const now = new Date()
 
       try {
-        db.insert(recipes)
-          .values({
-            id: recipeId,
-            name: request.body.name,
-            // D-16: method is stored as a JSON-stringified array of step
-            // strings — returned as an array (never re-stringified) by
-            // loadRecipe above.
-            method: JSON.stringify(request.body.method),
-            glasswareId: request.body.glasswareId ?? null,
-            garnish: request.body.garnish ?? null,
-            description: request.body.description ?? null,
-            createdAt: now,
-            updatedAt: now,
-          })
-          .run()
-
-        // D-16: displayOrder preserves submitted ingredient-line order.
-        // D-30/MATCH-05: ingredientId/requiresSpecific are persisted
-        // exactly as submitted — a category-only line omits ingredientId
-        // (persisted as null); requiresSpecific defaults to true (D-30).
-        request.body.ingredients.forEach((ing, idx) => {
-          db.insert(recipeIngredients)
+        // T-02-01/T-02-03/T-02.1-01/T-03-01: wrapped in a single
+        // db.transaction() call (matching the PATCH handler's own
+        // reasoning below) so a mid-loop FK failure on a later ingredient
+        // line or tag rolls back the recipe insert and every ingredient
+        // line already written — never a partially-created recipe row
+        // committed to the database while the client is told the whole
+        // request failed with a 400.
+        db.transaction((tx) => {
+          tx.insert(recipes)
             .values({
-              id: crypto.randomUUID(),
-              recipeId,
-              categoryId: ing.categoryId,
-              ingredientId: ing.ingredientId ?? null,
-              requiresSpecific: ing.requiresSpecific ?? true,
-              quantity: ing.quantity,
-              unit: ing.unit,
-              displayOrder: idx,
+              id: recipeId,
+              name: request.body.name,
+              // D-16: method is stored as a JSON-stringified array of step
+              // strings — returned as an array (never re-stringified) by
+              // loadRecipe above.
+              method: JSON.stringify(request.body.method),
+              glasswareId: request.body.glasswareId ?? null,
+              garnish: request.body.garnish ?? null,
+              description: request.body.description ?? null,
+              createdAt: now,
+              updatedAt: now,
             })
             .run()
-        })
 
-        // D-35: tags are optional at create time (owner assigns from
-        // Barback, possibly later) — omitting tagIds creates a recipe with
-        // tags: []. De-duplicated: a repeated id would otherwise trip the
-        // recipe_tags UNIQUE(recipe_id, tag_id) constraint below.
-        const tagIds = [...new Set(request.body.tagIds ?? [])]
-        tagIds.forEach((tagId) => {
-          db.insert(recipeTags)
-            .values({ id: crypto.randomUUID(), recipeId, tagId })
-            .run()
+          // D-16: displayOrder preserves submitted ingredient-line order.
+          // D-30/MATCH-05: ingredientId/requiresSpecific are persisted
+          // exactly as submitted — a category-only line omits ingredientId
+          // (persisted as null); requiresSpecific defaults to true (D-30).
+          request.body.ingredients.forEach((ing, idx) => {
+            tx.insert(recipeIngredients)
+              .values({
+                id: crypto.randomUUID(),
+                recipeId,
+                categoryId: ing.categoryId,
+                ingredientId: ing.ingredientId ?? null,
+                requiresSpecific: ing.requiresSpecific ?? true,
+                quantity: ing.quantity,
+                unit: ing.unit,
+                displayOrder: idx,
+              })
+              .run()
+          })
+
+          // D-35: tags are optional at create time (owner assigns from
+          // Barback, possibly later) — omitting tagIds creates a recipe with
+          // tags: []. De-duplicated: a repeated id would otherwise trip the
+          // recipe_tags UNIQUE(recipe_id, tag_id) constraint below.
+          const tagIds = [...new Set(request.body.tagIds ?? [])]
+          tagIds.forEach((tagId) => {
+            tx.insert(recipeTags)
+              .values({ id: crypto.randomUUID(), recipeId, tagId })
+              .run()
+          })
         })
       } catch (err) {
         // T-02-01/T-02-03/T-02.1-01/T-03-01: an unknown categoryId,
