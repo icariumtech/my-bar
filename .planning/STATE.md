@@ -5,8 +5,8 @@ milestone_name: milestone
 current_phase: 4
 current_phase_name: Bartender Console & Order Workflow
 status: planning
-stopped_at: Phase 4 context gathered
-last_updated: "2026-08-18T04:03:00.857Z"
+stopped_at: Phase 4 UI-SPEC approved
+last_updated: "2026-08-18T16:31:45.906Z"
 last_activity: 2026-08-17
 last_activity_desc: "Completed quick task 260817-o11: Add ingredient delete (DELETE /api/ingredients/:id, useDeleteIngredient, Delete button on IngredientRow)"
 progress:
@@ -143,6 +143,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-18T04:03:00.827Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-bartender-console-order-workflow/04-CONTEXT.md
+Last session: 2026-08-18T16:31:45.877Z
+Stopped at: Phase 4 UI-SPEC approved
+Resume file: /home/gjohnson/src/my-bar/.planning/phases/04-bartender-console-order-workflow/04-UI-SPEC.md
