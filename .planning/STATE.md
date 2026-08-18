@@ -4,15 +4,15 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 4
 current_phase_name: Bartender Console & Order Workflow
-status: planning
+status: executing
 stopped_at: Phase 4 UI-SPEC approved
-last_updated: "2026-08-18T16:31:45.906Z"
+last_updated: "2026-08-18T17:17:20.342Z"
 last_activity: 2026-08-17
 last_activity_desc: "Completed quick task 260817-o11: Add ingredient delete (DELETE /api/ingredients/:id, useDeleteIngredient, Delete button on IngredientRow)"
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 26
+  total_plans: 31
   completed_plans: 26
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 
 Phase: 4 — Bartender Console & Order Workflow
 Plan: Not started
-Status: Ready to plan
+Status: Ready to execute
 Last activity: 2026-08-17 - Completed quick task 260817-hpy: Convert Patron tag submenus and settings to flyout popovers with persistent selection highlight
 
 Progress: [██████████] 100%
