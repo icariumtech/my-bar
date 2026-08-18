@@ -265,6 +265,203 @@ describe('POST/GET /api/orders', () => {
     const body = res.json() as Array<{ id: string }>
     expect(body.map((o) => o.id)).toEqual([earlierOrderId, laterOrderId])
   })
+
+  it('PATCH /api/orders/:id/start transitions new -> in_progress and is idempotent on a repeat call', async () => {
+    const recipeId = seedMakeableRecipe()
+    const app = buildTestApp()
+
+    const createRes = await app.inject({ method: 'POST', url: '/api/orders', payload: { recipeId } })
+    const orderId = (createRes.json() as { id: string }).id
+
+    const startRes = await app.inject({ method: 'PATCH', url: `/api/orders/${orderId}/start` })
+    expect(startRes.statusCode).toBe(200)
+    expect(startRes.json().status).toBe('in_progress')
+
+    const getRes = await app.inject({ method: 'GET', url: '/api/orders' })
+    const fetched = (getRes.json() as Array<{ id: string; status: string }>).find((o) => o.id === orderId)
+    expect(fetched?.status).toBe('in_progress')
+
+    // Calling /start again on an already-in_progress order is a safe no-op.
+    const startAgainRes = await app.inject({ method: 'PATCH', url: `/api/orders/${orderId}/start` })
+    expect(startAgainRes.statusCode).toBe(200)
+    expect(startAgainRes.json().status).toBe('in_progress')
+  })
+
+  it('PATCH /api/orders/:id/done transitions to done; a later /start call never regresses it back to in_progress', async () => {
+    const recipeId = seedMakeableRecipe()
+    const app = buildTestApp()
+
+    const createRes = await app.inject({ method: 'POST', url: '/api/orders', payload: { recipeId } })
+    const orderId = (createRes.json() as { id: string }).id
+
+    await app.inject({ method: 'PATCH', url: `/api/orders/${orderId}/start` })
+
+    const doneRes = await app.inject({ method: 'PATCH', url: `/api/orders/${orderId}/done` })
+    expect(doneRes.statusCode).toBe(200)
+    expect(doneRes.json().status).toBe('done')
+
+    const startAfterDoneRes = await app.inject({ method: 'PATCH', url: `/api/orders/${orderId}/start` })
+    expect(startAfterDoneRes.statusCode).toBe(200)
+    expect(startAfterDoneRes.json().status).toBe('done')
+  })
+
+  it('PATCH /api/orders/:id/done a second time on an already-done order leaves updatedAt unchanged', async () => {
+    const recipeId = seedMakeableRecipe()
+    const app = buildTestApp()
+
+    const createRes = await app.inject({ method: 'POST', url: '/api/orders', payload: { recipeId } })
+    const orderId = (createRes.json() as { id: string }).id
+
+    const firstDoneRes = await app.inject({ method: 'PATCH', url: `/api/orders/${orderId}/done` })
+    expect(firstDoneRes.statusCode).toBe(200)
+    const firstUpdatedAt = (firstDoneRes.json() as { updatedAt: string }).updatedAt
+
+    const secondDoneRes = await app.inject({ method: 'PATCH', url: `/api/orders/${orderId}/done` })
+    expect(secondDoneRes.statusCode).toBe(200)
+    expect(secondDoneRes.json().updatedAt).toBe(firstUpdatedAt)
+  })
+
+  it('PATCH /:id/start and /:id/done both return 404 { error } for an unknown order id', async () => {
+    const app = buildTestApp()
+    const unknownId = crypto.randomUUID()
+
+    const startRes = await app.inject({ method: 'PATCH', url: `/api/orders/${unknownId}/start` })
+    expect(startRes.statusCode).toBe(404)
+    expect(startRes.json()).toEqual({ error: 'Order not found' })
+
+    const doneRes = await app.inject({ method: 'PATCH', url: `/api/orders/${unknownId}/done` })
+    expect(doneRes.statusCode).toBe(404)
+    expect(doneRes.json()).toEqual({ error: 'Order not found' })
+  })
+
+  it('PATCH /api/orders/:id/done never modifies ingredient stock', async () => {
+    const recipeId = seedMakeableRecipe()
+    const app = buildTestApp()
+
+    const beforeRows = testDb.db.select().from(ingredients).all()
+
+    const createRes = await app.inject({ method: 'POST', url: '/api/orders', payload: { recipeId } })
+    const orderId = (createRes.json() as { id: string }).id
+    await app.inject({ method: 'PATCH', url: `/api/orders/${orderId}/start` })
+    await app.inject({ method: 'PATCH', url: `/api/orders/${orderId}/done` })
+
+    const afterRows = testDb.db.select().from(ingredients).all()
+    expect(afterRows).toEqual(beforeRows)
+  })
+
+  it('GET /api/orders includes a done order updated 4 minutes ago (within the retention window)', async () => {
+    const recipeId = seedMakeableRecipe()
+    const doneOrderId = crypto.randomUUID()
+    const updatedAt = new Date(Date.now() - 4 * 60 * 1000)
+    testDb.db
+      .insert(orders)
+      .values({ id: doneOrderId, recipeId, patronName: null, status: 'done', createdAt: updatedAt, updatedAt })
+      .run()
+
+    const app = buildTestApp()
+    const res = await app.inject({ method: 'GET', url: '/api/orders' })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json() as Array<{ id: string }>
+    expect(body.map((o) => o.id)).toContain(doneOrderId)
+  })
+
+  it('GET /api/orders includes a done order updated exactly 5 minutes ago (inclusive boundary)', async () => {
+    const recipeId = seedMakeableRecipe()
+    const doneOrderId = crypto.randomUUID()
+    const updatedAt = new Date(Date.now() - 5 * 60 * 1000)
+    testDb.db
+      .insert(orders)
+      .values({ id: doneOrderId, recipeId, patronName: null, status: 'done', createdAt: updatedAt, updatedAt })
+      .run()
+
+    const app = buildTestApp()
+    const res = await app.inject({ method: 'GET', url: '/api/orders' })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json() as Array<{ id: string }>
+    expect(body.map((o) => o.id)).toContain(doneOrderId)
+  })
+
+  it('GET /api/orders excludes a done order updated 5 minutes and 1 second ago (past the boundary)', async () => {
+    const recipeId = seedMakeableRecipe()
+    const doneOrderId = crypto.randomUUID()
+    const updatedAt = new Date(Date.now() - (5 * 60 * 1000 + 1000))
+    testDb.db
+      .insert(orders)
+      .values({ id: doneOrderId, recipeId, patronName: null, status: 'done', createdAt: updatedAt, updatedAt })
+      .run()
+
+    const app = buildTestApp()
+    const res = await app.inject({ method: 'GET', url: '/api/orders' })
+
+    expect(res.statusCode).toBe(200)
+    const body = res.json() as Array<{ id: string }>
+    expect(body.map((o) => o.id)).not.toContain(doneOrderId)
+  })
+
+  it('GET /api/orders returns new/in_progress/recently-done orders but excludes a stale-done order', async () => {
+    const recipeId = seedMakeableRecipe()
+    const now = new Date()
+
+    const newOrderId = crypto.randomUUID()
+    testDb.db
+      .insert(orders)
+      .values({ id: newOrderId, recipeId, patronName: null, status: 'new', createdAt: now, updatedAt: now })
+      .run()
+
+    const inProgressOrderId = crypto.randomUUID()
+    testDb.db
+      .insert(orders)
+      .values({
+        id: inProgressOrderId,
+        recipeId,
+        patronName: null,
+        status: 'in_progress',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run()
+
+    const recentDoneUpdatedAt = new Date(Date.now() - 2 * 60 * 1000)
+    const recentDoneOrderId = crypto.randomUUID()
+    testDb.db
+      .insert(orders)
+      .values({
+        id: recentDoneOrderId,
+        recipeId,
+        patronName: null,
+        status: 'done',
+        createdAt: recentDoneUpdatedAt,
+        updatedAt: recentDoneUpdatedAt,
+      })
+      .run()
+
+    const staleDoneUpdatedAt = new Date(Date.now() - 10 * 60 * 1000)
+    const staleDoneOrderId = crypto.randomUUID()
+    testDb.db
+      .insert(orders)
+      .values({
+        id: staleDoneOrderId,
+        recipeId,
+        patronName: null,
+        status: 'done',
+        createdAt: staleDoneUpdatedAt,
+        updatedAt: staleDoneUpdatedAt,
+      })
+      .run()
+
+    const app = buildTestApp()
+    const res = await app.inject({ method: 'GET', url: '/api/orders' })
+
+    expect(res.statusCode).toBe(200)
+    const ids = (res.json() as Array<{ id: string }>).map((o) => o.id)
+    expect(ids).toContain(newOrderId)
+    expect(ids).toContain(inProgressOrderId)
+    expect(ids).toContain(recentDoneOrderId)
+    expect(ids).not.toContain(staleDoneOrderId)
+    expect(ids).toHaveLength(3)
+  })
 })
 
 // Real-listening-server integration test (mirrors hub.test.ts exactly) —
@@ -338,6 +535,92 @@ describe('Socket.IO — orders:created, real client, real listening server', () 
     })
     expect(res.status).toBe(201)
     const createdOrder = (await res.json()) as { id: string }
+
+    const payload = await eventReceived
+    expect(payload.orderId).toBe(createdOrder.id)
+  })
+
+  it('emits orders:updated with { orderId } after a successful PATCH /api/orders/:id/start', async () => {
+    const categoryId = crypto.randomUUID()
+    testDb.db.insert(categories).values({ id: categoryId, name: 'Rye Whiskey' }).run()
+    testDb.db
+      .insert(ingredients)
+      .values({ id: crypto.randomUUID(), name: 'Bulleit Rye', categoryId, note: null, inStock: true })
+      .run()
+
+    const createRecipeRes = await fetch(`${baseUrl}/api/recipes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Old Fashioned',
+        ingredients: [{ categoryId, quantity: '2', unit: 'oz' }],
+        method: ['Stir'],
+      }),
+    })
+    expect(createRecipeRes.status).toBe(201)
+    const createdRecipe = (await createRecipeRes.json()) as { id: string }
+
+    const orderRes = await fetch(`${baseUrl}/api/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipeId: createdRecipe.id }),
+    })
+    expect(orderRes.status).toBe(201)
+    const createdOrder = (await orderRes.json()) as { id: string }
+
+    const eventReceived = new Promise<{ orderId: string }>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Timed out waiting for orders:updated')), 2000)
+      client.once('orders:updated', (payload: { orderId: string }) => {
+        clearTimeout(timeout)
+        resolve(payload)
+      })
+    })
+
+    const startRes = await fetch(`${baseUrl}/api/orders/${createdOrder.id}/start`, { method: 'PATCH' })
+    expect(startRes.status).toBe(200)
+
+    const payload = await eventReceived
+    expect(payload.orderId).toBe(createdOrder.id)
+  })
+
+  it('emits orders:updated with { orderId } after a successful PATCH /api/orders/:id/done', async () => {
+    const categoryId = crypto.randomUUID()
+    testDb.db.insert(categories).values({ id: categoryId, name: 'Dry Vermouth' }).run()
+    testDb.db
+      .insert(ingredients)
+      .values({ id: crypto.randomUUID(), name: 'Dolin Dry', categoryId, note: null, inStock: true })
+      .run()
+
+    const createRecipeRes = await fetch(`${baseUrl}/api/recipes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Gibson',
+        ingredients: [{ categoryId, quantity: '2', unit: 'oz' }],
+        method: ['Stir'],
+      }),
+    })
+    expect(createRecipeRes.status).toBe(201)
+    const createdRecipe = (await createRecipeRes.json()) as { id: string }
+
+    const orderRes = await fetch(`${baseUrl}/api/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipeId: createdRecipe.id }),
+    })
+    expect(orderRes.status).toBe(201)
+    const createdOrder = (await orderRes.json()) as { id: string }
+
+    const eventReceived = new Promise<{ orderId: string }>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Timed out waiting for orders:updated')), 2000)
+      client.once('orders:updated', (payload: { orderId: string }) => {
+        clearTimeout(timeout)
+        resolve(payload)
+      })
+    })
+
+    const doneRes = await fetch(`${baseUrl}/api/orders/${createdOrder.id}/done`, { method: 'PATCH' })
+    expect(doneRes.status).toBe(200)
 
     const payload = await eventReceived
     expect(payload.orderId).toBe(createdOrder.id)
