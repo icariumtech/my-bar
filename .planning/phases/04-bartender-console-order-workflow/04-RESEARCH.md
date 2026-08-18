@@ -720,27 +720,31 @@ Test infrastructure gaps (to be closed in Phase 4 planning):
 | A9 | antd `darkAlgorithm` applies to all 50+ antd components without per-component overrides | Bartender Scaffolding | If false, some antd components may render light colors even in dark mode. Impact: visual; minor if overridable via token props. Mitigation: test on real device. |
 | A10 | 60–90 second inactivity timeout is a sensible UX for a kiosk | PATR-08 Discretion | If wrong, users may be interrupted mid-use (too short) or kiosk stays active too long after a user walks away (too long). Impact: UX/ops. Mitigation: configurable via env var; user can tune after deployment. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Done Order Retention Window (D-60)**
+1. **Done Order Retention Window (D-60)** — RESOLVED
    - What we know: Done orders should "stay visible briefly" (D-60) but exact duration is discretionary.
    - What's unclear: Is "briefly" = 5 minutes? Until next page reload? Until the Bartender closes the app? Or auto-remove on a server-side timer?
    - Recommendation: Pick a concrete value during planning. Suggested: auto-remove done orders after 5 minutes server-side (soft-delete via `deletedAt` timestamp), or retain them in-memory only (clear on server restart). Test with a real bartender to see if they want recent-history visibility.
+   - Resolution: Planned in 04-03 as `DONE_RETENTION_MS = 5 * 60 * 1000` (5-minute server-side retention window).
 
-2. **Order Payload on Socket.IO Event (PATR-02 vs. D-47 pattern)**
+2. **Order Payload on Socket.IO Event (PATR-02 vs. D-47 pattern)** — RESOLVED
    - What we know: Phase 3 Socket.IO events carry no payload; clients re-fetch via REST (TanStack Query invalidation). This was proven for recipes/inventory.
    - What's unclear: Should orders:created emit `{ orderId }` or also include full order object?
    - Recommendation: Stick to Phase 3 pattern: emit `{ orderId }` only, client does `queryClient.invalidateQueries({ queryKey: ['orders'] })` and re-fetches `/api/orders`. Reduces payload size and keeps sync logic simple.
+   - Resolution: Planned in 04-01 Task 1 — `orders:created`/`orders:updated` emit `{ orderId }` only, per the Phase 3 pattern.
 
-3. **Batching Computation (D-58)**
+3. **Batching Computation (D-58)** — RESOLVED
    - What we know: Multiple identical pending orders should collapse into one "×N" row.
    - What's unclear: Should batching be done server-side (GET /api/orders returns pre-grouped list) or client-side (fetch flat list, batch in React)?
    - Recommendation: Client-side batching. Server returns flat list; Bartender UI groups by `(recipeId, status)` before render. Simpler server logic, and batching algorithm is UI-specific (you might later want to batch differently in a mobile view).
+   - Resolution: Planned in 04-04 Task 1 — client-side `batchOrders()` groups the flat `/api/orders` response by `(recipeId, status)`.
 
-4. **Bartender Fullscreen + Wake Lock (distinct from Patron)**
+4. **Bartender Fullscreen + Wake Lock (distinct from Patron)** — RESOLVED
    - What we know: Patron kiosk needs fullscreen + wake-lock (wall-mounted, no user interaction).
    - What's unclear: Does Bartender (a person working behind the bar) also need fullscreen + wake-lock? Or just normal browsing?
    - Recommendation: Bartender does NOT require fullscreen/wake-lock. Bartender is actively using the device (making drinks), so the screen won't go idle. If it does become a problem (screen dims mid-order), enable wake-lock in Bartender too, but test first.
+   - Resolution: Confirmed in 04-05 — Bartender does not get fullscreen/wake-lock hooks; those are Patron-only (04-05 scope).
 
 ## Environment Availability
 
