@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { Recipe, Tag } from '@my-bar/shared'
 import { RecipeBrowse } from './RecipeBrowse.js'
+import { useKioskInactivity } from '../hooks/useKioskInactivity.js'
 
 // RecipeDetail owns its own independent data fetch (useRecipeDetail) —
 // out of scope for this file's tests, which only assert that RecipeBrowse
@@ -17,6 +18,16 @@ vi.mock('./RecipeDetail.js', () => ({
     </div>
   ),
 }))
+
+// Mocked the same way useRecipeDetail is mocked in RecipeDetail.test.tsx
+// — this file exercises RecipeBrowse's wiring contract only (it passes
+// the right timeout callback through), not useKioskInactivity's own timer
+// logic, which is covered independently in useKioskInactivity.test.ts.
+vi.mock('../hooks/useKioskInactivity.js', () => ({
+  useKioskInactivity: vi.fn(),
+}))
+
+const mockedUseKioskInactivity = vi.mocked(useKioskInactivity)
 
 const WHISKEY: Tag = { id: 'aaaaaaaa-0000-0000-0000-000000000001', name: 'Whiskey', group: 'spirit' }
 const SWEET: Tag = { id: 'bbbbbbbb-0000-0000-0000-000000000002', name: 'Sweet', group: 'flavor' }
@@ -184,6 +195,24 @@ describe('RecipeBrowse', () => {
     expect(screen.queryByText('Daiquiri')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+
+    expect(await screen.findByText('Old Fashioned')).toBeInTheDocument()
+    expect(screen.getByText('Daiquiri')).toBeInTheDocument()
+  })
+
+  it('closes an open detail view and returns to the grid when the useKioskInactivity timeout fires', async () => {
+    stubFetch([BASE_RECIPE, OTHER_RECIPE])
+    renderBrowse()
+
+    expect(await screen.findByText('Old Fashioned')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Old Fashioned'))
+    expect(screen.getByText(`Viewing ${BASE_RECIPE.id}`)).toBeInTheDocument()
+
+    const lastCall = mockedUseKioskInactivity.mock.calls.at(-1)
+    const onTimeout = lastCall?.[0]
+    expect(onTimeout).toBeInstanceOf(Function)
+
+    act(() => onTimeout?.())
 
     expect(await screen.findByText('Old Fashioned')).toBeInTheDocument()
     expect(screen.getByText('Daiquiri')).toBeInTheDocument()
