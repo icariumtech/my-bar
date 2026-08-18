@@ -3,6 +3,7 @@ import { Alert, Button, List, Spin } from 'antd'
 import type { Order, OrderStatus, Recipe } from '@my-bar/shared'
 import { useOrders } from '../api/useOrders.js'
 import { useOpenOrder } from '../api/useOpenOrder.js'
+import { useMarkOrderDone } from '../api/useMarkOrderDone.js'
 import { RecipeOrOrderDetail } from './RecipeOrOrderDetail.js'
 
 // BART-04 precision must-have: floor, never round/ceil. seconds === 60
@@ -57,6 +58,7 @@ export function batchOrders(orders: Order[]): BatchedOrder[] {
 export function OrdersTab() {
   const { data: rawOrders = [], isLoading, isError, refetch } = useOrders()
   const openOrder = useOpenOrder()
+  const markDone = useMarkOrderDone()
   const [view, setView] = useState<'list' | 'detail'>('list')
   const [viewingBatch, setViewingBatch] = useState<BatchedOrder>()
 
@@ -118,7 +120,14 @@ export function OrdersTab() {
           elapsedSeconds: viewingBatch.elapsedSeconds,
         }}
         onBack={() => setView('list')}
-        onMarkDone={() => setView('list')}
+        onMarkDone={() => {
+          // D-58: one Done tap clears every individual order in the batch;
+          // navigation back to the list does not wait for all N mutations
+          // to settle — each mutation's own onSettled independently
+          // triggers the ['orders'] refetch that reflects the change.
+          viewingBatch.orderIds.forEach((id) => markDone.mutate(id))
+          setView('list')
+        }}
       />
     )
   }
