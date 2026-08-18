@@ -1,5 +1,9 @@
+import { useMemo, useState } from 'react'
 import { Alert, Button, List, Spin } from 'antd'
+import type { Order, OrderStatus, Recipe } from '@my-bar/shared'
 import { useOrders } from '../api/useOrders.js'
+import { useOpenOrder } from '../api/useOpenOrder.js'
+import { RecipeOrOrderDetail } from './RecipeOrOrderDetail.js'
 
 // BART-04 precision must-have: floor, never round/ceil. seconds === 60
 // renders '1m ago', not '60s ago' — the exact adjacency boundary.
@@ -9,12 +13,54 @@ export function formatElapsed(seconds: number): string {
   return `${Math.floor(seconds / 3600)}h ago`
 }
 
-// Tracer-minimal (Plan 04-04's job to add batching/Done wiring/tap-to-detail
-// navigation) — this view proves the live-sync path only: fetch, loading,
-// error+retry, empty, and populated states per UI-SPEC's Bartender Orders
-// Tab copywriting contract.
+// D-58: identical open orders for the same recipe+status collapse into one
+// row (never merged across statuses — a 'new' and an 'in_progress' order for
+// the same recipe stay two separate rows/batches).
+export interface BatchedOrder {
+  recipe: Recipe
+  status: OrderStatus
+  count: number
+  patronNames: string[]
+  elapsedSeconds: number
+  orderIds: string[]
+}
+
+export function batchOrders(orders: Order[]): BatchedOrder[] {
+  const grouped: Record<string, BatchedOrder> = {}
+
+  for (const order of orders) {
+    const key = `${order.recipe.id}:${order.status}`
+    if (!grouped[key]) {
+      grouped[key] = {
+        recipe: order.recipe,
+        status: order.status,
+        count: 0,
+        patronNames: [],
+        elapsedSeconds: 0,
+        orderIds: [],
+      }
+    }
+    const batch = grouped[key]
+    batch.count += 1
+    if (order.patronName) batch.patronNames.push(order.patronName)
+    batch.elapsedSeconds = Math.max(batch.elapsedSeconds, order.elapsedSeconds)
+    batch.orderIds.push(order.id)
+  }
+
+  // Sorted oldest-first (D-62), stable tiebreak on first orderId mirrors
+  // GET /api/orders's own asc(id) secondary sort at equal elapsedSeconds.
+  return Object.values(grouped).sort(
+    (a, b) => b.elapsedSeconds - a.elapsedSeconds || a.orderIds[0].localeCompare(b.orderIds[0]),
+  )
+}
+
 export function OrdersTab() {
-  const { data: orders, isLoading, isError, refetch } = useOrders()
+  const { data: rawOrders = [], isLoading, isError, refetch } = useOrders()
+  const openOrder = useOpenOrder()
+  const [view, setView] = useState<'list' | 'detail'>('list')
+  const [viewingBatch, setViewingBatch] = useState<BatchedOrder>()
+
+  const batches = useMemo(() => batchOrders(rawOrders), [rawOrders])
 
   if (isLoading) {
     return (
@@ -41,7 +87,7 @@ export function OrdersTab() {
     )
   }
 
-  if (!orders || orders.length === 0) {
+  if (batches.length === 0) {
     return (
       <div className="text-center pt-3xl px-md">
         <h2 className="text-white">No orders yet</h2>
@@ -50,17 +96,59 @@ export function OrdersTab() {
     )
   }
 
+  // D-57: opening a 'new' batch auto-advances every order in it to
+  // 'in_progress' at once; opening an already-'in_progress' batch is a
+  // no-op on the mutation (idempotent-safe either way, but this avoids
+  // redundant network calls).
+  function openBatch(batch: BatchedOrder) {
+    if (batch.status === 'new') {
+      batch.orderIds.forEach((id) => openOrder.mutate(id))
+    }
+    setViewingBatch(batch)
+    setView('detail')
+  }
+
+  if (view === 'detail' && viewingBatch) {
+    return (
+      <RecipeOrOrderDetail
+        recipe={viewingBatch.recipe}
+        order={{
+          patronName: viewingBatch.patronNames.length > 0 ? viewingBatch.patronNames.join(', ') : null,
+          status: viewingBatch.status,
+          elapsedSeconds: viewingBatch.elapsedSeconds,
+        }}
+        onBack={() => setView('list')}
+        onMarkDone={() => setView('list')}
+      />
+    )
+  }
+
   return (
     <List
-      dataSource={orders}
-      renderItem={(o) => (
-        <List.Item key={o.id} style={{ minHeight: 48 }}>
+      dataSource={batches}
+      renderItem={(batch) => (
+        <List.Item
+          key={`${batch.recipe.id}:${batch.status}`}
+          style={{ minHeight: 48, cursor: 'pointer' }}
+          onClick={() => openBatch(batch)}
+        >
           <div className="flex justify-between items-center w-full px-md">
             <div className="flex flex-col">
-              <span className="text-white">{o.recipe.name}</span>
-              {o.patronName && <span className="text-zinc-400 text-sm">{`For: ${o.patronName}`}</span>}
+              <span className="text-white">
+                {batch.recipe.name}
+                {batch.count > 1 && ` ×${batch.count}`}
+              </span>
+              {batch.patronNames.length > 0 && (
+                <span
+                  className="text-zinc-400 text-sm"
+                  style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  title={batch.patronNames.join(', ')}
+                >
+                  {`For: ${batch.patronNames.join(', ')}`}
+                </span>
+              )}
             </div>
-            <span className="text-zinc-400 text-sm">{formatElapsed(o.elapsedSeconds)}</span>
+            <span className="text-zinc-400 text-sm">{formatElapsed(batch.elapsedSeconds)}</span>
           </div>
         </List.Item>
       )}
