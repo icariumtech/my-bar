@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { useRecipeDetail } from '../api/useRecipeDetail.js'
 import { useSubmitOrder } from '../api/useSubmitOrder.js'
@@ -34,6 +34,22 @@ export function RecipeDetail({ recipeId, onBack }: RecipeDetailProps) {
   const [showOrderPrompt, setShowOrderPrompt] = useState(false)
   const [orderError, setOrderError] = useState<string | null>(null)
   const [showConfirmation, setShowConfirmation] = useState(false)
+
+  // WR-01: the D-51 "brief confirmation, then back to the browse grid" timer
+  // is owned by this effect (not a raw setTimeout fired from
+  // handleOrderSubmit's onSuccess) so it is cleared on unmount/re-run. A raw,
+  // uncancelled setTimeout capturing `onBack` would otherwise fire after the
+  // patron manually navigates away (back button, or the 90s kiosk-inactivity
+  // timeout) and opens a *different* recipe's detail view — silently
+  // kicking them out of that unrelated screen. Scoping the timer to
+  // showConfirmation means it only ever runs, and only ever navigates away
+  // from, THIS mounted instance. Declared above the isLoading/isError early
+  // returns below — hooks must run unconditionally on every render.
+  useEffect(() => {
+    if (!showConfirmation) return
+    const timer = setTimeout(() => onBack(), 3000)
+    return () => clearTimeout(timer)
+  }, [showConfirmation, onBack])
 
   if (isLoading) {
     return (
@@ -73,8 +89,6 @@ export function RecipeDetail({ recipeId, onBack }: RecipeDetailProps) {
           setShowOrderPrompt(false)
           setOrderError(null)
           setShowConfirmation(true)
-          // D-51: brief confirmation, then back to the browse grid.
-          setTimeout(() => onBack(), 3000)
         },
         onError: (err: Error) => {
           setShowOrderPrompt(false)
