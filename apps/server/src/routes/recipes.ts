@@ -339,50 +339,59 @@ export const recipesRoutes: FastifyPluginAsync<RecipesRoutesOptions> = async (ap
         // leaves the existing tag set untouched.
         const newIngredients = patch.ingredients
         const newTagIds = patch.tagIds
-        if (newIngredients !== undefined || newTagIds !== undefined) {
-          db.transaction((tx) => {
-            if (newIngredients !== undefined) {
-              tx.delete(recipeIngredients).where(eq(recipeIngredients.recipeId, id)).run()
-              newIngredients.forEach((ing, idx) => {
-                tx.insert(recipeIngredients)
-                  .values({
-                    id: crypto.randomUUID(),
-                    recipeId: id,
-                    categoryId: ing.categoryId,
-                    ingredientId: ing.ingredientId ?? null,
-                    requiresSpecific: ing.requiresSpecific ?? true,
-                    quantity: ing.quantity,
-                    unit: ing.unit,
-                    displayOrder: idx,
-                  })
-                  .run()
-              })
-            }
 
-            if (newTagIds !== undefined) {
-              tx.delete(recipeTags).where(eq(recipeTags.recipeId, id)).run()
-              // De-duplicated: a repeated id would otherwise trip the
-              // recipe_tags UNIQUE(recipe_id, tag_id) constraint below.
-              ;[...new Set(newTagIds)].forEach((tagId) => {
-                tx.insert(recipeTags)
-                  .values({ id: crypto.randomUUID(), recipeId: id, tagId })
-                  .run()
-              })
-            }
-          })
-        }
+        // CR-02: the trailing `recipes` row update (name/method/glasswareId/
+        // garnish/description) is folded into the SAME transaction as the
+        // ingredients/tags replacement above, always opened now regardless
+        // of whether ingredients/tagIds are present in this patch — so
+        // either the whole PATCH commits or none of it does. Previously
+        // this update ran as a separate, un-transacted statement after the
+        // ingredients/tags transaction had already committed, so a patch
+        // that replaced ingredients/tags AND then failed on an invalid
+        // glasswareId would silently leave the ingredient/tag replacement
+        // committed while reporting the whole request as a 400 failure.
+        db.transaction((tx) => {
+          if (newIngredients !== undefined) {
+            tx.delete(recipeIngredients).where(eq(recipeIngredients.recipeId, id)).run()
+            newIngredients.forEach((ing, idx) => {
+              tx.insert(recipeIngredients)
+                .values({
+                  id: crypto.randomUUID(),
+                  recipeId: id,
+                  categoryId: ing.categoryId,
+                  ingredientId: ing.ingredientId ?? null,
+                  requiresSpecific: ing.requiresSpecific ?? true,
+                  quantity: ing.quantity,
+                  unit: ing.unit,
+                  displayOrder: idx,
+                })
+                .run()
+            })
+          }
 
-        db.update(recipes)
-          .set({
-            ...(patch.name !== undefined && { name: patch.name }),
-            ...(patch.method !== undefined && { method: JSON.stringify(patch.method) }),
-            ...(patch.glasswareId !== undefined && { glasswareId: patch.glasswareId }),
-            ...(patch.garnish !== undefined && { garnish: patch.garnish }),
-            ...(patch.description !== undefined && { description: patch.description }),
-            updatedAt: new Date(),
-          })
-          .where(eq(recipes.id, id))
-          .run()
+          if (newTagIds !== undefined) {
+            tx.delete(recipeTags).where(eq(recipeTags.recipeId, id)).run()
+            // De-duplicated: a repeated id would otherwise trip the
+            // recipe_tags UNIQUE(recipe_id, tag_id) constraint below.
+            ;[...new Set(newTagIds)].forEach((tagId) => {
+              tx.insert(recipeTags)
+                .values({ id: crypto.randomUUID(), recipeId: id, tagId })
+                .run()
+            })
+          }
+
+          tx.update(recipes)
+            .set({
+              ...(patch.name !== undefined && { name: patch.name }),
+              ...(patch.method !== undefined && { method: JSON.stringify(patch.method) }),
+              ...(patch.glasswareId !== undefined && { glasswareId: patch.glasswareId }),
+              ...(patch.garnish !== undefined && { garnish: patch.garnish }),
+              ...(patch.description !== undefined && { description: patch.description }),
+              updatedAt: new Date(),
+            })
+            .where(eq(recipes.id, id))
+            .run()
+        })
       } catch (err) {
         // T-02-08/T-02.1-01/T-03-01: an unknown categoryId or ingredientId
         // (in a replaced ingredients array), an unknown glasswareId, or an
