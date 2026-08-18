@@ -40,7 +40,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **PATR-02**: Patron can view a drink detail screen (photo, description, flavor tags)
 - [x] **PATR-03**: Every drink card/detail shows a clear makeable / not-makeable indicator
 - [x] **PATR-04**: Not-makeable drinks show which specific ingredient(s) are missing
-- [ ] **PATR-05**: Patron can submit an order (with an optional free-text "who's this for" field) to the bartender queue
+- [x] **PATR-05**: Patron can submit an order (with an optional free-text "who's this for" field) to the bartender queue
 - [x] **PATR-06**: Patron can browse/view recipes without being forced to submit an order
 - [ ] **PATR-07**: Patron screen runs in a kiosk-locked/fullscreen mode appropriate for an unauthenticated wall-mounted tablet
 - [ ] **PATR-08**: Patron screen returns to the browse/home view after a period of inactivity
@@ -120,7 +120,7 @@ Populated during roadmap creation.
 | PATR-02 | Phase 3 | Complete |
 | PATR-03 | Phase 3 | Complete |
 | PATR-04 | Phase 3 | Complete |
-| PATR-05 | Phase 4 | Pending |
+| PATR-05 | Phase 4 | Complete |
 | PATR-06 | Phase 3 | Complete |
 | PATR-07 | Phase 4 | Pending |
 | PATR-08 | Phase 4 | Pending |

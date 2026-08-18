@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 4
-current_phase_name: Bartender Console & Order Workflow
+current_phase: 04
+current_phase_name: bartender-console-order-workflow
 status: executing
-stopped_at: Phase 4 UI-SPEC approved
-last_updated: "2026-08-18T17:17:20.342Z"
-last_activity: 2026-08-17
-last_activity_desc: "Completed quick task 260817-o11: Add ingredient delete (DELETE /api/ingredients/:id, useDeleteIngredient, Delete button on IngredientRow)"
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-08-18T17:55:45.016Z"
+last_activity: 2026-08-18
+last_activity_desc: Phase 04 execution started
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 31
-  completed_plans: 26
+  completed_plans: 27
 ---
 
 # Project State
@@ -23,16 +23,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-08-11)
 
 **Core value:** The inventory must be the single source of truth: at any moment, the Patron and Bartender screens must correctly show which drinks are makeable right now, and which are missing ingredients.
-**Current focus:** Phase 3 — patron-browse-experience
+**Current focus:** Phase 04 — bartender-console-order-workflow
 
 ## Current Position
 
-Phase: 4 — Bartender Console & Order Workflow
-Plan: Not started
+Phase: 04 (bartender-console-order-workflow) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-08-17 - Completed quick task 260817-hpy: Convert Patron tag submenus and settings to flyout popovers with persistent selection highlight
+Last activity: 2026-08-18 — Phase 04 execution started
 
-Progress: [██████████] 100%
+Progress: [█████████░] 87%
 
 ## Performance Metrics
 
@@ -72,6 +72,7 @@ Progress: [██████████] 100%
 | Phase 02.1 P06 | 22min | 3 tasks | 10 files |
 | Phase 02.1 P07 | 12min | 2 tasks | 5 files |
 | Phase quick P260817-k8o | 8min | 2 tasks | 2 files |
+| Phase 04 P01 | 25min | 3 tasks | 31 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 02.1-06]: BARBACK-02 deliberately left unmarked in REQUIREMENTS.md pending plan 02.1-07's RecipeDetailView full-screen conversion, which explicitly closes out the requirement
 - [Phase ?]: [Phase 02.1-07]: RecipeDetailView converted from Modal to full-screen view (D-26) with per-line tri-state status dots and yellow-hint copy — closes MATCH-05's remaining UI surface and BARBACK-02 as the phase's final plan
 - [Phase ?]: [Phase 02.1-07]: Added RecipesTab.test.tsx (not in plan's file list) as a Rule 3 fix — the plan's verify command had no matching test file to run since no container-tab test precedent existed in the codebase
+- [Phase ?]: [Phase 04-01]: POST /api/orders recomputes overallStatus server-side via loadRecipe()/computeMakeable() and rejects 400 when not green — never trusts client-cached makeable state
+- [Phase ?]: [Phase 04-01]: apps/bartender scaffolded structurally identical to apps/barback (Vite+React 19+antd darkAlgorithm, D-64); useSubmitOrder.test.tsx uses .tsx (not plan's .test.ts) since JSX requires it, matching apps/barback's useIngredients.test.tsx precedent
 
 ### Pending Todos
 
@@ -143,6 +146,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-18T16:31:45.877Z
-Stopped at: Phase 4 UI-SPEC approved
-Resume file: /home/gjohnson/src/my-bar/.planning/phases/04-bartender-console-order-workflow/04-UI-SPEC.md
+Last session: 2026-08-18T17:55:45.003Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None
