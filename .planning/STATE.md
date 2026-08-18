@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 04
 current_phase_name: bartender-console-order-workflow
 status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-08-18T18:17:30.620Z"
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-08-18T22:02:58.470Z"
 last_activity: 2026-08-18
 last_activity_desc: Phase 04 execution started
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 31
-  completed_plans: 29
+  completed_plans: 30
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 ## Current Position
 
 Phase: 04 (bartender-console-order-workflow) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-08-18 — Phase 04 execution started
 
-Progress: [█████████░] 94%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -75,6 +75,7 @@ Progress: [█████████░] 94%
 | Phase 04 P01 | 25min | 3 tasks | 31 files |
 | Phase 04 P05 | 10min | 2 tasks | 9 files |
 | Phase 04 P02 | 16min | 2 tasks | 13 files |
+| Phase 04 P03 | 12min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -103,6 +104,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 04-05]: useRef<ReturnType<typeof setTimeout>>() fails TS strict mode's argument-required check; use useRef<ReturnType<typeof setTimeout> | undefined>(undefined) instead — caught only by tsc --noEmit, not vitest's esbuild transform
 - [Phase ?]: [Phase 04-02]: Created minimal real placeholder implementations of MakeableStatusBadge/RecipeSearchFilter/RecipeOrOrderDetail in Task 1 (Rule 3) since this project's Vite/Vitest setup can't vi.mock an import path that doesn't resolve to a file on disk; Task 2 fully replaced each with a real TDD-driven implementation
 - [Phase ?]: [Phase 04-02]: RecipeOrOrderDetail order caption used formatElapsed()'s output directly (already ends in 'ago') rather than appending a redundant literal ' ago'
+- [Phase ?]: [Phase 04-03]: Conditional-write idempotency pattern for PATCH status-transition endpoints — only write when existing.status differs from target, so a repeat call is a true no-op (no updatedAt bump) while the Socket.IO emit still fires unconditionally
+- [Phase ?]: [Phase 04-03]: Updated Plan 04-01's 'GET /api/orders excludes done orders' test to use a stale (>5min) done order — D-60's retention window makes a freshly-done order correctly appear now, so the original unconditional-exclusion assertion no longer holds
 
 ### Pending Todos
 
@@ -152,6 +155,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-18T18:17:30.607Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-08-18T22:02:58.457Z
+Stopped at: Completed 04-03-PLAN.md
 Resume file: None
