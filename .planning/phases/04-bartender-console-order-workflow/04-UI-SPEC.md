@@ -87,7 +87,7 @@ Declared values (multiples of 4 only, inherited from Phase 3):
 |------|------|--------|-------------|-------|
 | Small label / footnote | 12px | 400 (regular) | 1.4 | Timestamps, secondary text |
 | Body / list text | 14px | 400 (regular) | 1.5 | Primary content, order names |
-| Label / button | 14px | 500 (medium) | 1.5 | Form labels, button text |
+| Label / button | 14px | 600 (semibold) | 1.5 | Form labels, button text |
 | Heading / tab title | 16px | 600 (semibold) | 1.4 | Tab titles, section headings |
 | Large heading / modal title | 20px | 600 (semibold) | 1.2 | Recipe name in detail view |
 
@@ -99,8 +99,8 @@ Declared values (multiples of 4 only, inherited from Phase 3):
 |------|------|--------|-------------|-------|
 | Body | 14px | 400 (regular) | 1.5 | Recipe browse, detail copy |
 | Label / button | 14px | 600 (semibold) | 1.5 | CTA text, tag labels |
-| Heading | 20px | 700 (bold) | 1.2 | Recipe title, modal headings |
-| Display | 28px | 700 (bold) | 1 | Page-level hero (if used) |
+| Heading | 20px | 600 (semibold) | 1.2 | Recipe title, modal headings |
+| Display | 28px | 600 (semibold) | 1 | Page-level hero (if used) |
 
 **Rationale:** Inherited from Phase 3 UI-SPEC (unchanged this phase).
 
