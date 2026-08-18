@@ -45,13 +45,14 @@ describe('useKioskInactivity', () => {
       window.dispatchEvent(new Event(eventType))
 
       // Advance to the original 90000ms mark (10000ms more) — must NOT
-      // have fired, since the event reset the window.
+      // have fired, since the event reset the window (the new window
+      // fires 90000ms after the event, i.e. at the 170000ms mark).
       vi.advanceTimersByTime(10000)
       expect(onTimeout).not.toHaveBeenCalled()
 
-      // Advance the remaining time up to (but not including) 90000ms
-      // after the reset event.
-      vi.advanceTimersByTime(89999)
+      // Advance up to (but not including) 90000ms after the reset event
+      // (79999ms more, cumulative 89999ms since the event).
+      vi.advanceTimersByTime(79999)
       expect(onTimeout).not.toHaveBeenCalled()
 
       // The final 1ms crosses the full 90000ms-since-event mark.
