@@ -175,7 +175,24 @@ Plans:
   3. Bartender can move a ticket through new → in progress → done, with each ticket showing elapsed time since submission
   4. Patron screen runs in a kiosk-locked/fullscreen mode suited to an unauthenticated wall-mounted tablet, and returns to the browse/home view after a period of inactivity
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+
+**Wave 1**
+
+- [ ] 04-01-PLAN.md — Tracer: orders schema/API + Socket.IO push + Patron order submission + Bartender scaffold with a live Orders view (PATR-05, BART-02)
+- [ ] 04-05-PLAN.md — Patron kiosk lockdown: fullscreen, wake-lock, inactivity timeout (PATR-07, PATR-08)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 04-02-PLAN.md — Bartender Recipes tab, name+tag search/filter, shared tri-state detail view (BART-01, BART-05, BART-06)
+- [ ] 04-03-PLAN.md — Order lifecycle backend: start/done endpoints + done-order retention window (BART-03, BART-04, SYNC-02)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 04-04-PLAN.md — Bartender Orders tab: batching, auto-advance-on-open, Done wiring (BART-02, BART-03, BART-04)
+
 **UI hint**: yes
 
 ## Progress
