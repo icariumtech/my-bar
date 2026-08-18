@@ -4,6 +4,7 @@ import type { Order, Recipe } from '@my-bar/shared'
 import { OrdersTab, batchOrders, formatElapsed } from './OrdersTab.js'
 import { useOrders } from '../api/useOrders.js'
 import { useOpenOrder } from '../api/useOpenOrder.js'
+import { useMarkOrderDone } from '../api/useMarkOrderDone.js'
 import { RecipeOrOrderDetail } from './RecipeOrOrderDetail.js'
 
 vi.mock('../api/useOrders.js', () => ({
@@ -14,12 +15,17 @@ vi.mock('../api/useOpenOrder.js', () => ({
   useOpenOrder: vi.fn(),
 }))
 
+vi.mock('../api/useMarkOrderDone.js', () => ({
+  useMarkOrderDone: vi.fn(),
+}))
+
 vi.mock('./RecipeOrOrderDetail.js', () => ({
   RecipeOrOrderDetail: vi.fn(() => null),
 }))
 
 const mockedUseOrders = vi.mocked(useOrders)
 const mockedUseOpenOrder = vi.mocked(useOpenOrder)
+const mockedUseMarkOrderDone = vi.mocked(useMarkOrderDone)
 const mockedRecipeOrOrderDetail = vi.mocked(RecipeOrOrderDetail)
 
 const BASE_RECIPE: Recipe = {
@@ -73,6 +79,14 @@ function stubOrders(overrides: Partial<ReturnType<typeof useOrders>>) {
 
 function stubOpenOrder(mutate = vi.fn()) {
   mockedUseOpenOrder.mockReturnValue({
+    mutate,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any)
+  return mutate
+}
+
+function stubMarkOrderDone(mutate = vi.fn()) {
+  mockedUseMarkOrderDone.mockReturnValue({
     mutate,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any)
@@ -157,6 +171,7 @@ describe('OrdersTab', () => {
   it('renders "No orders yet" / "Queue is empty..." when there are zero open orders', () => {
     stubOrders({ data: [] })
     stubOpenOrder()
+    stubMarkOrderDone()
     render(<OrdersTab />)
 
     expect(screen.getByText('No orders yet')).toBeInTheDocument()
@@ -166,6 +181,7 @@ describe('OrdersTab', () => {
   it('renders a loading indicator while isLoading', () => {
     stubOrders({ isLoading: true })
     stubOpenOrder()
+    stubMarkOrderDone()
     render(<OrdersTab />)
 
     expect(screen.getByRole('status')).toBeInTheDocument()
@@ -175,6 +191,7 @@ describe('OrdersTab', () => {
     const refetch = vi.fn()
     stubOrders({ isError: true, refetch })
     stubOpenOrder()
+    stubMarkOrderDone()
     render(<OrdersTab />)
 
     expect(screen.getByText('Failed to load orders. Check your connection.')).toBeInTheDocument()
@@ -185,6 +202,7 @@ describe('OrdersTab', () => {
   it("renders each batch's recipe name, patronName, and formatted elapsed time", () => {
     stubOrders({ data: [BASE_ORDER] })
     stubOpenOrder()
+    stubMarkOrderDone()
     render(<OrdersTab />)
 
     expect(screen.getByText('Old Fashioned')).toBeInTheDocument()
@@ -201,6 +219,7 @@ describe('OrdersTab', () => {
       ],
     })
     stubOpenOrder()
+    stubMarkOrderDone()
     render(<OrdersTab />)
 
     expect(screen.getByText('Old Fashioned ×3')).toBeInTheDocument()
@@ -209,6 +228,7 @@ describe('OrdersTab', () => {
   it('renders no "×N" suffix for a count-of-1 batch', () => {
     stubOrders({ data: [BASE_ORDER] })
     stubOpenOrder()
+    stubMarkOrderDone()
     render(<OrdersTab />)
 
     expect(screen.getByText('Old Fashioned')).toBeInTheDocument()
@@ -217,6 +237,7 @@ describe('OrdersTab', () => {
 
   it("tapping a 'new'-status batch row auto-advances every order in it, then renders RecipeOrOrderDetail", () => {
     const mutate = stubOpenOrder()
+    stubMarkOrderDone()
     stubOrders({
       data: [
         makeOrder({ id: 'o1', status: 'new', patronName: 'Alice' }),
@@ -239,6 +260,7 @@ describe('OrdersTab', () => {
 
   it("tapping an 'in_progress'-status batch row does NOT call useOpenOrder's mutate, but still renders RecipeOrOrderDetail", () => {
     const mutate = stubOpenOrder()
+    stubMarkOrderDone()
     stubOrders({
       data: [makeOrder({ id: 'o1', status: 'in_progress', patronName: 'Alice' })],
     })
@@ -248,5 +270,28 @@ describe('OrdersTab', () => {
 
     expect(mutate).not.toHaveBeenCalled()
     expect(mockedRecipeOrOrderDetail).toHaveBeenCalled()
+  })
+
+  it('opening a batch of 3 orders and invoking onMarkDone calls useMarkOrderDone.mutate once per orderId in that batch', () => {
+    stubOpenOrder()
+    const markDoneMutate = stubMarkOrderDone()
+    stubOrders({
+      data: [
+        makeOrder({ id: 'o1', status: 'in_progress', patronName: 'Alice' }),
+        makeOrder({ id: 'o2', status: 'in_progress', patronName: 'Bob' }),
+        makeOrder({ id: 'o3', status: 'in_progress', patronName: null }),
+      ],
+    })
+    render(<OrdersTab />)
+
+    fireEvent.click(screen.getByText('Old Fashioned ×3'))
+
+    const props = mockedRecipeOrOrderDetail.mock.calls.at(-1)?.[0]
+    props?.onMarkDone?.()
+
+    expect(markDoneMutate).toHaveBeenCalledTimes(3)
+    expect(markDoneMutate).toHaveBeenCalledWith('o1')
+    expect(markDoneMutate).toHaveBeenCalledWith('o2')
+    expect(markDoneMutate).toHaveBeenCalledWith('o3')
   })
 })
