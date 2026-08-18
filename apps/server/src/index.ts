@@ -9,6 +9,7 @@ import { categoriesRoutes } from './routes/categories.js'
 import { recipesRoutes } from './routes/recipes.js'
 import { glasswareRoutes } from './routes/glassware.js'
 import { tagsRoutes } from './routes/tags.js'
+import { ordersRoutes } from './routes/orders.js'
 import { registerSocketHub } from './ws/hub.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -40,6 +41,7 @@ export function buildApp() {
   app.register(recipesRoutes, { prefix: '/api/recipes' })
   app.register(glasswareRoutes, { prefix: '/api/glassware' })
   app.register(tagsRoutes, { prefix: '/api/tags' })
+  app.register(ordersRoutes, { prefix: '/api/orders' })
 
   // T-01-05: root is confined to the built SPA directory only, never the
   // repo root — @fastify/static rejects path traversal outside `root`.

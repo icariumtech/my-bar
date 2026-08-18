@@ -36,7 +36,7 @@ interface RecipesRoutesOptions extends FastifyPluginOptions {
  * this with an id freshly read from `recipes`, so a miss here indicates a
  * bug, not a valid 404 case.
  */
-function loadRecipe(db: typeof defaultDb, recipeId: string): Recipe {
+export function loadRecipe(db: typeof defaultDb, recipeId: string): Recipe {
   const [row] = db
     .select({
       id: recipes.id,

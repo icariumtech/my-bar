@@ -77,6 +77,15 @@ export function createTestDb() {
       tag_id TEXT NOT NULL REFERENCES tags(id) ON DELETE RESTRICT,
       UNIQUE(recipe_id, tag_id)
     );
+
+    CREATE TABLE orders (
+      id TEXT PRIMARY KEY,
+      recipe_id TEXT NOT NULL REFERENCES recipes(id) ON DELETE RESTRICT,
+      patron_name TEXT,
+      status TEXT NOT NULL DEFAULT 'new',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
   `)
 
   const db = drizzle(sqlite, { schema })

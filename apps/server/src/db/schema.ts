@@ -112,3 +112,22 @@ export const recipeTags = sqliteTable(
   },
   (table) => [unique().on(table.recipeId, table.tagId)],
 )
+
+// D-54: order record is minimal — recipe reference + optional free-text
+// name + status + timestamps. No device/session identifier of any kind.
+// recipeId restricts (mirrors recipeIngredients.categoryId's existing
+// restrict convention) so a recipe with pending orders can never be
+// deleted out from under them. patronName is nullable (D-50: blank
+// allowed). status defaults to 'new' (D-57's lifecycle start state).
+export const orders = sqliteTable('orders', {
+  id: text('id').primaryKey(),
+  recipeId: text('recipe_id')
+    .notNull()
+    .references(() => recipes.id, { onDelete: 'restrict' }),
+  patronName: text('patron_name'),
+  status: text('status', { enum: ['new', 'in_progress', 'done'] })
+    .notNull()
+    .default('new'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+})
