@@ -138,4 +138,83 @@ export const ordersRoutes: FastifyPluginAsync<OrdersRoutesOptions> = async (app,
       return rows.map((r) => loadOrder(db, r.id))
     },
   )
+
+  // BART-03/D-57: PATCH /:id/start — new -> in_progress. The conditional
+  // write (only when existing.status === 'new') is what makes a repeat call
+  // on an already-in_progress OR already-done order a true no-op: no
+  // updatedAt bump, and critically, no regression of a 'done' order back to
+  // 'in_progress'. The Socket.IO emit fires unconditionally — even a no-op
+  // call is harmless for a client to re-fetch on (SYNC-02).
+  app.withTypeProvider<ZodTypeProvider>().patch(
+    '/:id/start',
+    {
+      schema: {
+        params: z.object({ id: z.string().uuid() }),
+        response: {
+          200: order,
+          404: z.object({ error: z.string() }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params
+      const [existing] = db
+        .select({ id: orders.id, status: orders.status })
+        .from(orders)
+        .where(eq(orders.id, id))
+        .all()
+
+      if (!existing) {
+        return reply.status(404).send({ error: 'Order not found' })
+      }
+
+      if (existing.status === 'new') {
+        db.update(orders).set({ status: 'in_progress', updatedAt: new Date() }).where(eq(orders.id, id)).run()
+      }
+
+      app.io?.emit('orders:updated', { orderId: id })
+
+      return reply.status(200).send(loadOrder(db, id))
+    },
+  )
+
+  // BART-03/D-57: PATCH /:id/done — any non-done status -> done. The
+  // conditional write (only when existing.status !== 'done') is what makes
+  // a repeat call on an already-done order leave updatedAt untouched — the
+  // D-60 retention window depends on updatedAt reflecting the ORIGINAL
+  // completion time, not the most recent no-op call. T-04-10: this handler
+  // never writes to the ingredients table — order fulfillment tracks ticket
+  // status only, never a proxy for inventory depletion.
+  app.withTypeProvider<ZodTypeProvider>().patch(
+    '/:id/done',
+    {
+      schema: {
+        params: z.object({ id: z.string().uuid() }),
+        response: {
+          200: order,
+          404: z.object({ error: z.string() }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = request.params
+      const [existing] = db
+        .select({ id: orders.id, status: orders.status })
+        .from(orders)
+        .where(eq(orders.id, id))
+        .all()
+
+      if (!existing) {
+        return reply.status(404).send({ error: 'Order not found' })
+      }
+
+      if (existing.status !== 'done') {
+        db.update(orders).set({ status: 'done', updatedAt: new Date() }).where(eq(orders.id, id)).run()
+      }
+
+      app.io?.emit('orders:updated', { orderId: id })
+
+      return reply.status(200).send(loadOrder(db, id))
+    },
+  )
 }
