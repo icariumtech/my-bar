@@ -1,5 +1,8 @@
+import { useState } from 'react'
 import { X } from 'lucide-react'
 import { useRecipeDetail } from '../api/useRecipeDetail.js'
+import { useSubmitOrder } from '../api/useSubmitOrder.js'
+import { OrderPrompt } from './OrderPrompt.js'
 
 interface RecipeDetailProps {
   recipeId: string
@@ -27,6 +30,10 @@ interface RecipeDetailProps {
 // treatment.
 export function RecipeDetail({ recipeId, onBack }: RecipeDetailProps) {
   const { data: recipe, isLoading, isError } = useRecipeDetail(recipeId)
+  const submitOrder = useSubmitOrder()
+  const [showOrderPrompt, setShowOrderPrompt] = useState(false)
+  const [orderError, setOrderError] = useState<string | null>(null)
+  const [showConfirmation, setShowConfirmation] = useState(false)
 
   if (isLoading) {
     return (
@@ -54,6 +61,28 @@ export function RecipeDetail({ recipeId, onBack }: RecipeDetailProps) {
   const showMissing = recipe.overallStatus === 'red' && recipe.missingCategoryNames.length > 0
   // D-40/UI-SPEC Partial row: omitted entirely, not rendered empty.
   const showDescription = Boolean(recipe.description && recipe.description.trim().length > 0)
+  // D-49: mirrors D-42's existing 2-state collapse already used by
+  // MakeableIndicator — yellow is treated as not-orderable, same as red.
+  const isOrderable = recipe.overallStatus === 'green'
+
+  function handleOrderSubmit(patronName: string | undefined) {
+    submitOrder.mutate(
+      { recipeId, patronName },
+      {
+        onSuccess: () => {
+          setShowOrderPrompt(false)
+          setOrderError(null)
+          setShowConfirmation(true)
+          // D-51: brief confirmation, then back to the browse grid.
+          setTimeout(() => onBack(), 3000)
+        },
+        onError: (err: Error) => {
+          setShowOrderPrompt(false)
+          setOrderError(err.message)
+        },
+      },
+    )
+  }
 
   return (
     <div className="h-dvh flex flex-col bg-patron-bg">
@@ -117,8 +146,37 @@ export function RecipeDetail({ recipeId, onBack }: RecipeDetailProps) {
               <p className="text-patron-accent-text italic">{recipe.description}</p>
             </div>
           )}
+
+          {orderError && (
+            <p className="text-patron-destructive">{`Failed to send order: ${orderError}`}</p>
+          )}
+
+          {isOrderable && !showConfirmation && (
+            <button
+              type="button"
+              onClick={() => setShowOrderPrompt(true)}
+              disabled={submitOrder.isPending}
+              className="w-full rounded-xl bg-patron-accent text-white py-md glow-orange-subtle disabled:opacity-50"
+            >
+              {submitOrder.isPending ? 'Sending...' : 'Order This Drink'}
+            </button>
+          )}
+
+          {showConfirmation && (
+            <p role="status" className="text-center text-patron-success">
+              Order sent to bartender!
+            </p>
+          )}
         </div>
       </div>
+
+      {showOrderPrompt && (
+        <OrderPrompt
+          onSubmit={handleOrderSubmit}
+          onCancel={() => setShowOrderPrompt(false)}
+          isSubmitting={submitOrder.isPending}
+        />
+      )}
     </div>
   )
 }

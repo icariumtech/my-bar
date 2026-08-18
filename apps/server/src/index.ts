@@ -61,6 +61,14 @@ export function buildApp() {
     decorateReply: false,
   })
 
+  // decorateReply: false — required on every registration after the first
+  // (see the /patron/ registration comment above).
+  app.register(fastifyStatic, {
+    root: path.join(__dirname, '../../bartender/dist'),
+    prefix: '/bartender/',
+    decorateReply: false,
+  })
+
   return app
 }
 

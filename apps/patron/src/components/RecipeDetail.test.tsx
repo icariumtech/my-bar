@@ -211,7 +211,7 @@ describe('RecipeDetail', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Order This Drink' }))
     fireEvent.click(screen.getByRole('button', { name: 'Send Order' }))
 
-    expect(screen.getByText('Recipe is not currently makeable')).toBeInTheDocument()
+    expect(screen.getByText(/Recipe is not currently makeable/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Order This Drink' })).toBeInTheDocument()
   })
 })
