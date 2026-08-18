@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useRecipes } from '../api/useRecipes.js'
+import { useKioskInactivity } from '../hooks/useKioskInactivity.js'
 import { RecipeCard } from './RecipeCard.js'
 import { RecipeDetail } from './RecipeDetail.js'
 import { TagRail, filterRecipesByTag, filterRecipesByAvailability } from './TagRail.js'
@@ -24,6 +25,13 @@ export function RecipeBrowse() {
   const [viewingId, setViewingId] = useState<string | undefined>(undefined)
   const [showAvailableOnly, setShowAvailableOnly] = useState(true)
   const { data: recipes, isLoading, isError, refetch } = useRecipes()
+
+  // PATR-08 (04-05): after 90s of zero touch/mouse/key activity anywhere
+  // on the kiosk, close any open detail view and return to the grid —
+  // selectedTagId/showAvailableOnly are deliberately left untouched,
+  // since returning to the browse/home view is not the same as resetting
+  // every in-progress filter choice.
+  useKioskInactivity(() => setViewingId(undefined), 90000)
 
   if (viewingId) {
     // Only the tapped card's id is ever passed on — never the full

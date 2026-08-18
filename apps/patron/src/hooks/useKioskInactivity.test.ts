@@ -74,7 +74,7 @@ describe('useKioskInactivity', () => {
 
   it('clears the pending timer and never calls onTimeout after unmount', () => {
     const onTimeout = vi.fn()
-    const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout')
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout')
     const { unmount } = renderHook(() => useKioskInactivity(onTimeout, 90000))
 
     unmount()

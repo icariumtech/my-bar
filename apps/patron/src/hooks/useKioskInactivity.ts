@@ -12,7 +12,7 @@ import { useEffect, useRef } from 'react'
 // (04-RESEARCH.md "Don't Hand-Roll": scattered listeners leak memory and
 // race against unmount).
 export function useKioskInactivity(onTimeout: () => void, timeoutMs: number = 90000): void {
-  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
     const resetTimer = () => {
