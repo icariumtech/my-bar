@@ -3,8 +3,11 @@
 // error state, rather than silently returning an error-shaped JSON body.
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...init,
+    headers: {
+      ...(init?.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      ...init?.headers,
+    },
   })
 
   if (!res.ok) {
