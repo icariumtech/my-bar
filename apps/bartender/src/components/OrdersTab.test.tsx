@@ -31,7 +31,34 @@ const mockedRecipeOrOrderDetail = vi.mocked(RecipeOrOrderDetail)
 const BASE_RECIPE: Recipe = {
   id: '11111111-1111-1111-1111-111111111111',
   name: 'Old Fashioned',
-  ingredients: [],
+  ingredients: [
+    {
+      id: 'ri1',
+      categoryId: 'c1',
+      ingredientId: 'i1',
+      requiresSpecific: true,
+      categoryName: 'Whiskey',
+      ingredientName: 'Bourbon',
+      quantity: '2',
+      unit: 'oz',
+      displayOrder: 0,
+      status: 'green',
+      alternativeIngredientName: null,
+    },
+    {
+      id: 'ri2',
+      categoryId: 'c2',
+      ingredientId: null,
+      requiresSpecific: false,
+      categoryName: 'Bitters',
+      ingredientName: null,
+      quantity: '2',
+      unit: 'dash',
+      displayOrder: 1,
+      status: 'green',
+      alternativeIngredientName: null,
+    },
+  ],
   method: ['Stir'],
   glasswareId: null,
   glasswareName: null,
@@ -294,4 +321,44 @@ describe('OrdersTab', () => {
     expect(markDoneMutate).toHaveBeenCalledWith('o2')
     expect(markDoneMutate).toHaveBeenCalledWith('o3')
   })
+
+  it("excludes a 'done' batch from the rendered list even though useOrders still returns it (D-60 retention window)", () => {
+    stubOrders({
+      data: [
+        makeOrder({ id: 'o1', recipe: BASE_RECIPE, status: 'new' }),
+        makeOrder({ id: 'o2', recipe: OTHER_RECIPE, status: 'done' }),
+      ],
+    })
+    stubOpenOrder()
+    stubMarkOrderDone()
+    render(<OrdersTab />)
+
+    expect(screen.getByText('Old Fashioned')).toBeInTheDocument()
+    expect(screen.queryByText('Daiquiri')).not.toBeInTheDocument()
+  })
+
+  it('renders the empty state when every returned order is status "done"', () => {
+    stubOrders({ data: [makeOrder({ id: 'o1', status: 'done' })] })
+    stubOpenOrder()
+    stubMarkOrderDone()
+    render(<OrdersTab />)
+
+    expect(screen.getByText('No orders yet')).toBeInTheDocument()
+    expect(screen.getByText('Queue is empty. Waiting for guests to order...')).toBeInTheDocument()
+  })
+
+  it("a 'new' batch and an 'in_progress' batch for the same recipe still render as two separate rows", () => {
+    stubOrders({
+      data: [
+        makeOrder({ id: 'o1', recipe: BASE_RECIPE, status: 'new', elapsedSeconds: 10 }),
+        makeOrder({ id: 'o2', recipe: BASE_RECIPE, status: 'in_progress', elapsedSeconds: 200 }),
+      ],
+    })
+    stubOpenOrder()
+    stubMarkOrderDone()
+    render(<OrdersTab />)
+
+    expect(screen.getAllByText('Old Fashioned')).toHaveLength(2)
+  })
+
 })

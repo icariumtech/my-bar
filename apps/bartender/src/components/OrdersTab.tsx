@@ -62,7 +62,18 @@ export function OrdersTab() {
   const [view, setView] = useState<'list' | 'detail'>('list')
   const [viewingBatch, setViewingBatch] = useState<BatchedOrder>()
 
-  const batches = useMemo(() => batchOrders(rawOrders), [rawOrders])
+  // D-60: the server intentionally keeps a 'done' order queryable from
+  // GET /api/orders for a bounded 5-minute retention window. That window is
+  // for the server's own bookkeeping, not for what the Orders tab's active
+  // queue should display — a 'done' batch must never render here, mirroring
+  // the same new/in_progress-only rule App.tsx's openOrderCount badge
+  // already applies. Without this filter a just-completed order kept
+  // rendering as an ordinary, indistinguishable active row for the whole
+  // retention window, which read as "Done didn't clear it."
+  const visibleBatches = useMemo(
+    () => batchOrders(rawOrders).filter((batch) => batch.status !== 'done'),
+    [rawOrders],
+  )
 
   if (isLoading) {
     return (
@@ -89,7 +100,7 @@ export function OrdersTab() {
     )
   }
 
-  if (batches.length === 0) {
+  if (visibleBatches.length === 0) {
     return (
       <div className="text-center pt-3xl px-md">
         <h2 className="text-white">No orders yet</h2>
@@ -134,7 +145,7 @@ export function OrdersTab() {
 
   return (
     <List
-      dataSource={batches}
+      dataSource={visibleBatches}
       renderItem={(batch) => (
         <List.Item
           key={`${batch.recipe.id}:${batch.status}`}
