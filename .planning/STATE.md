@@ -4,10 +4,10 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 04
 status: completed
-stopped_at: Completed quick task 260818-q7y
-last_updated: "2026-08-19T00:02:24.003Z"
-last_activity: 2026-08-18
-last_activity_desc: Phase 04 execution started
+stopped_at: Completed quick task 260818-uz8
+last_updated: "2026-08-19T03:31:15.899Z"
+last_activity: 2026-08-19
+last_activity_desc: Completed quick task 260818-uz8: Fix Bartender Orders Done-clearing bug and Card redesign
 progress:
   total_phases: 5
   completed_phases: 5
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 Phase: 04
 Plan: Not started
 Status: All phases complete
-Last activity: 2026-08-18 — Phase 04 complete
+Last activity: 2026-08-19 — Completed quick task 260818-uz8
 
 Progress: [██████████] 100%
 
@@ -79,6 +79,7 @@ Progress: [██████████] 100%
 | Phase 04 P03 | 12min | 2 tasks | 2 files |
 | Phase 04 P04 | 15min | 2 tasks | 6 files |
 | Phase quick P260818-q7y | 12min | 2 tasks | 4 files |
+| Phase quick P260818-uz8 | 20min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -112,6 +113,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 04-04]: batchOrders() groups the flat GET /api/orders response into a Record keyed by `${recipe.id}:${status}`, sorted descending by elapsedSeconds with a stable orderId tiebreak — never merges across statuses, matching D-58/BART-04
 - [Phase ?]: [Phase 04-04]: useOpenOrder/useMarkOrderDone.test.tsx use .test.tsx (plan said .test.ts) since renderHook's QueryClientProvider wrapper requires JSX, matching Plan 04-01/04-03's own precedent
 - [Phase ?]: [Quick 260818-q7y]: Extracted Bartender-local FullScreenScrollArea shared layout component; RecipeSearchFilter's Clear/Apply buttons moved inside the scrollable, tab-bar-clearance-padded content (were previously an unreachable sibling footer div outside the fixed BottomTabBar's clearance)
+- [Phase ?]: [Quick 260818-uz8]: Fixed Bartender Orders Done-clearing bug (missing client-side status filter, visibleBatches excludes status==='done') and redesigned OrdersTab/RecipesTab onto antd Card rows with ingredient names, matching apps/barback's dark bar-surface convention
 
 ### Pending Todos
 
@@ -147,6 +149,7 @@ None yet.
 | 260817-l46 | Add inline "+ Add new category" option to IngredientPicker's top-level recipe ingredient-line search, alongside the existing create-new-ingredient option | 2026-08-17 | 26d4a1e | [260817-l46-add-inline-create-new-category-option-to](./quick/260817-l46-add-inline-create-new-category-option-to/) |
 | 260817-o11 | Add ingredient delete: DELETE /api/ingredients/:id endpoint, useDeleteIngredient hook, and a Delete button on IngredientRow mirroring the existing recipe-delete pattern | 2026-08-17 | f4a051c | [260817-o11-add-ingredient-delete-delete-api-ingredi](./quick/260817-o11-add-ingredient-delete-delete-api-ingredi/) |
 | 260818-q7y | Fix Bartender RecipeSearchFilter Clear/Apply buttons hidden underneath the fixed BottomTabBar; extract shared FullScreenScrollArea layout component | 2026-08-19 | 664882c | [260818-q7y-fix-bartender-app-search-filter-screen-t](./quick/260818-q7y-fix-bartender-app-search-filter-screen-t/) |
+| 260818-uz8 | Fix Bartender Orders Done-clearing bug (visibleBatches status filter) and redesign OrdersTab/RecipesTab onto antd Card rows with ingredient names | 2026-08-19 | 7899298 | [260818-uz8-fix-bug-marking-a-bartender-order-as-don](./quick/260818-uz8-fix-bug-marking-a-bartender-order-as-don/) |
 
 ### Roadmap Evolution
 
@@ -162,6 +165,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-19T00:01:50.451Z
-Stopped at: Completed quick task 260818-q7y
+Last session: 2026-08-19T03:30:42.835Z
+Stopped at: Completed quick task 260818-uz8
 Resume file: None
