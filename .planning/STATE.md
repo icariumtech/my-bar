@@ -4,10 +4,10 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 04
 status: completed
-stopped_at: Completed quick task 260818-uz8
-last_updated: "2026-08-19T03:31:15.899Z"
+stopped_at: Completed quick task 260819-l5f
+last_updated: "2026-08-19T20:22:47.095Z"
 last_activity: 2026-08-19
-last_activity_desc: Completed quick task 260818-uz8: Fix Bartender Orders Done-clearing bug and Card redesign
+last_activity_desc: "Completed quick task 260818-uz8: Fix Bartender Orders Done-clearing bug and Card redesign"
 progress:
   total_phases: 5
   completed_phases: 5
@@ -80,6 +80,7 @@ Progress: [██████████] 100%
 | Phase 04 P04 | 15min | 2 tasks | 6 files |
 | Phase quick P260818-q7y | 12min | 2 tasks | 4 files |
 | Phase quick P260818-uz8 | 20min | 3 tasks | 4 files |
+| Phase quick P260819-l5f | 12min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -114,6 +115,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 04-04]: useOpenOrder/useMarkOrderDone.test.tsx use .test.tsx (plan said .test.ts) since renderHook's QueryClientProvider wrapper requires JSX, matching Plan 04-01/04-03's own precedent
 - [Phase ?]: [Quick 260818-q7y]: Extracted Bartender-local FullScreenScrollArea shared layout component; RecipeSearchFilter's Clear/Apply buttons moved inside the scrollable, tab-bar-clearance-padded content (were previously an unreachable sibling footer div outside the fixed BottomTabBar's clearance)
 - [Phase ?]: [Quick 260818-uz8]: Fixed Bartender Orders Done-clearing bug (missing client-side status filter, visibleBatches excludes status==='done') and redesigned OrdersTab/RecipesTab onto antd Card rows with ingredient names, matching apps/barback's dark bar-surface convention
+- [Phase ?]: [Quick 260819-l5f]: MakeableStatusBadge moved onto OrdersTab's top row (paired with name) to match RecipesTab's top row exactly; elapsed time + patronNames consolidated into one new secondary metadata row with ml-auto keeping elapsed time right-aligned
 
 ### Pending Todos
 
@@ -150,6 +152,7 @@ None yet.
 | 260817-o11 | Add ingredient delete: DELETE /api/ingredients/:id endpoint, useDeleteIngredient hook, and a Delete button on IngredientRow mirroring the existing recipe-delete pattern | 2026-08-17 | f4a051c | [260817-o11-add-ingredient-delete-delete-api-ingredi](./quick/260817-o11-add-ingredient-delete-delete-api-ingredi/) |
 | 260818-q7y | Fix Bartender RecipeSearchFilter Clear/Apply buttons hidden underneath the fixed BottomTabBar; extract shared FullScreenScrollArea layout component | 2026-08-19 | 664882c | [260818-q7y-fix-bartender-app-search-filter-screen-t](./quick/260818-q7y-fix-bartender-app-search-filter-screen-t/) |
 | 260818-uz8 | Fix Bartender Orders Done-clearing bug (visibleBatches status filter) and redesign OrdersTab/RecipesTab onto antd Card rows with ingredient names | 2026-08-19 | 7899298 | [260818-uz8-fix-bug-marking-a-bartender-order-as-don](./quick/260818-uz8-fix-bug-marking-a-bartender-order-as-don/) |
+| 260819-l5f | Restructure Bartender OrdersTab card body to mirror RecipesTab's row layout (name+badge top row, consolidated metadata row, ingredient row last) | 2026-08-19 | 7b35303 | [260819-l5f-make-the-bartender-orders-tab-s-card-sty](./quick/260819-l5f-make-the-bartender-orders-tab-s-card-sty/) |
 
 ### Roadmap Evolution
 
@@ -165,6 +168,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-19T03:30:42.835Z
-Stopped at: Completed quick task 260818-uz8
+Last session: 2026-08-19T20:22:28.013Z
+Stopped at: Completed quick task 260819-l5f
 Resume file: None
