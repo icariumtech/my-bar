@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Alert, Button, List, Spin } from 'antd'
+import { Alert, Button, Card, Spin } from 'antd'
 import { SearchOutlined } from '@ant-design/icons'
 import type { Recipe } from '@my-bar/shared'
 import { useRecipes } from '../api/useRecipes.js'
@@ -84,24 +84,30 @@ export function RecipesTab() {
           <p className="text-zinc-400">No recipes match your search</p>
         </div>
       ) : (
-        <List
-          dataSource={visibleRecipes}
-          renderItem={(recipe) => (
-            <List.Item
+        <div className="flex flex-col gap-sm">
+          {visibleRecipes.map((recipe) => (
+            <Card
               key={recipe.id}
+              hoverable
               onClick={() => {
                 setViewing(recipe)
                 setView('detail')
               }}
-              style={{ cursor: 'pointer', minHeight: 48 }}
+              style={{ cursor: 'pointer' }}
+              styles={{ body: { padding: 16 } }}
             >
-              <div className="flex justify-between items-center w-full px-md">
-                <span className="text-white">{recipe.name}</span>
-                <MakeableStatusBadge status={recipe.overallStatus} />
+              <div className="flex flex-col gap-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-white">{recipe.name}</span>
+                  <MakeableStatusBadge status={recipe.overallStatus} />
+                </div>
+                <span className="text-zinc-400 text-sm">
+                  {recipe.ingredients.map((ing) => ing.ingredientName ?? ing.categoryName).join(', ')}
+                </span>
               </div>
-            </List.Item>
-          )}
-        />
+            </Card>
+          ))}
+        </div>
       )}
     </div>
   )

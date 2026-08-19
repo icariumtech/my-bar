@@ -31,7 +31,34 @@ const mockedUseRecipes = vi.mocked(useRecipes)
 const FIXTURE_RECIPE: Recipe = {
   id: '11111111-1111-1111-1111-111111111111',
   name: 'Daiquiri',
-  ingredients: [],
+  ingredients: [
+    {
+      id: 'ri1',
+      categoryId: 'c1',
+      ingredientId: 'i1',
+      requiresSpecific: true,
+      categoryName: 'Rum',
+      ingredientName: 'White Rum',
+      quantity: '2',
+      unit: 'oz',
+      displayOrder: 0,
+      status: 'green',
+      alternativeIngredientName: null,
+    },
+    {
+      id: 'ri2',
+      categoryId: 'c2',
+      ingredientId: null,
+      requiresSpecific: false,
+      categoryName: 'Citrus',
+      ingredientName: null,
+      quantity: '1',
+      unit: 'oz',
+      displayOrder: 1,
+      status: 'green',
+      alternativeIngredientName: null,
+    },
+  ],
   method: ['Shake with ice', 'Strain into a coupe'],
   glasswareId: null,
   glasswareName: null,
@@ -111,5 +138,12 @@ describe('RecipesTab', () => {
     render(<RecipesTab />)
 
     expect(screen.getByText('No recipes match your search')).toBeInTheDocument()
+  })
+
+  it('renders comma-joined ingredient names on each card, preferring ingredientName over categoryName', () => {
+    stub({ data: [FIXTURE_RECIPE] })
+    render(<RecipesTab />)
+
+    expect(screen.getByText('White Rum, Citrus')).toBeInTheDocument()
   })
 })
