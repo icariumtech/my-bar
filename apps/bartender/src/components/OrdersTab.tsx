@@ -160,18 +160,20 @@ export function OrdersTab() {
                 {batch.recipe.name}
                 {batch.count > 1 && ` ×${batch.count}`}
               </span>
-              <span className="text-zinc-400 text-sm">{formatElapsed(batch.elapsedSeconds)}</span>
+              <MakeableStatusBadge status={batch.recipe.overallStatus} />
             </div>
-            <MakeableStatusBadge status={batch.recipe.overallStatus} />
-            {batch.patronNames.length > 0 && (
-              <span
-                className="text-zinc-400 text-sm"
-                style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                title={batch.patronNames.join(', ')}
-              >
-                {`For: ${batch.patronNames.join(', ')}`}
-              </span>
-            )}
+            <div className="flex items-center gap-sm">
+              {batch.patronNames.length > 0 && (
+                <span
+                  className="text-zinc-400 text-sm"
+                  style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  title={batch.patronNames.join(', ')}
+                >
+                  {`For: ${batch.patronNames.join(', ')}`}
+                </span>
+              )}
+              <span className="text-zinc-400 text-sm ml-auto">{formatElapsed(batch.elapsedSeconds)}</span>
+            </div>
             <span className="text-zinc-400 text-sm">
               {batch.recipe.ingredients.map((ing) => ing.ingredientName ?? ing.categoryName).join(', ')}
             </span>
