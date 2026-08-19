@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 04
 status: completed
-stopped_at: Completed 04-04-PLAN.md
-last_updated: "2026-08-18T22:29:39.995Z"
+stopped_at: Completed quick task 260818-q7y
+last_updated: "2026-08-19T00:02:24.003Z"
 last_activity: 2026-08-18
 last_activity_desc: Phase 04 execution started
 progress:
@@ -78,6 +78,7 @@ Progress: [██████████] 100%
 | Phase 04 P02 | 16min | 2 tasks | 13 files |
 | Phase 04 P03 | 12min | 2 tasks | 2 files |
 | Phase 04 P04 | 15min | 2 tasks | 6 files |
+| Phase quick P260818-q7y | 12min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -110,6 +111,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 04-03]: Updated Plan 04-01's 'GET /api/orders excludes done orders' test to use a stale (>5min) done order — D-60's retention window makes a freshly-done order correctly appear now, so the original unconditional-exclusion assertion no longer holds
 - [Phase ?]: [Phase 04-04]: batchOrders() groups the flat GET /api/orders response into a Record keyed by `${recipe.id}:${status}`, sorted descending by elapsedSeconds with a stable orderId tiebreak — never merges across statuses, matching D-58/BART-04
 - [Phase ?]: [Phase 04-04]: useOpenOrder/useMarkOrderDone.test.tsx use .test.tsx (plan said .test.ts) since renderHook's QueryClientProvider wrapper requires JSX, matching Plan 04-01/04-03's own precedent
+- [Phase ?]: [Quick 260818-q7y]: Extracted Bartender-local FullScreenScrollArea shared layout component; RecipeSearchFilter's Clear/Apply buttons moved inside the scrollable, tab-bar-clearance-padded content (were previously an unreachable sibling footer div outside the fixed BottomTabBar's clearance)
 
 ### Pending Todos
 
@@ -144,6 +146,7 @@ None yet.
 | 19 | Fix IngredientPicker.tsx: filter categoryOptions/ingredientOptions by typed search text (recipe ingredient combobox now search-as-you-type like CategoryPicker/GlasswarePicker) | 2026-08-17 | 80c0fa2 | — |
 | 260817-l46 | Add inline "+ Add new category" option to IngredientPicker's top-level recipe ingredient-line search, alongside the existing create-new-ingredient option | 2026-08-17 | 26d4a1e | [260817-l46-add-inline-create-new-category-option-to](./quick/260817-l46-add-inline-create-new-category-option-to/) |
 | 260817-o11 | Add ingredient delete: DELETE /api/ingredients/:id endpoint, useDeleteIngredient hook, and a Delete button on IngredientRow mirroring the existing recipe-delete pattern | 2026-08-17 | f4a051c | [260817-o11-add-ingredient-delete-delete-api-ingredi](./quick/260817-o11-add-ingredient-delete-delete-api-ingredi/) |
+| 260818-q7y | Fix Bartender RecipeSearchFilter Clear/Apply buttons hidden underneath the fixed BottomTabBar; extract shared FullScreenScrollArea layout component | 2026-08-19 | 664882c | [260818-q7y-fix-bartender-app-search-filter-screen-t](./quick/260818-q7y-fix-bartender-app-search-filter-screen-t/) |
 
 ### Roadmap Evolution
 
@@ -159,6 +162,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-18T22:10:57.568Z
-Stopped at: Completed 04-04-PLAN.md
+Last session: 2026-08-19T00:01:50.451Z
+Stopped at: Completed quick task 260818-q7y
 Resume file: None
