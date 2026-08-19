@@ -322,6 +322,24 @@ describe('OrdersTab', () => {
     expect(markDoneMutate).toHaveBeenCalledWith('o3')
   })
 
+  it('renders comma-joined ingredient names on each card, preferring ingredientName over categoryName', () => {
+    stubOrders({ data: [BASE_ORDER] })
+    stubOpenOrder()
+    stubMarkOrderDone()
+    render(<OrdersTab />)
+
+    expect(screen.getByText('Bourbon, Bitters')).toBeInTheDocument()
+  })
+
+  it("renders a MakeableStatusBadge reflecting the batch's recipe overallStatus", () => {
+    stubOrders({ data: [BASE_ORDER] })
+    stubOpenOrder()
+    stubMarkOrderDone()
+    render(<OrdersTab />)
+
+    expect(screen.getByText('Ready to make')).toBeInTheDocument()
+  })
+
   it("excludes a 'done' batch from the rendered list even though useOrders still returns it (D-60 retention window)", () => {
     stubOrders({
       data: [
