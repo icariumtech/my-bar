@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Button, Collapse, Input } from 'antd'
-import { ArrowLeftOutlined } from '@ant-design/icons'
 import type { Recipe, Tag, TagGroup } from '@my-bar/shared'
 import { TAG_GROUP_ORDER } from '@my-bar/shared'
 import { useTags } from '../api/useTags.js'
+import { FullScreenScrollArea } from './FullScreenScrollArea.js'
 
 const GROUP_LABELS: Record<TagGroup, string> = {
   spirit: 'Spirit',
@@ -119,73 +119,33 @@ export function RecipeSearchFilter({ recipes, onApply, onBack }: RecipeSearchFil
   })
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <header
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          padding: 16,
-          borderBottom: '1px solid rgba(255,255,255,0.1)',
-        }}
-      >
-        <div style={{ width: 48, flexShrink: 0 }}>
-          <Button
-            type="primary"
-            shape="circle"
-            icon={<ArrowLeftOutlined />}
-            aria-label="Back"
-            onClick={onBack}
-            style={{ width: 48, height: 48, minWidth: 48, padding: 0 }}
-          />
+    <FullScreenScrollArea onBack={onBack} title="Search & Filter">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <Input
+          placeholder="Recipe name…"
+          autoFocus
+          value={nameQuery}
+          onChange={(e) => setNameQuery(e.target.value)}
+          size="large"
+          style={{ minHeight: 48 }}
+        />
+
+        <div>
+          <h3 className="text-white" style={{ marginBottom: 8 }}>
+            Filter by tags
+          </h3>
+          <Collapse defaultActiveKey={[...TAG_GROUP_ORDER]} items={collapseItems} />
         </div>
-        <h2 className="text-white" style={{ flex: 1, textAlign: 'center' }}>
-          Search &amp; Filter
-        </h2>
-        <div style={{ width: 48, flexShrink: 0 }} />
-      </header>
 
-      <main
-        style={{
-          flex: 1,
-          padding: 16,
-          paddingBottom: 'calc(16px + 48px + env(safe-area-inset-bottom))',
-          overflow: 'auto',
-        }}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Input
-            placeholder="Recipe name…"
-            autoFocus
-            value={nameQuery}
-            onChange={(e) => setNameQuery(e.target.value)}
-            size="large"
-            style={{ minHeight: 48 }}
-          />
-
-          <div>
-            <h3 className="text-white" style={{ marginBottom: 8 }}>
-              Filter by tags
-            </h3>
-            <Collapse defaultActiveKey={[...TAG_GROUP_ORDER]} items={collapseItems} />
-          </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button style={{ flex: 1, minHeight: 48 }} onClick={handleClear}>
+            Clear
+          </Button>
+          <Button type="primary" style={{ flex: 1, minHeight: 48 }} onClick={handleApply}>
+            Apply
+          </Button>
         </div>
-      </main>
-
-      <div
-        style={{
-          display: 'flex',
-          gap: 8,
-          padding: 16,
-          borderTop: '1px solid rgba(255,255,255,0.1)',
-        }}
-      >
-        <Button style={{ flex: 1, minHeight: 48 }} onClick={handleClear}>
-          Clear
-        </Button>
-        <Button type="primary" style={{ flex: 1, minHeight: 48 }} onClick={handleApply}>
-          Apply
-        </Button>
       </div>
-    </div>
+    </FullScreenScrollArea>
   )
 }
