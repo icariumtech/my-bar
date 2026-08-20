@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: AI Vision & Deploy
 status: planning
-last_updated: "2026-08-20T02:18:42.836Z"
-last_activity: 2026-08-19
+last_updated: "2026-08-20T00:00:00.000Z"
+last_activity: 2026-08-20
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +17,19 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-08-11)
+See: .planning/PROJECT.md (updated 2026-08-20)
 
 **Core value:** The inventory must be the single source of truth: at any moment, the Patron and Bartender screens must correctly show which drinks are makeable right now, and which are missing ingredients.
-**Current focus:** Phase 04 — bartender-console-order-workflow
+**Current focus:** Phase 5 — docker-containerization
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-08-19 — Milestone v1.1 started
+Phase: 5 of 7 (Docker Containerization)
+Plan: — (not yet broken down)
+Status: Ready to plan
+Last activity: 2026-08-20 — v1.1 ROADMAP.md created (Phases 5-7 defined, 17/17 requirements mapped)
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -46,6 +48,9 @@ Last activity: 2026-08-19 — Milestone v1.1 started
 | 02.1 | 7 | - | - |
 | 3 | 5 | - | - |
 | 04 | 5 | - | - |
+| 5 | TBD | - | - |
+| 6 | TBD | - | - |
+| 7 | TBD | - | - |
 
 **Recent Trend:**
 
@@ -111,6 +116,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Quick 260818-q7y]: Extracted Bartender-local FullScreenScrollArea shared layout component; RecipeSearchFilter's Clear/Apply buttons moved inside the scrollable, tab-bar-clearance-padded content (were previously an unreachable sibling footer div outside the fixed BottomTabBar's clearance)
 - [Phase ?]: [Quick 260818-uz8]: Fixed Bartender Orders Done-clearing bug (missing client-side status filter, visibleBatches excludes status==='done') and redesigned OrdersTab/RecipesTab onto antd Card rows with ingredient names, matching apps/barback's dark bar-surface convention
 - [Phase ?]: [Quick 260819-l5f]: MakeableStatusBadge moved onto OrdersTab's top row (paired with name) to match RecipesTab's top row exactly; elapsed time + patronNames consolidated into one new secondary metadata row with ml-auto keeping elapsed time right-aligned
+- [Roadmap v1.1]: 17 v1.1 requirements (DOCK-01..06, BOTTLE-01..05, MCP-01..06) mapped 1:1 across Phases 5 (Docker), 6 (AI Bottle Photo Recognition), 7 (MCP Server) — 100% coverage, no orphans. Phase numbering continues from v1.0 (5-7, no reset). Phase 6 and 7 depend only on v1.0's Phase 1/2 REST APIs, not on each other or on Phase 5; Phase 6 ships first and establishes a reusable Claude Vision/structured-extraction + Zod pattern Phase 7's MCP-02 can reuse.
 
 ### Pending Todos
 
@@ -155,6 +161,7 @@ None yet.
 - Phase 5 added: Docker Containerization (single-container deploy modeled on janus-console/janus-deploy, same-repo layout)
 - Phase 6 added: AI Bottle Photo Recognition (replaces UPC barcode scanning — UPC databases with usable alcohol coverage are mostly paid/rate-limited; reuses the Claude Vision + structured-output pattern already planned for recipe-photo import)
 - Phase 7 added: MCP Server for Recipe/Inventory Management (standalone MCP server delegating to the existing REST API, modeled on janus-console's mcp_server.py — lets Claude Code create recipes from links/videos and manage inventory directly)
+- v1.1 ROADMAP.md finalized 2026-08-20: Phase 5/6/7 goals, dependencies, and success criteria validated against final REQUIREMENTS.md REQ-IDs; 17/17 requirements mapped with 100% coverage confirmed (see REQUIREMENTS.md Traceability)
 
 ## Deferred Items
 
@@ -168,10 +175,10 @@ Items acknowledged and deferred at milestone close on 2026-08-19:
 
 ## Session Continuity
 
-Last session: 2026-08-19T20:22:28.013Z
-Stopped at: Completed quick task 260819-l5f
+Last session: 2026-08-20T00:00:00.000Z
+Stopped at: Created v1.1 ROADMAP.md (Phases 5-7 defined) and updated STATE.md
 Resume file: None
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Run `/gsd-plan-phase 5` to break down Docker Containerization into plans (or `/gsd-mvp-phase 5` for vertical-slice planning, matching v1.0's mode)
