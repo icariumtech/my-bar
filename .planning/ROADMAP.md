@@ -42,8 +42,12 @@ Full detail archived in `.planning/milestones/v1.0-ROADMAP.md`.
 **Plans**: 2 plans
 
 Plans:
+**Wave 1**
 
 - [ ] 05-01-PLAN.md — Containerize the full stack end-to-end (Dockerfile, compose.yml, health check, .env.example, data persistence)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 05-02-PLAN.md — README docs and GitHub Actions CI/GHCR publish
 
 ### Phase 6: AI Bottle Photo Recognition
