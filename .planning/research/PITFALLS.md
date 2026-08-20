@@ -1,271 +1,786 @@
-# Pitfalls Research
+# Domain Pitfalls: Adding Docker, AI Vision, and MCP to My Bar
 
-**Domain:** Self-hosted home LAN app — multi-client inventory sync, browser barcode scanning, AI-assisted recipe/recommendation features (Claude API)
-**Researched:** 2026-08-09
-**Confidence:** MEDIUM (web-sourced, cross-checked across multiple independent sources; no official case study specific to this exact combination of features exists)
+**Domain:** Home bar management system with containerization, AI-powered bottle recognition, and unauthenticated MCP server
+**Researched:** 2026-08-19
+**Overall Confidence:** MEDIUM (mix of HIGH for SDK/SQLite patterns, MEDIUM for Docker multi-stage practices and MCP patterns, LOW for specific pnpm+Docker pitfall verification)
+
+---
 
 ## Critical Pitfalls
 
-### Pitfall 1: Naive polling or last-write-wins state sharing breaks the "single source of truth" promise
+Mistakes that cause rewrites or major issues.
 
-**What goes wrong:**
-The Patron, Bartender, and Barback screens drift out of sync — a bottle gets marked empty on Barback but Patron still shows the cocktail as makeable for several seconds (or until a manual refresh), or two near-simultaneous writes (Barback decrements a bottle while Bartender fulfills an order using the same bottle) silently overwrite each other, corrupting the count.
+### Pitfall 1: better-sqlite3 Native Bindings Not Compiled in pnpm Docker Build
 
-**Why it happens:**
-It's tempting to build the simplest thing first: each screen polls a REST endpoint every few seconds, or writes directly to a local SQLite file with no coordination. This works fine in a demo with one client open but breaks down with three simultaneous clients making independent reads/writes, because there's no mechanism forcing all three to reconcile against one authoritative state at the moment it changes.
+**What goes wrong:**  
+In `pnpm` 10+, postinstall scripts for native dependencies are blocked by default unless the package appears in an allow-list. When you `pnpm install` in a Docker multi-stage build, `better-sqlite3` installs its JavaScript source but **never compiles the native .node binding**. The runtime container starts, the app loads the better-sqlite3 module, and it silently fails to find the prebuilt or compiled binary at application startup.
 
-**How to avoid:**
-Use a single real-time push channel (WebSockets, not polling) from the server to all connected clients: every inventory-affecting write goes through one server-side mutation path that updates SQLite in a single-writer-serialized way, then broadcasts the new derived state (stock levels + makeable/not-makeable per drink) to all connected clients. Never let a client compute "makeable" locally from a possibly-stale cache — always trust the server's broadcast. Use SQLite WAL mode with `busy_timeout` and/or a single application-level write queue (e.g., a queue with concurrency 1) so concurrent writes serialize instead of racing.
+**Why it happens:**  
+- `pnpm` treats install scripts as a security risk and requires explicit opt-in for the `better-sqlite3` postinstall step
+- Multi-stage Docker builds often copy the built `node_modules` from the build stage without ensuring native modules were actually compiled (not just sourced)
+- ARM64 (`linux/arm64`) may lack a matching prebuilt binary for your Node version, requiring on-the-fly compilation with `node-gyp`, `python3`, and `build-essential` present at install time
 
-**Warning signs:**
-- Screens showing different makeable/not-makeable state for the same drink at the same time
-- Manual refresh "fixing" a screen that was previously wrong
-- `SQLITE_BUSY` errors in server logs
-- Stock counts that occasionally jump by more than one unit or go negative
+**Consequences:**  
+- Application crashes immediately on startup with `Error: Cannot find module '../build/Release/better_sqlite3.node'`
+- Docker image builds and pushes successfully, but fails at runtime on the Pi
+- This can go undetected if you only test the image on an x86_64 build machine and assume it runs on ARM64
 
-**Phase to address:**
-Foundational/data-layer phase, before any UI is built — the inventory mutation + broadcast pipeline is the architectural backbone the whole app depends on. This must not be an afterthought bolted on after screens exist.
+**Prevention:**  
+1. **Add `better-sqlite3` to pnpm's `allow-list` for install scripts** in the build stage's `pnpm install` command:
+   ```bash
+   pnpm install --frozen-lockfile --config.pnpm-shell-shim=true --config.build-from-source=true
+   ```
+   Or in `.npmrc`:
+   ```
+   shell-emulator=true
+   build-from-source=better-sqlite3
+   ```
+2. **Ensure build tools and Python are present in the build stage** (not just the runtime stage):
+   ```dockerfile
+   FROM node:22-bookworm AS builder
+   RUN apt-get update && apt-get install -y build-essential python3
+   # ... pnpm install
+   ```
+3. **Test the Docker image on ARM64 before shipping** — build and run locally on ARM hardware or use a CI step that tests multi-arch builds (e.g., GitHub Actions with `docker/setup-buildx-action`)
+4. **Verify the binding exists in the final image:**
+   ```bash
+   docker run --rm <image> find /app -name "better_sqlite3.node"
+   ```
 
----
-
-### Pitfall 2: Camera-based barcode scanning treated as a guaranteed happy path with no fallback
-
-**What goes wrong:**
-The owner points a phone camera at a liquor bottle's UPC, scanning fails to focus (barcodes are typically read at macro/close range, which many phone/tablet cameras via `getUserMedia` don't autofocus well for), or the barcode simply isn't in whatever lookup API is used, and there's no graceful way to add the bottle. This is exactly the risk flagged in project scope — "no dedicated scanner hardware."
-
-**Why it happens:**
-Demos of `BarcodeDetector`/ZXing/Quagga libraries look reliable in ideal lighting with a large, flat, well-lit code. Real-world bar bottles have wraparound labels, curved glass, glare, and low bar lighting — much harsher conditions than a demo video. Additionally, browser support for the native `BarcodeDetector` API is inconsistent (notably weak/absent on Safari, which matters here since iPad = Safari), so relying on it alone is risky for this specific device mix.
-
-**How to avoid:**
-Design scanning as an *optional accelerator*, not the primary path: always ship a manual "add bottle" flow (name/size/category typed or selected) as the baseline, with scan-to-prefill as an enhancement on top. Use a JS decoder library (ZXing-js or Quagga2) rather than relying solely on the native `BarcodeDetector` API, since it needs to work reliably in Safari on iPad/iPhone. Test scanning against actual bottles from the owner's collection early (curved glass, various label styles) rather than trusting sample barcode images.
-
-**Warning signs:**
-- Scanning works in testing with printed barcode sheets but fails on real bottles
-- Long time-to-scan (>3-4 seconds) or frequent "point camera closer/farther" retries in real use
-- Safari-specific console errors around `BarcodeDetector` not being defined
-
-**Phase to address:**
-The Barback/inventory-entry phase. Build and validate manual entry first; add scanning as a fast-follow enhancement, with an explicit fallback UX for scan failure (not just a spinner that never resolves).
-
----
-
-### Pitfall 3: UPC lookup treated as a complete product database instead of a best-effort prefill
-
-**What goes wrong:**
-A scanned UPC returns no result, a wrong result (mismatched size/variant), or a generic/incomplete entry, and the owner is stuck re-typing everything anyway — negating the value of scanning and eroding trust in the feature.
-
-**Why it happens:**
-General-purpose UPC APIs (Go-UPC, UPCitemdb, Barcode Lookup, etc.) have partial, inconsistent coverage of liquor-specific products — craft/small-batch spirits, private-label store bottles, and regional products are the most likely gaps for a home bar's real, eclectic ~50-100 bottle collection. Some dedicated beverage-alcohol UPC databases exist but tend to be paid/niche and still won't cover everything.
-
-**How to avoid:**
-Treat any UPC lookup result as a *prefill suggestion the owner reviews and edits*, never as authoritative auto-save. Always show the matched name/size/category in an editable form before committing to inventory. Pick a UPC API (or combination) as MVP, but build the "not found, fill in manually" path with equal design care as the "found it" path — it will be hit often for this domain.
-
-**Warning signs:**
-- High rate of "not found" or clearly wrong results during initial bottle-collection entry (test with owner's actual ~50-100 bottles as an early validation step, not synthetic test data)
-
-**Phase to address:**
-Barback/inventory-entry phase, alongside barcode scanning — design the "lookup succeeded but needs editing" and "lookup failed" states as first-class UI from the start.
+**Detection:**  
+- Application fails immediately: `Error: Cannot find module '../build/Release/better_sqlite3.node'`
+- Log output: `Module not found` at startup
+- `docker run <image> npm run start` (or equivalent) exits with non-zero, but `docker build` succeeded with no visible error
 
 ---
 
-### Pitfall 4: Ingredient/recipe matching that's too literal, so makeable drinks are wrongly reported as not-makeable
+### Pitfall 2: SQLite WAL File Corruption with Docker Bind-Mounted Database
 
-**What goes wrong:**
-A recipe calls for "1.5 oz gin" and inventory has "Bombay Sapphire Gin, 750ml" — if matching requires exact ingredient-name equality or doesn't reconcile units (oz vs ml vs cl vs dash vs "splash"), the system either fails to link the recipe ingredient to the inventory item, or miscalculates whether enough volume remains, undermining the core value proposition ("the inventory must be the single source of truth").
+**What goes wrong:**  
+You deploy the app in Docker with the SQLite database file bind-mounted from the host (so data persists across container updates). The app runs fine initially, but after several days or under moderate concurrent load (Patron, Bartender, Barback screens accessing simultaneously), the database mysteriously becomes corrupted or locked (`database is locked` errors, or the .db file becomes unreadable).
 
-**Why it happens:**
-Real recipes and real inventories use inconsistent vocabulary (brand name vs. generic category, "gin" vs "London dry gin"), inconsistent units, and inconsistent precision (fractions, dashes, splashes aren't strictly volumetric). Naive string-equality or hardcoded ml conversion misses this variability.
+**Why it happens:**  
+- SQLite WAL mode (`journal_mode = WAL`) uses shared memory (mmap'd `.db-shm` file) for IPC between processes/threads
+- When the database directory is bind-mounted from the host into Docker, the `.db`, `.db-wal`, and `.db-shm` files must all live on the same filesystem
+- **If the host filesystem is a network mount (CIFS, NFS) or has fsync delays (Docker Desktop on Mac/Windows via 9p/virtiofs), WAL coordination breaks and corruption occurs**
+- Additionally, if only the `.db` file is mounted (not the entire `data/` directory), the `.db-wal` and `.db-shm` files may be created inside the container's overlay filesystem and **not persist across restarts**, leading to stale lock files and corruption on next start
+- Concurrent writes from multiple connections on the host and inside the container can race if they don't share the same WAL coordination
 
-**How to avoid:**
-Model ingredients as generic categories with brand-specific inventory items linked underneath (e.g., ingredient "gin" can be satisfied by any bottle tagged category=gin), not a flat name-match. Normalize all volumes to one internal unit (ml) at data-entry time with a small, explicit conversion table (oz, cl, dash≈0.9ml, splash≈ambiguous — treat non-volumetric units as "presence-only," not quantity-tracked, if that's simpler for MVP). Decide explicitly whether "not enough volume left" counts as not-makeable or just "makeable but low" — this is a product decision, not just an engineering one, and should be resolved before building the matching logic.
+**Consequences:**  
+- Orders, inventory changes, or recipes silently fail to save
+- The app appears to work but data rolls back unexpectedly
+- After a container restart or pod eviction, the database is unrecoverable without manual intervention
+- This is especially damaging because SQLite corruption is often silent until a specific query hits it
 
-**Warning signs:**
-- Drinks the owner knows are makeable show as not-makeable (or vice versa) during manual testing
-- Recipes with "top with soda water" or other non-precise-volume ingredients breaking the matching logic
+**Prevention:**  
+1. **Bind-mount the entire database directory, not just the .db file:**
+   ```yaml
+   # docker-compose.yml
+   volumes:
+     - ./data:/app/data  # Mount the directory, not /app/data/my-bar.db
+   ```
+   This ensures `.db`, `.db-wal`, and `.db-shm` all persist and coordinate correctly.
 
-**Phase to address:**
-The makeable/not-makeable logic phase — this is core-value-critical per PROJECT.md and deserves its own dedicated design pass with the owner's actual early recipes as test cases, not just synthetic examples.
+2. **On local home network (Linux host), WAL mode is safe.** Ensure:
+   - Host filesystem is ext4 or similar (not network-mounted)
+   - Container and host share the same kernel/inode space (not Docker Desktop on Mac/Windows)
 
----
+3. **Test WAL + concurrent access before shipping:**
+   ```bash
+   # In tests, run both the app and a concurrent reader/writer
+   # Verify no "database is locked" after 10+ minutes
+   ```
 
-### Pitfall 5: Claude API calls treated as fast, cheap, and always-available in a "real-time-ish" UI
+4. **Add application-level recovery:** If `database is locked` errors occur, implement automatic retry with exponential backoff and a human alert after 3 consecutive failures
 
-**What goes wrong:**
-A patron requests a drink that can't be made; the app calls Claude for a substitution/recommendation inline in the request path. If the API is slow (multi-second latency is normal for a real LLM call), rate-limited, or transiently erroring, the UI hangs or breaks with no graceful degradation — turning a nice-to-have AI feature into a blocking failure point for a core interaction.
+5. **Monitor for `.db-wal` file size growth** — if it's always >100MB and never shrinking, checkpoints are failing and corruption risk is high
 
-**Why it happens:**
-It's easy to design the happy path (call Claude, get JSON back, render it) and not design for the unhappy path, especially in a hobby/home project where the developer's own testing rarely hits rate limits or network blips. But this app has an explicit internet dependency for AI features while otherwise running LAN-only, so partial connectivity/latency issues are a realistic real-world scenario (e.g., home internet blip during a party).
-
-**How to avoid:**
-Never make AI calls synchronously block the core "can this be made" flow — that logic must work entirely from local inventory state, independent of Claude API availability. AI recommendations/substitutions/recipe-parsing should be additive/optional layers with visible loading states and a clear fallback ("Claude API rate limits are org-level (RPM/ITPM/OTPM); expect 429 with retry-after" — use the SDK's built-in retry/backoff, but also design UI copy for "recommendations unavailable right now, here's the makeable list instead"). Log request_id, latency, token counts, and cost per call from day one to catch runaway cost or latency early on modest home-server + home-internet conditions.
-
-**Warning signs:**
-- UI feels laggy or freezes specifically around "suggest something else" or "suggest a substitution" interactions
-- No visible distinction in the UI between "AI is thinking" and "AI failed"
-- Unexpectedly high Anthropic bill relative to expected usage (a sign of retry storms, unbounded context, or repeated redundant calls)
-
-**Phase to address:**
-Each AI-feature phase (recommendations, substitutions, recipe-photo-parsing) individually — each needs its own error/latency/cost-handling design, not a single shared assumption. Flag these phases for deeper research per the AI-integration skill (structured output schema design, retry policy, cost guardrails).
-
----
-
-### Pitfall 6: AI recipe-photo parsing auto-saved without review, silently corrupting the recipe collection
-
-**What goes wrong:**
-The owner photographs a handwritten or printed recipe, Claude extracts structured data, and a wrong ingredient, wrong quantity, or hallucinated step gets saved directly into the curated recipe collection — undermining exactly the "owner wants a curated, personal recipe set" value stated in PROJECT.md.
-
-**Why it happens:**
-Claude's structured output (JSON mode / tool use) guarantees schema-valid output, not factually correct output — it can "confidently hallucinate" a plausible-looking ingredient or quantity that isn't actually in the photographed source, especially with imperfect handwriting, glare, or cropped images. This is easy to miss because the output *looks* clean and well-formatted.
-
-**How to avoid:**
-PROJECT.md already specifies "for user review/confirmation before saving" — hold this line firmly; never let this become an "auto-save with an undo" shortcut later for convenience. Keep the extraction schema flat (avoid deep nesting, which increases hallucination risk) and add a per-field confidence signal if feasible so uncertain fields are visually flagged for extra scrutiny during review. Show the original photo side-by-side with the extracted fields during confirmation so mismatches are easy to spot.
-
-**Warning signs:**
-- Recipes with quantities that don't make cocktail-ratio sense (e.g., wildly off from typical ranges) slipping through unedited
-- Owner reports "I don't remember entering it that way"
-
-**Phase to address:**
-The AI recipe-import phase specifically — the review/confirm UI is not optional polish, it's the core safety mechanism for this feature and should be scoped as part of the MVP for that phase, not deferred.
+**Detection:**  
+- App logs: `database is locked` or `attempt to write a readonly database`
+- SQLite file corruption errors: `Error: file is encrypted or is not a database`
+- `.db-wal` or `.db-shm` files missing after container restart (sign of incorrect mount point)
+- Inventory changes appear to save but don't persist after a refresh
 
 ---
 
-### Pitfall 7: SD-card/consumer-grade home-server storage silently corrupting data under sustained writes
+### Pitfall 3: Claude Vision HEIC Format Rejection and iPhone Photo Orientation Mismatch
 
-**What goes wrong:**
-If the "local home server" ends up being a Raspberry Pi booting from a microSD card, the card can corrupt during a power loss or from sustained write load (SQLite WAL journaling is write-heavy), taking the whole inventory database down with it — a severe failure for a system whose entire value proposition is being the trustworthy single source of truth.
+**What goes wrong:**  
+The Barback opens the app on their iPhone, takes a photo of a bottle to add it to inventory (using the phone's native camera), and uploads it directly to the Claude Vision API. Claude silently rejects the image or processes an upside-down/sideways version, returning incorrect bottle data or a generic error that the user sees as "couldn't identify this bottle."
 
-**Why it happens:**
-SD cards are commodity storage designed for occasional writes (photos, media), not sustained database write patterns; power loss mid-write can corrupt filesystem structures even if the card itself survives. This is an easy blind spot because it works fine for weeks/months until the one time power blips during a party.
+**Why it happens:**  
+- iPhones save photos in **HEIC format by default** (Apple's proprietary codec, smaller file size)
+- Claude Vision does NOT support HEIC; it only accepts JPEG, PNG, GIF, WebP
+- If you attempt to send HEIC directly, the API returns an error, but the web form may not surface it clearly to the user
+- When HEIC is converted to JPEG on the client side (or server side) **without proper EXIF rotation handling**, the image can be saved in the wrong orientation (upside down, sideways)
+- HEIC files store rotation as EXIF metadata, but conversion tools sometimes ignore this metadata, resulting in images that appear rotated when Claude tries to analyze them
+- Rotated images confuse Claude Vision's product identification — labels may be unreadable, or the model misidentifies the bottle entirely
 
-**How to avoid:**
-If using a Raspberry Pi (or similar SBC), boot/store the database on an external SSD rather than the microSD card, and consider a small UPS with auto-shutdown if power stability is a real concern in the deployment environment. Whatever the hardware, take regular automated SQLite backups (simple file copy or `.backup` command on a schedule) so a corruption event is a "restore from this morning" annoyance, not permanent data loss.
+**Consequences:**  
+- Users are frustrated by "couldn't identify" errors on perfectly clear photos
+- Barback falls back to manual entry, defeating the purpose of photo recognition
+- If the photo is occasionally processed (wrong orientation but still analyzable), Claude might return data for a different bottle with high confidence, leading to wrong inventory entries
+- On a wall-mounted or kiosk device, users may not understand why a clear photo fails and blame the app
 
-**Warning signs:**
-- Any unexplained app crash immediately after a power event
-- SQLite `database disk image is malformed` errors
+**Prevention:**  
+1. **Detect HEIC format before upload and convert to JPEG with proper EXIF rotation:**
+   ```typescript
+   // In the Barback React component (apps/barback)
+   const file = input.files[0];
+   if (file.type === 'image/heic' || file.type === 'image/heif') {
+     const jpegBlob = await convertHEICtoJPEG(file, { quality: 0.85, maxWidth: 1024 });
+     // Use jpegBlob instead of file
+   }
+   ```
+   Use a library like `heic2any` (client-side) or `sharp`/`ImageMagick` (server-side) to handle conversion.
 
-**Phase to address:**
-Deployment/infrastructure phase — decide and document the hardware + storage + backup strategy explicitly before going live, not implicitly by whatever hardware happens to be on hand.
+2. **Strip and reapply EXIF orientation during conversion:**
+   ```typescript
+   import sharp from 'sharp';
+   const jpegBuffer = await sharp(heicBuffer)
+     .rotate()  // Auto-rotate based on EXIF
+     .jpeg({ quality: 85 })
+     .toBuffer();
+   ```
+
+3. **Validate image before sending to Claude:**
+   - Ensure it's one of the supported formats (JPEG, PNG, GIF, WebP)
+   - Check file size: stay under 5 MB for Claude API; converting HEIC → JPEG at ~1024px width typically yields ~200–400 KB
+   - Log which format was uploaded and which format was sent to Claude (helps debug orientation issues)
+
+4. **Provide clear feedback to the user:**
+   - "Processing photo…" while converting
+   - If Claude fails to identify, show: "Couldn't identify this bottle. Try a clearer angle or manual entry."
+   - Offer a fallback: "Or enter the bottle details manually"
+
+5. **Add orientation metadata to the request:**
+   - Include EXIF orientation in the prompt: "This photo was taken on an iPhone. It has been rotated to upright orientation."
+   - This helps Claude compensate if any rotation metadata is lost
+
+**Detection:**  
+- User uploads HEIC file; app crashes or shows a "file format not supported" error
+- User uploads a photo but Claude returns generic response ("I see an object") with low confidence
+- Database has entries for wrong bottles (user uploaded photo of Jameson, but Barback lists it as some other brand)
+- Log shows: `[ERROR] Unsupported image format` for any HEIC file
 
 ---
 
-### Pitfall 8: "No auth" interpreted as "no server-side validation" instead of "no login friction"
+### Pitfall 4: Confident Hallucination in Claude Vision Bottle Identification Leading to Wrong Inventory Entries
 
-**What goes wrong:**
-Because there's no login, it's tempting to also skip server-side input validation and treat every client request as trusted, since "it's just friends and family on the home network." Then a buggy client (or a guest's phone browser tab left open, or a future public/tunnel exposure) can submit malformed orders, negative stock adjustments, or spam requests that corrupt the shared state everyone else relies on.
+**What goes wrong:**  
+The Barback takes a photo of a bottle (any bottle, doesn't matter which), sends it to Claude Vision with the prompt "Identify this bottle," and Claude returns a valid-looking response: `{ "name": "Maker's Mark", "category": "bourbon", "abv": 45 }` — but the bottle in the photo is actually **Knob Creek** or something entirely different. Because the structured response is valid JSON and Claude returned it with high confidence, the app saves this to the database as-is, and now the inventory has the wrong bottle recorded.
 
-**Why it happens:**
-No-auth is explicitly the right call per PROJECT.md's constraints (trusted home network, no commercial concerns) — but "no authentication" and "no validation" are different decisions that are easy to conflate when moving fast.
+**Why it happens:**  
+- Claude Vision can hallucinate — it returns plausible-sounding, well-formed data even when it's not certain or the image is ambiguous
+- "Confident hallucination" is the specific failure mode: the response looks authoritative (valid schema, plausible data) so you assume it's correct, but it's actually wrong
+- Real-world photos of bottles are challenging: labels can be partially obscured, lighting can make text unreadable, or the photo angle makes the brand name hard to see
+- LLMs are trained to be helpful and complete, so if they're not certain, they'll guess — and the guess is returned with the same confidence markers as actual data
+- Without an explicit confidence score or uncertainty flag in Claude's output, the app has no way to distinguish "I'm very sure this is Jameson" from "I'm guessing this might be some kind of whiskey"
 
-**How to avoid:**
-Keep server-side validation on every write endpoint (valid stock deltas, valid recipe references, rate-limit AI-triggering endpoints specifically since those cost money per call) even though there's no login. Explicitly do not expose the server beyond the home LAN (no port-forwarding, no public tunnel) — PROJECT.md already scopes this correctly; treat "reconsider only if exposed outside the home network" as a hard line, and if that ever changes, authentication becomes non-negotiable before exposure.
+**Consequences:**  
+- Inventory becomes unreliable (Patron orders a drink, Bartender looks it up, but the ingredient list is for a different bottle)
+- Bartender spends time tracking down missing ingredients that don't actually exist in the database
+- Makeable status is wrong (the recipe calls for "Maker's Mark" but the database has "Knob Creek" under that slot)
+- Silent data corruption — the database looks clean, but it's wrong
 
-**Warning signs:**
-- Any endpoint that trusts a client-submitted stock count or price without server-side recomputation
-- No rate-limiting on AI-calling endpoints (a stray script or curious guest could trigger a cost spike)
+**Prevention:**  
+1. **Require human review before saving Claude Vision output:**
+   - Show the identified bottle (name, photo, category) to the Barback with a confirmation prompt
+   - "Claude identified this as Maker's Mark, bourbon, 45% ABV. Is this correct? [Confirm] [Edit]"
+   - Only save if the user explicitly confirms
+   - This is a **non-negotiable UX gate** for write operations involving Claude Vision
 
-**Phase to address:**
-Backend/API-design phase, applied consistently across every phase that adds a write endpoint — this is a standing rule, not a one-time task.
+2. **Add a confidence score to the Claude Vision call:**
+   ```typescript
+   const response = await client.messages.parse({
+     model: 'claude-opus-5-20250804',
+     max_tokens: 1024,
+     messages: [{
+       role: 'user',
+       content: [{
+         type: 'image',
+         source: { type: 'base64', media_type: 'image/jpeg', data: base64Image }
+       }, {
+         type: 'text',
+         text: 'Identify this bottle. Respond with name, category, and abv. Also include a confidence score (0-100) for your identification.'
+       }]
+     }],
+     output_config: {
+       format: 'json_schema',
+       json_schema: z.object({
+         name: z.string(),
+         category: z.string(),
+         abv: z.number(),
+         confidence: z.number().min(0).max(100),
+         notes: z.string() // e.g., "Label was partially obscured"
+       })
+     }
+   });
+   
+   if (response.confidence < 70) {
+     // Show "Low confidence" badge, suggest manual verification
+   }
+   ```
+
+3. **Implement a fallback to manual entry:**
+   - If Claude's confidence is below a threshold, default to manual entry instead of auto-filling
+   - "Claude couldn't confidently identify this. Enter it manually or try another angle."
+
+4. **Store Claude's reasoning/notes:**
+   - Save the `notes` field with each bottle (e.g., "Label was partially obscured; guessing from bottle shape and color")
+   - This helps the Barback verify the entry is correct
+
+5. **Never auto-update existing inventory:**
+   - If the app is re-analyzing a photo for an ingredient that's already in stock, never silently update it
+   - This prevents overwriting correct data with a hallucinated correction
+
+**Detection:**  
+- Database queries return wrong ingredient data (e.g., "Knob Creek" listed as "Maker's Mark")
+- Barback manually corrects Claude's identification repeatedly for the same bottles
+- Patron orders fail because makeable status is based on wrong ingredient data
+- Log shows: `[VISION] Confidence: 42% for Maker's Mark (but user said it was actually X)`
 
 ---
 
-## Technical Debt Patterns
+## Moderate Pitfalls
 
-| Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
-|----------|-------------------|----------------|-----------------|
-| Polling instead of WebSocket push for "live" inventory | Simpler to build first | Perceived staleness/desync between screens, defeats "single source of truth" core value | Never for MVP of this app — sync trustworthiness is the stated core value |
-| Client computes makeable/not-makeable locally from cached inventory | Avoids extra server logic short-term | Screens disagree with each other, exactly the failure mode PROJECT.md calls out as unacceptable | Never — always compute makeable status server-side and broadcast it |
-| Auto-saving AI-parsed recipe/UPC data without review step | Faster "magic" feeling | Silent data corruption in the curated recipe/inventory collection | Never — PROJECT.md already requires review before save |
-| SQLite without WAL/busy_timeout tuning | Works fine with one client open | Random `SQLITE_BUSY` failures once all three screens are active simultaneously | Only during very early single-developer prototyping, must be fixed before three-client testing |
-| Running on microSD without external SSD/backups | No extra hardware purchase | Risk of total data loss on power event | Only for throwaway prototyping, not for the "real" deployed instance |
+### Pitfall 5: Schema Mismatch Between Unstructured Recipe Input and App's Structured Schema
 
-## Integration Gotchas
+**What goes wrong:**  
+The Barback shares a recipe link or pastes a screenshot of a recipe into the MCP server (via Claude Code or a Claude Chat session), intending to add it to My Bar. Claude parses the recipe and returns:
+```json
+{
+  "name": "Old Fashioned",
+  "ingredients": [
+    {"name": "bourbon", "quantity": "2", "unit": "oz"},
+    {"name": "sugar cube", "quantity": "1"},
+    {"name": "bitters", "quantity": "2", "dashes"}
+  ],
+  "method": "Stir bourbon, sugar, and bitters with ice..."
+}
+```
 
-| Integration | Common Mistake | Correct Approach |
-|-------------|----------------|-------------------|
-| Claude API (vision/recipe parsing) | Trusting structured JSON output as factually correct because it's schema-valid | Always route through a human review/confirm step; add confidence signals where feasible |
-| Claude API (recommendations/substitutions) | Calling it synchronously inline in the core "can this be made" path | Keep core inventory logic 100% local/deterministic; treat AI suggestions as an additive, gracefully-degradable layer |
-| UPC lookup API | Assuming coverage includes niche/craft liquor products | Always design and test the "not found" manual-entry path as a first-class flow |
-| Browser `BarcodeDetector` API | Assuming consistent cross-browser support (notably Safari on iPad) | Use a JS decoder library (ZXing-js/Quagga2) for consistent behavior across the actual target devices, or feature-detect and fall back gracefully |
-| WebSocket connection on iPad Safari over long idle periods (wall-mounted kiosk) | Assuming the connection never drops | Implement reconnect-with-resync logic: on reconnect, always re-fetch full current state rather than assuming missed messages were the only diff |
+But My Bar's ingredient schema requires:
+```json
+{
+  "ingredientId": "uuid",
+  "quantity": 2,
+  "unit": "oz",
+  "substitutableFrom": ["ingredient-id-2", "ingredient-id-3"]
+}
+```
 
-## Performance Traps
+And the app's category system has no concept of "sugar cube" vs. "sugar syrup" — they're different ingredients. Claude tries to map the unstructured recipe to the structured schema and creates entries with null IDs, missing units, or categorizes "sugar cube" incorrectly as "liqueur" or just guesses.
 
-| Trap | Symptoms | Prevention | When It Breaks |
-|------|----------|------------|-----------------|
-| Recomputing makeable/not-makeable for all ~100+ recipes on every single stock change, synchronously, on the request path | UI feels sluggish after every inventory edit | Compute incrementally (only recipes touching the changed ingredient) or debounce/batch recompute | Noticeable once recipe count is in the 100+ range PROJECT.md anticipates |
-| Unbounded Claude API context (sending full recipe/inventory list on every call) | Rising per-call cost and latency as collection grows | Send only the relevant subset (e.g., makeable-adjacent recipes, not the full catalog) per AI call | As recipe/bottle collection grows toward the ~100+ scale PROJECT.md anticipates |
+**Why it happens:**  
+- Recipes in the real world (blogs, PDFs, screenshots) use natural language: "2 oz bourbon," "a dash of bitters," "1 sugar cube"
+- My Bar's schema requires referential integrity: every ingredient must exist in the ingredient table and have a valid category
+- Claude can parse natural language well, but has no knowledge of My Bar's specific ingredient database (what ingredients exist, which categories, which are substitutable)
+- The MCP server has write access but no veto gate — Claude can create recipes with orphaned ingredient references or make up new ingredients
+- There's no transaction rollback if Claude makes a mistake mid-recipe (e.g., creates 5 ingredients correctly, then fails on the 6th)
 
-## Security Mistakes
+**Consequences:**  
+- Malformed recipes in the database with missing or orphaned ingredient references
+- The app crashes or shows errors when trying to render the recipe (null dereference on ingredientId)
+- Makeable status computation fails because it can't resolve ingredient dependencies
+- Database becomes corrupted with invalid foreign keys (if not using constraints) or constraint violations (if constraints are enforced)
+- The Barback has to manually fix the recipe in the UI, defeating the purpose of the import
 
-| Mistake | Risk | Prevention |
-|---------|------|------------|
-| No server-side validation because "no auth = no need to validate" | Corrupted shared state from a buggy or malicious client on the LAN | Validate every write server-side regardless of auth status |
-| Exposing the home server beyond the LAN (port-forward, tunnel) "just for convenience" | Turns a trusted-network assumption into a real public-internet attack surface with zero auth | Keep strictly LAN-only per PROJECT.md scope; require adding auth first if this ever changes |
-| No rate-limiting on AI-triggering endpoints | A stray repeated request (buggy client, curious guest tapping fast) could rack up real Anthropic API cost | Debounce/rate-limit client-side and server-side on any endpoint that calls Claude |
+**Prevention:**  
+1. **MCP server must validate all imported recipes against the live ingredient database:**
+   ```typescript
+   // In MCP server implementation
+   async function createRecipe(importedRecipe: unknown) {
+     const validated = recipeSchema.parse(importedRecipe); // Validate format
+     
+     // Map ingredient names to live ingredient IDs
+     const resolvedIngredients = validated.ingredients.map((ing) => {
+       const dbIngredient = await db.query.ingredients.findFirst({
+         where: eq(schema.ingredients.name, ing.name)
+       });
+       if (!dbIngredient) {
+         throw new Error(`Ingredient "${ing.name}" not found in database. Add it first.`);
+       }
+       return { ingredientId: dbIngredient.id, quantity: ing.quantity, unit: ing.unit };
+     });
+     
+     // Only save if all ingredients resolved
+     await db.insert(schema.recipes).values({ ...validated, ingredients: resolvedIngredients });
+   }
+   ```
 
-## UX Pitfalls
+2. **Provide Claude with a list of valid ingredients and categories:**
+   - When creating the MCP tool definition, include the current ingredient list in the system prompt or as a tool parameter
+   - "You must use one of these exact ingredient names: bourbon, sugar, lime juice, bitters, ..."
+   - This reduces hallucination and helps Claude map "sugar cube" to the correct existing ingredient
 
-| Pitfall | User Impact | Better Approach |
-|---------|-------------|-------------------|
-| No visible distinction between "AI is thinking" and "AI failed" | Patron/bartender left staring at a stuck spinner during a live party moment | Explicit loading vs. error vs. fallback states for every AI-backed interaction |
-| Scan-to-add flow with no manual fallback surfaced | Owner gets stuck mid-inventory-entry when scanning fails on a real bottle | Always show "or enter manually" alongside the scan button, not buried behind a failure state |
-| "Not-makeable" shown with no reason | Patron/bartender can't tell what's missing, have to guess | PROJECT.md already requires showing exactly which ingredient(s) are missing — treat this as non-negotiable, not a stretch goal |
+3. **Implement a two-step import with human verification:**
+   - Step 1: Claude parses the recipe and returns a proposed import (with unmapped ingredients flagged)
+   - Step 2: User reviews and maps any unmapped ingredients, then confirms
+   - Only save after explicit confirmation
+   - This prevents silent bad data
 
-## "Looks Done But Isn't" Checklist
+4. **Use structured output with strict schema validation:**
+   ```typescript
+   output_config: {
+     format: 'json_schema',
+     json_schema: z.object({
+       name: z.string(),
+       ingredients: z.array(z.object({
+         name: z.enum(['bourbon', 'sugar', 'lime juice', ...]), // Exact enums
+         quantity: z.number(),
+         unit: z.enum(['oz', 'ml', 'dash', 'barspoon'])
+       })),
+       method: z.string()
+     })
+   }
+   ```
+   This forces Claude to pick from the allowed set instead of inventing new values.
 
-- [ ] **Live shared inventory:** Often missing true push-based sync — verify by opening all three interfaces simultaneously and confirming a Barback edit appears on Patron/Bartender within ~1 second without manual refresh
-- [ ] **Makeable/not-makeable logic:** Often missing unit normalization and ingredient-category matching — verify with real recipes using varied units (oz, ml, dash) and inventory bottles under generic vs. brand names
-- [ ] **UPC barcode scanning:** Often missing a tested fallback for scan failure — verify by attempting real bottles from the owner's actual collection, not test barcode sheets
-- [ ] **AI recipe-photo import:** Often missing a genuine review/edit step (vs. a rubber-stamp "confirm" button) — verify the UI actually surfaces the original photo next to each extracted field for comparison
-- [ ] **AI recommendation/substitution features:** Often missing graceful degradation — verify behavior when the API key is invalid, when offline, and when rate-limited (simulate all three)
-- [ ] **No-auth write endpoints:** Often missing server-side validation — verify by sending a malformed/out-of-range request directly (bypassing the UI) and confirming it's rejected, not silently applied
+5. **Add database constraints and transaction rollback:**
+   - Use `FOREIGN KEY` constraints on ingredient IDs
+   - Wrap recipe creation in a transaction; rollback if any ingredient ID is invalid
+   - This prevents the database from ever accepting malformed data
 
-## Recovery Strategies
+6. **Log all MCP write operations with details:**
+   - Who called it (MCP client), what was requested, what was validated, what was saved
+   - Makes debugging import failures much faster
 
-| Pitfall | Recovery Cost | Recovery Steps |
-|---------|----------------|-----------------|
-| Multi-client desync from polling-based architecture | HIGH | Requires retrofitting a push-based (WebSocket) layer and a single authoritative server-side state — effectively a backend rework, best avoided rather than recovered from |
-| SD-card corruption / data loss on home server | MEDIUM | Restore from last automated backup; if none exists, rebuild inventory/recipes manually (painful given "manual entry from scratch" scope) |
-| Bad AI-parsed recipe saved without review | LOW | Simple manual edit/delete once caught, since it's isolated per-recipe — cost stays low only if reviewed promptly, so surface a way to spot-check recently AI-imported recipes |
-| Overly literal ingredient matching causing wrong makeable/not-makeable results | MEDIUM | Requires revisiting the ingredient-to-inventory linking model (generic-category vs. brand-specific), which touches recipe data structure — better to get this right early than patch it later |
+**Detection:**  
+- Recipe appears in the database but Patron/Bartender screens show errors when loading it
+- Makeable status computation fails with "ingredientId not found" errors
+- Database query returns recipes with null or missing ingredient IDs
+- Log shows: `[MCP] Recipe import failed: Ingredient "sugar cube" not mapped`
 
-## Pitfall-to-Phase Mapping
+---
 
-| Pitfall | Prevention Phase | Verification |
-|---------|-------------------|----------------|
-| Multi-client state desync (Pitfall 1) | Foundational data-layer / inventory-sync phase | Open all 3 interfaces at once; edit inventory from one, confirm instant sync on the others |
-| Barcode scanning treated as guaranteed (Pitfall 2) | Barback inventory-entry phase | Test scanning against real bottles from the collection; confirm manual-entry fallback works standalone |
-| UPC lookup gaps (Pitfall 3) | Barback inventory-entry phase | Attempt lookup for a representative sample of the owner's actual ~50-100 bottles; measure hit rate |
-| Ingredient/unit matching too literal (Pitfall 4) | Makeable/not-makeable logic phase | Test against real early recipes with varied units and brand vs. generic ingredient names |
-| AI calls blocking core UX / no error handling (Pitfall 5) | Each AI-feature phase individually | Simulate API timeout, 429, and invalid-key conditions; confirm core inventory logic still works with AI fully down |
-| AI recipe import auto-saving bad data (Pitfall 6) | AI recipe-import phase | Confirm UI requires explicit review/edit before save, with source photo visible alongside extracted fields |
-| SD-card/storage corruption risk (Pitfall 7) | Deployment/infrastructure phase | Document hardware/storage choice and backup schedule before going live |
-| No server-side validation on no-auth writes (Pitfall 8) | Backend/API-design phase (standing rule across all write-endpoint phases) | Send malformed requests directly to each write endpoint, confirm rejection |
+### Pitfall 6: MCP Server Write Access Without Rate Limiting or Audit Trail
+
+**What goes wrong:**  
+A Claude Code session connects to the unauthenticated MCP server with write-access tools (create recipe, add ingredient, edit inventory). By accident or via prompt injection, Claude makes 500 calls in rapid succession, creating 500 duplicate or malformed recipes. The operation completes before anyone notices, and now the database is polluted with garbage data. There's no audit log, so you don't know when it happened, who initiated it, or what was created.
+
+**Why it happens:**  
+- MCP servers typically have no rate limiting — they assume the client (Claude, another LLM, a developer) is trusted
+- My Bar's existing REST API also has no authentication, so there's no natural place to add rate limits without rewriting the API
+- Without an audit trail, you have no visibility into MCP operations; the database just has new data and you don't know the source or timestamp
+- Claude can get into loops (retry/backoff logic) or prompt-injection scenarios where it calls a tool repeatedly trying to achieve a goal
+
+**Consequences:**  
+- Database bloated with duplicate or garbage data (50 copies of the same recipe with slightly different names)
+- Manual cleanup required: identify and delete malformed data, restore from backup if necessary
+- Barback's UI becomes cluttered with junk recipes, making it hard to find real ones
+- Trust in the MCP system is destroyed; feature gets disabled and falls back to manual entry
+
+**Prevention:**  
+1. **Implement rate limiting at the MCP server level:**
+   ```typescript
+   // MCP server middleware
+   const rateLimiter = new Map<string, { count: number; resetAt: number }>();
+   
+   function checkRateLimit(clientId: string, limit: number = 10, windowMs: number = 60000) {
+     const now = Date.now();
+     const record = rateLimiter.get(clientId) || { count: 0, resetAt: now + windowMs };
+     
+     if (now > record.resetAt) {
+       record.count = 0;
+       record.resetAt = now + windowMs;
+     }
+     
+     record.count++;
+     rateLimiter.set(clientId, record);
+     
+     if (record.count > limit) {
+       throw new Error(`Rate limit exceeded: ${limit} calls per minute`);
+     }
+   }
+   ```
+   - Set conservative limits: 10 writes per minute for recipe/ingredient creation
+   - Reject with a clear error message: "Too many requests; wait before trying again"
+
+2. **Add comprehensive audit logging:**
+   ```typescript
+   // Every MCP write operation
+   async function auditLog(operation: string, clientId: string, input: unknown, result: unknown, error?: Error) {
+     await db.insert(schema.auditLog).values({
+       timestamp: new Date(),
+       operation,
+       clientId,
+       inputData: JSON.stringify(input),
+       resultData: JSON.stringify(result),
+       errorMessage: error?.message,
+       success: !error
+     });
+   }
+   ```
+   - Log: timestamp, operation type, caller ID, input, result, success/failure
+   - Makes debugging MCP issues trivial and provides accountability
+
+3. **Separate read and write permissions:**
+   - Read operations (list recipes, get ingredient) → unlimited
+   - Write operations (create, edit, delete) → rate-limited and audited
+   - Make this explicit in MCP tool definitions
+
+4. **Implement a human-approval gate for high-risk operations:**
+   - Delete ingredient, delete recipe: require confirmation before executing
+   - This prevents accidental deletion loops
+
+5. **Alert on suspicious patterns:**
+   - If more than 5 recipes are created in 10 seconds, pause and alert
+   - If a single MCP call creates more than 20 ingredients, flag as potential loop
+
+**Detection:**  
+- Database has sudden influx of duplicate recipes with auto-incremented names
+- Barback reports: "The MCP created 50 copies of 'Margarita' somehow"
+- No way to trace back where the data came from (missing audit log)
+- MCP operation appears to succeed but database state is inconsistent
+
+---
+
+### Pitfall 7: Docker Multi-Stage Build Not Preserving pnpm Store Cache Across Layers
+
+**What goes wrong:**  
+You set up a multi-stage Docker build: Stage 1 installs dependencies with `pnpm install`, Stage 2 builds the frontend bundles, and Stage 3 copies artifacts to a final runtime image. Each time you rebuild, even if `pnpm-lock.yaml` hasn't changed, `pnpm install` runs again from scratch, downloading ~500MB of packages and taking 3–5 minutes. This makes local development and CI/CD slow, and defeats the purpose of layered caching.
+
+**Why it happens:**  
+- pnpm's package store defaults to `~/.pnpm-store`, which lives in the build container's ephemeral filesystem
+- Without explicit caching, each Docker layer rebuild starts with an empty store
+- The `pnpm install` command doesn't know to reuse packages from a previous build
+- Docker's native layer cache can cache the `RUN pnpm install` line, but if `pnpm-lock.yaml` changes (even unrelated changes), the entire install re-runs
+
+**Consequences:**  
+- Every `docker build` takes 3–5 minutes, even for minor code changes
+- CI/CD pipelines are slow (GitHub Actions build times spike)
+- Developers avoid rebuilding images locally, leading to stale builds
+- Push to Raspberry Pi takes longer, delaying deployments
+
+**Prevention:**  
+1. **Use Docker BuildKit cache mounts to persist the pnpm store:**
+   ```dockerfile
+   # Dockerfile
+   # Enable BuildKit: DOCKER_BUILDKIT=1 docker build .
+   
+   FROM node:22-bookworm AS dependencies
+   
+   # Copy only lock file
+   COPY pnpm-lock.yaml .
+   COPY .npmrc .
+   
+   # Install with cached store
+   RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+       pnpm install --frozen-lockfile --recursive
+   
+   # Copy built node_modules to next stage
+   FROM node:22-bookworm AS builder
+   COPY --from=dependencies /app/node_modules ./node_modules
+   COPY . .
+   RUN pnpm run build
+   
+   # Final stage
+   FROM node:22-slim
+   COPY --from=builder /app/dist ./dist
+   ```
+
+2. **Ensure the cache mount target matches pnpm's store location:**
+   - Default store: `/pnpm/store` (use `pnpm config get store-dir` to check)
+   - If you set a custom `PNPM_HOME` or `store-dir`, update the cache mount target
+
+3. **Separate dependency installation from code copy:**
+   - Copy `pnpm-lock.yaml` and `.npmrc` **before** copying source code
+   - This way, if only source changes (not dependencies), the install layer is cached and reused
+   - Build layer (transpile, bundle) runs on top of the cached install layer
+
+4. **Use `pnpm install --frozen-lockfile`:**
+   - Prevents pnpm from downloading or modifying `pnpm-lock.yaml`
+   - Makes the build deterministic and reproducible
+
+5. **Layer frontend builds separately if they're slow:**
+   ```dockerfile
+   # After node_modules are installed
+   
+   # Build each frontend in its own stage
+   FROM dependencies AS build-patron
+   COPY packages ./packages
+   COPY apps/patron ./apps/patron
+   RUN pnpm --filter @my-bar/patron build
+   
+   FROM dependencies AS build-bartender
+   COPY packages ./packages
+   COPY apps/bartender ./apps/bartender
+   RUN pnpm --filter @my-bar/bartender build
+   # ... etc
+   
+   # Then copy all built artifacts to final image
+   FROM node:22-slim
+   COPY --from=build-patron /app/apps/patron/dist ./public/patron
+   COPY --from=build-bartender /app/apps/bartender/dist ./public/bartender
+   # ... etc
+   ```
+
+**Detection:**  
+- `docker build` output shows `Step X/Y : RUN pnpm install --frozen-lockfile` taking 3+ minutes even when lock file didn't change
+- No "CACHED" label on the pnpm install step in build output
+- Subsequent builds of the same commit take the same time as the first build
+
+---
+
+## Minor Pitfalls
+
+### Pitfall 8: Image Size Bloat from Multi-Frontend Monorepo
+
+**What goes wrong:**  
+The final Docker image is 800MB+, too large to push to the Pi efficiently or store on a small SD card. The image contains all three frontend builds (Patron, Bartender, Barback), their dev dependencies, source maps, and Node modules that aren't needed at runtime.
+
+**Why it happens:**  
+- Building all three React apps and bundling them with their dependencies creates 3 × ~100MB bundles
+- Dev dependencies (TypeScript, webpack, testing libraries) are ~200MB and still present in the final image if not stripped
+- Source maps and .map files add 50–100MB and provide no value in production
+- The runtime image doesn't need Vite, TypeScript compiler, or build tools
+
+**Prevention:**  
+1. **Remove dev dependencies from the final image:**
+   ```dockerfile
+   # In the final stage, only install production dependencies
+   FROM node:22-slim
+   COPY package.json pnpm-lock.yaml .
+   RUN pnpm install --prod --frozen-lockfile
+   # Copy only the built bundles and server code
+   ```
+
+2. **Strip source maps in production builds:**
+   ```typescript
+   // vite.config.ts
+   export default {
+     build: {
+       sourcemap: false, // or: process.env.NODE_ENV === 'production' ? false : true
+       minify: 'terser'
+     }
+   };
+   ```
+
+3. **Use a scratch or distroless final stage for static files:**
+   ```dockerfile
+   FROM gcr.io/distroless/base-debian12
+   COPY --from=builder /app/dist /dist
+   ```
+   This removes all OS tooling and reduces image size by 100–200MB.
+
+4. **Build frontends in CI, commit only the dist bundles:**
+   - If disk space is extremely tight, avoid including source code in the production image
+   - Copy only `dist/` folders, not `src/`, `tsconfig.json`, etc.
+
+**Detection:**  
+- `docker images` shows size > 500MB for this single-machine app
+- `docker history <image>` shows large layer for node_modules or source code
+
+---
+
+### Pitfall 9: SQLite Write Timeout Under Concurrent Load During Claude Vision Calls
+
+**What goes wrong:**  
+When Claude Vision is processing a bottle photo (5–10 second API call), the Barback interface is slow to save the result. If they close the browser tab while Claude is still analyzing, the MCP server might still try to save the result, leading to a database lock. Alternatively, if the Patron and Bartender screens are both making requests while a Vision call is in progress, the database locks up with `SQLITE_BUSY` or `database is locked` errors.
+
+**Why it happens:**  
+- SQLite serializes writes across the entire database (unlike Postgres which can handle concurrent writes)
+- Claude Vision calls are I/O-bound (waiting for Claude API response), blocking the server's event loop or holding a transaction open
+- If the code does not release the database connection during the Vision API call, the database is locked for the entire 5–10 seconds
+- Under concurrent load (multiple screens refreshing simultaneously), write requests queue up, timeout, and fail
+
+**Prevention:**  
+1. **Release the database connection before making external API calls:**
+   ```typescript
+   // In the Fastify endpoint for adding a bottle after Vision analysis
+   
+   // BAD: Locks DB for the entire Vision call
+   async function identifyBottle(file: Buffer) {
+     const db = getDb();
+     db.exec('BEGIN TRANSACTION');
+     
+     const visionResult = await claude.vision(file); // 5-10s delay, DB LOCKED
+     
+     db.exec('INSERT INTO ingredients ...');
+     db.exec('COMMIT');
+   }
+   
+   // GOOD: Vision call happens outside transaction
+   async function identifyBottle(file: Buffer) {
+     const visionResult = await claude.vision(file); // No DB lock
+     
+     const db = getDb();
+     db.exec('BEGIN TRANSACTION');
+     db.exec('INSERT INTO ingredients ...');
+     db.exec('COMMIT');
+   }
+   ```
+
+2. **Set reasonable connection timeout values:**
+   ```typescript
+   const db = new Database(':memory:'); // or file path
+   db.exec('PRAGMA busy_timeout = 5000'); // Wait up to 5s for lock
+   ```
+   Default is very short; increase to 5–10 seconds for kiosk apps.
+
+3. **Implement retry logic with exponential backoff:**
+   ```typescript
+   async function saveWithRetry(fn: () => void, maxRetries: number = 3) {
+     for (let i = 0; i < maxRetries; i++) {
+       try {
+         fn();
+         return;
+       } catch (e) {
+         if (i === maxRetries - 1) throw e;
+         await new Promise(r => setTimeout(r, 100 * Math.pow(2, i))); // 100ms, 200ms, 400ms
+       }
+     }
+   }
+   ```
+
+4. **Use better-sqlite3's transaction helpers:**
+   ```typescript
+   const insert = db.prepare('INSERT INTO ingredients (name, category) VALUES (?, ?)');
+   const transaction = db.transaction((name: string, category: string) => {
+     insert.run(name, category);
+   });
+   transaction('Jameson', 'Irish Whiskey'); // Automatic rollback on error
+   ```
+
+**Detection:**  
+- Logs show: `SQLITE_BUSY` or `database is locked` errors during Vision calls
+- Adding a bottle works sometimes but fails randomly under concurrent load
+- Barback reports: "It takes 30s to save a photo"
+
+---
+
+### Pitfall 10: MCP Server Connection Instability Over Home Network
+
+**What goes wrong:**  
+The Claude Code session connects to the MCP server on the home Pi. The connection works briefly, but after a few minutes of inactivity or a wifi handoff, the connection drops. Claude gets cryptic `transport error` or `connection timeout` messages and the user has to manually reconnect.
+
+**Why it happens:**  
+- MCP servers assume a stable, local connection (e.g., same machine or LAN)
+- The Pi may sleep the network interface, or the router may drop idle TCP connections
+- The MCP client (Claude Code) doesn't have built-in reconnection logic
+- If the home network is flaky or the Pi is on wifi (instead of Ethernet), packet loss can cause silent disconnections
+
+**Consequences:**  
+- User frustration: "MCP stopped working mid-recipe import"
+- Feature is unreliable and gets disabled
+- Workaround: manual entry instead of MCP import
+
+**Prevention:**  
+1. **Implement heartbeat/keepalive in the MCP server:**
+   ```typescript
+   // MCP server
+   setInterval(() => {
+     // Send a no-op ping to keep connection alive
+     server.emit('ping');
+   }, 30000); // Every 30s
+   ```
+
+2. **Use TCP keepalive options:**
+   ```typescript
+   const server = net.createServer((socket) => {
+     socket.setKeepAlive(true, 60000); // TCP keepalive every 60s
+   });
+   ```
+
+3. **Provide clear error messages to the user:**
+   - "MCP connection lost. Reconnect?" with a retry button
+   - Don't silently fail; surface the issue
+
+4. **Deploy the MCP server to a stable location:**
+   - Prefer Ethernet over wifi on the Pi
+   - Ensure the Pi doesn't sleep or power-down the network interface
+   - Add a systemd service that restarts the MCP server on crash:
+     ```ini
+     [Unit]
+     Description=My Bar MCP Server
+     
+     [Service]
+     ExecStart=/usr/bin/node /app/mcp-server/dist/index.js
+     Restart=on-failure
+     RestartSec=5
+     ```
+
+**Detection:**  
+- Claude Code logs show: `connection timeout` or `transport error` after 5+ minutes
+- MCP commands work initially but fail on retry
+
+---
+
+## Phase-Specific Warnings
+
+| Phase Topic | Likely Pitfall | Mitigation |
+|-------------|---------------|------------|
+| **Docker Build & Test (Phase 5)** | better-sqlite3 native bindings fail on ARM64; WAL corruption on first deploy | Test image on ARM64 hardware before shipping; verify `.node` binding exists; ensure full data/ directory is bind-mounted |
+| **Docker Build & Test (Phase 5)** | Multi-stage Dockerfile doesn't cache pnpm store; builds take 3–5 min every time | Use BuildKit cache mounts with `RUN --mount=type=cache,id=pnpm,target=/pnpm/store` |
+| **AI Vision Phase (Phase 6)** | iPhone photos arrive in HEIC; Claude receives upside-down images | Detect and convert HEIC to JPEG client-side with proper EXIF rotation before upload |
+| **AI Vision Phase (Phase 6)** | Claude confidently hallucinates wrong bottle names; bad data saved silently | Require human review before saving Vision output; add confidence score and fallback to manual entry if <70% |
+| **MCP Server Phase (Phase 7)** | Unstructured recipe input maps to wrong ingredient IDs; recipes broken | Validate all imports against live ingredient database; provide Claude with exact ingredient list; implement two-step import with human verification |
+| **MCP Server Phase (Phase 7)** | No rate limiting or audit; Claude accidentally creates 500 duplicate recipes | Implement per-minute write rate limits (e.g., 10 ops/min); log all MCP operations with timestamp, caller, input, result |
+| **MCP Server Phase (Phase 7)** | MCP connection drops after 5 min; Claude Code can't reach server | Implement TCP keepalive + heartbeat; deploy to Ethernet connection on Pi; add systemd auto-restart |
+| **SQLite Operations (all phases)** | Vision API calls block database; Patron/Bartender screens timeout | Release DB connection before Vision API call; set `PRAGMA busy_timeout`; implement retry with exponential backoff |
+| **Image Size (Docker Phase)** | Final image 800MB+; can't push to Pi efficiently | Remove dev dependencies in final stage; disable source maps; use distroless base image |
+
+---
 
 ## Sources
 
-- [SQLite WAL Mode and Concurrency — Coddy](https://coddy.tech/docs/sqlite/wal-mode-and-concurrency) (MEDIUM confidence, web)
-- [What to do about SQLITE_BUSY errors despite setting a timeout — Bert Hubert](https://berthub.eu/articles/posts/a-brief-post-on-sqlite3-database-locked-despite-timeout/) (MEDIUM confidence, web)
-- [WebSockets vs Server-Sent Events — Ably](https://ably.com/blog/websockets-vs-sse) (MEDIUM confidence, web)
-- [WebSockets vs Server-Sent-Events vs Long-Polling — RxDB](https://rxdb.info/articles/websockets-sse-polling-webrtc-webtransport.html) (MEDIUM confidence, web)
-- [Using BarcodeDecoder in javascript — Minhaz's Blog](https://blog.minhazav.dev/Using-BarcodeDecoder-in-javascript/) (MEDIUM confidence, web)
-- [How to Scan QR Codes in the Browser Without a Heavy Third-Party Library — Loke.dev](https://loke.dev/blog/native-barcode-detection-api) (MEDIUM confidence, web)
-- [Barcodes for Wine, Beer and Spirits — International Barcodes](https://internationalbarcodes.com/barcodes-wine-beer-spirits/) (MEDIUM confidence, web)
-- [U.P.C. Data 4 Beverage Alcohol](https://upcdata4spirits.com/) (MEDIUM confidence, web)
-- [Problems of Self-Hosting Services on Raspberry Pi](https://thecustomizewindows.com/2024/06/problems-of-self-hosting-services-on-raspberry-pi/) (MEDIUM confidence, web)
-- [Why My Raspberry Pi Keeps Eating SD Cards](https://www.petkovsky.sk/why-my-raspberry-pi-keeps-eating-sd-cards-and-what-to-do-about-it/) (MEDIUM confidence, web)
-- [Structured outputs on the Claude Developer Platform — Anthropic](https://claude.com/blog/structured-outputs-on-the-claude-developer-platform) (MEDIUM confidence, web)
-- [Claude API Structured Output: Three Patterns for Guaranteed JSON](https://renezander.com/blog/claude-api-structured-output/) (MEDIUM confidence, web)
-- [Claude API errors — Claude Platform Docs](https://platform.claude.com/docs/en/api/errors) (MEDIUM confidence, web)
-- [Rate limits — Claude Platform Docs](https://platform.claude.com/docs/en/api/rate-limits) (MEDIUM confidence, web)
-- [Our approach to rate limits for the Claude API — Claude Help Center](https://support.claude.com/en/articles/8243635-our-approach-to-rate-limits-for-the-claude-api) (MEDIUM confidence, web)
-- [The Optimistic UI Race Condition That Only Showed Up on the Fifth Click — DEV Community](https://dev.to/shubhradev/the-optimistic-ui-race-condition-that-only-showed-up-on-the-fifth-click-5a55) (MEDIUM confidence, web)
-- [How to Deploy Secure Kiosk Browsers Without Local OS Risks — Sendwin](https://blog.send.win/how-to-deploy-secure-kiosk-browsers-without-local-os-risks/) (MEDIUM confidence, web)
-- [Lock down web browsing using Kiosk Mode — text/plain](https://textslashplain.com/2022/01/06/lock-down-web-browsing-using-kiosk-mode/) (MEDIUM confidence, web)
-- [MixMath - Cocktail Calculator](https://mixmath.app/) (MEDIUM confidence, web)
-- Project context: `/home/gjohnson/src/my-bar/.planning/PROJECT.md`
+### Docker, pnpm, ARM64, and better-sqlite3
+
+- [Better-SQLite3 Setup for Node.js](https://www.nxsi.io/guides/better-sqlite3)
+- [Compiling SQLite for Multi-Arch Docker](https://simonemms.com/blog/2020/02/25/compiling-sqlite-for-multi-arch-docker)
+- [[BUG] Docker ARM64 v3.8.4 fails to start - better-sqlite3 native binding missing](https://github.com/diegosouzapw/OmniRoute/issues/2771)
+- [[Bug] Native module error - better-sqlite3 bindings not found with pnpm](https://github.com/kottster/kottster/issues/94)
+- [Broken with PNPM 10.x: "Could not locate the bindings file"](https://github.com/WiseLibs/better-sqlite3/issues/1378)
+- [Better Auth + better-sqlite3 under pnpm](https://firdausng.com/posts/integrating-better-auth-better-sqlite3-drizzle-pnpm)
+- [pnpm Docker Docs](https://pnpm.io/docker)
+- [Optimal multi-stage Docker builds with TurboRepo and PNPM](https://fintlabs.medium.com/optimized-multi-stage-docker-builds-with-turborepo-and-pnpm-for-nodejs-microservices-in-a-monorepo-c686fdcf051f)
+- [Depot: Optimal Dockerfile for Node.js with pnpm](https://depot.dev/docs/container-builds/optimal-dockerfiles/node-pnpm-dockerfile)
+
+### SQLite, WAL Mode, and Docker
+
+- [SQLite on Network Share - Sonarr Issue #1886](https://github.com/Sonarr/Sonarr/issues/1886)
+- [How To Corrupt An SQLite Database File](https://www.sqlite.org/howtocorrupt.html)
+- [SQLite WAL Mode Across Docker Containers Sharing a Volume](https://simonwillison.net/2026/Apr/7/sqlite-wal-docker-containers/)
+- [Does SQLite Work With Docker?](https://www.stackcompat.dev/docker-with-sqlite/)
+- [How to Run SQLite in Docker](https://oneuptime.com/blog/post/2026-02-08-how-to-run-sqlite-in-docker-when-and-how/view)
+- [SQLite User Forum: Concurrent Access from Sandboxed Processes](https://sqlite.org/forum/info/3103f8fb9ab4a322fbe8df8ea00d345cd59350bc0f00faef5a3cb8c2465b1509)
+
+### Claude Vision and Image Handling
+
+- [Vision - Claude Platform Docs](https://platform.claude.com/docs/en/build-with-claude/vision)
+- [Best Practices for Using Vision with Claude](https://platform.claude.com/cookbook/multimodal-best-practices-for-vision)
+- [ClaudeLog: Supported Image Upload Types](https://claudelog.com/faqs/claude-code-supported-image-upload-types/)
+- [HEIC Attachments Exceed Read Tool's 256KB Limit - Claude Plugins Issue #1656](https://github.com/anthropics/claude-code/issues/1656)
+- [[FEATURE] Auto-convert HEIC/HEIF Attachments to JPEG - Claude Code Issue #76492](https://github.com/anthropics/claude-code/issues/76492)
+- [Claude Vision API: Image Analysis At Production Scale](https://www.developersdigest.tech/blog/claude-vision-api-production-guide)
+- [Reduce Hallucinations - Claude Platform Docs](https://platform.claude.com/docs/en/test-and-evaluate/strengthen-guardrails/reduce-hallucinations)
+- [How to Reduce Claude Hallucinations](https://www.aicodex.to/articles/claude-hallucination-prevention)
+
+### MCP Security, Write Access, and Schema Validation
+
+- [Model Context Protocol (MCP) Server Security Best Practices](https://tyk.io/learning-center/mcp-server-security-ai-enterprise-guide/)
+- [MCP Security - OWASP Cheat Sheet Series](https://cheatsheetseries.owasp.org/cheatsheets/MCP_Security_Cheat_Sheet.html)
+- [MCP Security Considerations - WRITER](https://writer.com/engineering/mcp-security-considerations/)
+- [Agentic MCP Security Best Practices - Cloud Security Alliance](https://labs.cloudsecurityalliance.org/agentic/agentic-mcp-security-best-practices-v1/)
+- [Is that Allowed? Authentication and Authorization in MCP - Stack Overflow](https://stackoverflow.blog/2026/01/21/is-that-allowed-authentication-and-authorization-in-model-context-protocol/)
+- [4 Security Vulnerabilities in MCP Server's Tool Schema](https://agenticcontrolplane.com/blog/mcp-schema-vulnerabilities)
+- [Tools Specification - Model Context Protocol](https://modelcontextprotocol.io/specification/2026-07-28/server/tools)
+- [How to Build MCP Servers for Your Internal Data - FreeCodeCamp](https://www.freecodecamp.org/news/how-to-build-mcp-servers-for-your-internal-data/)
 
 ---
-*Pitfalls research for: home bar management/ordering web app (self-hosted, multi-client, AI-integrated)*
-*Researched: 2026-08-09*
+
+## Summary
+
+The three new features (Docker, AI Vision, MCP server) each introduce specific failure modes:
+
+1. **Docker on ARM64/Pi:** Native binding compilation, WAL file corruption with bind mounts, multi-stage caching
+2. **Claude Vision:** HEIC format rejection, orientation bugs, confident hallucination on bottle identification
+3. **MCP Server:** Write access without auth/rate-limiting, schema mismatch between unstructured recipes and structured app data, connection instability
+
+**Key prevention strategies:**
+- **Docker:** Enable pnpm native postinstall scripts, test images on ARM64 hardware, bind-mount entire data directory for WAL coordination, use BuildKit cache mounts
+- **Vision:** Auto-convert HEIC→JPEG client-side, add human review gate before saving Claude output, include confidence score, provide fallback to manual entry
+- **MCP:** Validate imports against live schema, rate-limit write operations, implement audit logging, provide explicit ingredient list to Claude
+
+None of these are insurmountable, but all require explicit preventive action during implementation. Skipping these will result in silent data corruption, unreliable features, or failed deployments.

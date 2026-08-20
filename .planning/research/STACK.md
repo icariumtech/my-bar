@@ -1,7 +1,7 @@
 # Stack Research
 
 **Domain:** Home bar management/ordering web app — self-hosted, local-network, multi-interface, real-time inventory, AI-assisted (Claude API)
-**Researched:** 2026-08-09
+**Researched:** 2026-08-09 (initial), 2026-08-19 (v1.1 features: Docker, Claude Vision, MCP)
 **Confidence:** MEDIUM-HIGH (package versions verified live against npm registry = HIGH; Claude API details verified against current Anthropic skill docs = HIGH; ecosystem/pattern claims from web search, cross-checked across multiple independent sources = MEDIUM)
 
 ## Recommended Stack
@@ -107,12 +107,259 @@ pnpm add zod
 | @anthropic-ai/sdk@0.116.x | Node 22.x, TypeScript 5.x | Current SDK version as of this research; structured outputs (`messages.parse()` + Zod) require this or a recent prior version — don't pin to an old cached SDK version from tutorials written before late 2025 |
 | Socket.IO server 4.8.x | socket.io-client 4.8.x | Keep server and client major+minor versions in lockstep across all 3 frontend apps and the backend — mismatched Socket.IO versions are a common source of silent connection failures |
 
+---
+
+## v1.1 New Features Stack
+
+**Milestone context:** Adding Docker containerization, AI bottle-photo recognition (Claude Vision), and MCP server to v1.0 codebase.
+
+### 1. Docker Containerization
+
+#### Recommended Base Image
+| Component | Image | Version | Why |
+|-----------|-------|---------|-----|
+| Build stage (Vite SPAs) | `node:22-slim` | 22.x (latest) | Official ARM64-native image, active CVE patching, 180MB footprint |
+| Runtime stage (Fastify server) | `node:22-slim` | 22.x (latest) | Same image throughout; avoids architecture mismatch (don't use alpine or full node for this use case) |
+
+#### Multi-Stage Dockerfile Pattern
+```dockerfile
+# Stage 1: Build all 3 Vite SPAs (patron, bartender, barback)
+FROM node:22-slim AS build
+WORKDIR /build
+COPY package.json pnpm-lock.yaml ./
+RUN npm install -g pnpm && pnpm install --frozen-lockfile
+
+COPY apps apps/
+COPY packages packages/
+RUN pnpm --filter apps/patron build
+RUN pnpm --filter apps/bartender build
+RUN pnpm --filter apps/barback build
+
+# Stage 2: Runtime (Fastify + built SPAs)
+FROM node:22-slim
+WORKDIR /app
+COPY package.json pnpm-lock.yaml ./
+# This is where better-sqlite3 native bindings compile for ARM64
+RUN npm install -g pnpm && pnpm install --frozen-lockfile --prod
+
+COPY --from=build /build/apps/server/dist ./apps/server/dist
+COPY --from=build /build/apps/patron/dist ./apps/patron/dist
+COPY --from=build /build/apps/bartender/dist ./apps/bartender/dist
+COPY --from=build /build/apps/barback/dist ./apps/barback/dist
+COPY --from=build /build/packages/shared/dist ./packages/shared/dist
+
+EXPOSE 3000
+CMD ["node", "apps/server/dist/index.js"]
+```
+
+#### Key Caveat: better-sqlite3 Native Bindings
+- **Always** run `npm install` inside the container for the runtime stage — better-sqlite3's install script downloads prebuilt ARM64 binaries or compiles from source
+- **Never** copy node_modules from host into container — host CPU (likely x86-64 or Apple Silicon) binaries won't run in ARM64 Linux
+- If prebuild for your Node version doesn't exist, the container build will automatically compile from source (requires C toolchain, included in node:22-slim)
+
+**Result:** Final image ~500–600MB including all 3 SPA bundles + Fastify server; acceptable for Raspberry Pi 4+ with 4GB RAM.
+
+### 2. Claude Vision for Bottle Recognition
+
+#### Recommended Model
+| Model | Version | Use Case | Rationale |
+|-------|---------|----------|-----------|
+| Claude Sonnet 5 | claude-sonnet-5-20250514 | Primary bottle identification | 4,784 visual tokens (vs Haiku's 1,568) ensure reliable multi-label extraction; `messages.parse()` + Zod works with vision; cost negligible at homelab scale (~$0.001 per extraction) |
+| Claude Haiku 4.5 | claude-3-5-haiku-20241022 | Cost-optimized fallback | If testing shows Haiku accuracy is 90%+ on clear bottle photos, swap for 3x cost savings; structured extraction (pattern matching) is equivalent to Sonnet for simple tasks |
+
+#### Implementation Pattern
+```typescript
+import Anthropic from "@anthropic-ai/sdk";
+import { z } from "zod";
+
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY, // Server-side only
+});
+
+// Schema for bottle identification
+const BottleSchema = z.object({
+  name: z.string().describe("Bottle brand/product name (e.g., 'Tito's Vodka')"),
+  category: z.enum(["spirit", "wine", "beer", "liqueur", "mixer", "other"]),
+  abv: z.number().optional().describe("ABV if visible"),
+  volume_ml: z.number().optional().describe("Volume in mL if visible"),
+});
+
+// Endpoint: POST /api/bottle-recognize
+app.post("/api/bottle-recognize", async (req, res) => {
+  const { base64Image, mimeType } = req.body;
+  
+  const result = await client.messages.parse({
+    model: "claude-sonnet-5-20250514",
+    max_tokens: 1024,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: mimeType,
+              data: base64Image,
+            },
+          },
+          {
+            type: "text",
+            text: "Identify this bottle. Extract brand, category, ABV, and volume if visible.",
+          },
+        ],
+      },
+    ],
+    output_config: {
+      type: "text",
+      json_schema: {
+        name: "BottleInfo",
+        schema: BottleSchema,
+        strict: true,
+      },
+    },
+  });
+
+  res.send(result.content[0].parsed);
+});
+```
+
+#### Flow
+1. Barback phone app: camera input → submit image (multipart form POST)
+2. Fastify backend: calls Claude Vision, gets typed response via messages.parse()
+3. Response sent to frontend as pre-filled add-ingredient form
+4. Owner reviews/confirms before saving
+
+#### Why messages.parse() with vision works
+- `messages.parse()` + Zod works identically for vision input as text input
+- Output guaranteed to match schema; no JSON parsing failures
+- Type-safe in TypeScript: `result.content[0].parsed` is typed as BottleSchema
+
+### 3. MCP Server (TypeScript)
+
+#### Recommended Stack
+| Component | Version | Notes |
+|-----------|---------|-------|
+| @modelcontextprotocol/sdk | 1.30.0 (stable) | Current production-ready; v2 beta available but not stable; 1.30.0 sufficient for homelab |
+| Transport | stdio (default) | Single-user, local subprocess; simplest setup; no reverse proxy/TLS needed for home LAN |
+| Hosting | Standalone Node process or same as Fastify | Spawned by Claude Code as child process via stdio |
+
+#### Why stdio for homelab
+- **Single-user:** Claude Code on one machine runs the MCP server as a spawned subprocess
+- **No network exposure:** Local inter-process communication, not HTTP
+- **No TLS/reverse-proxy:** Trusted home network only
+- **Debugging:** Errors stream to stderr, easier to troubleshoot
+- **Config:** Claude Code reads mcpServers config, handles spawn/lifecycle automatically
+
+#### Minimal MCP Server Example
+```typescript
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { ListToolsRequestSchema, CallToolRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+
+const server = new Server({
+  name: "my-bar-mcp",
+  version: "1.0.0",
+});
+
+const tools = [
+  {
+    name: "add_recipe",
+    description: "Create a cocktail recipe from a link, text, or image",
+    inputSchema: {
+      type: "object",
+      properties: {
+        url: { type: "string", description: "Recipe URL or video link" },
+        text: { type: "string", description: "Pasted recipe text" },
+      },
+      required: ["url"],
+    },
+  },
+  {
+    name: "add_ingredient",
+    description: "Add or update an ingredient in inventory",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        category: { type: "string", enum: ["spirit", "wine", "beer", "liqueur", "mixer"] },
+        quantity: { type: "number" },
+        unit: { type: "string" },
+      },
+      required: ["name", "category"],
+    },
+  },
+];
+
+server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools }));
+
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  // Delegate to Fastify backend
+  const response = await fetch(
+    `http://localhost:3000/api/mcp/${request.params.name}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request.params.arguments),
+    }
+  );
+  const result = await response.json();
+  return {
+    content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+  };
+});
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
+```
+
+#### Claude Code Configuration (mcpServers)
+```json
+{
+  "mcpServers": {
+    "my-bar": {
+      "command": "node",
+      "args": [
+        "/path/to/my-bar/apps/mcp-server/dist/index.js"
+      ],
+      "env": {
+        "FASTIFY_BASE_URL": "http://localhost:3000"
+      }
+    }
+  }
+}
+```
+
+Claude Code will spawn the server, expose its tools in the MCP sidebar, and route calls back through stdio JSON-RPC.
+
+#### When to use HTTP transport instead
+- **Only if** multiple users/devices need concurrent access (rare for homelab)
+- Requires: Streamable HTTP + reverse proxy (Caddy/nginx) + TLS
+- Much more operational complexity, not needed here
+
+## What NOT to Use (v1.1 additions)
+
+| Avoid | Why | Use Instead |
+|-------|-----|--------------|
+| `node:latest` in Docker | Breaks reproducibility; "why did this build fail in production" becomes impossible | `node:22-slim` (pinned major.minor) |
+| `node:22-alpine` for better-sqlite3 | Alpine uses musl, not glibc — binaries built for Debian won't load | `node:22-slim` (glibc compatible) |
+| Copying host node_modules into Docker | Host CPU ≠ container CPU; native bindings fail silently | Run `npm install` inside container for ARM64 target |
+| Claude Opus 5 for routine bottle photos | Overkill; ~10x Sonnet cost with minimal accuracy gain on straightforward labels | Claude Sonnet 5 |
+| HTTP MCP transport for single-user homelab | Reverse proxy + TLS + auth overhead for zero benefit on trusted LAN | stdio transport (default) |
+| MCP SDK v2 beta in production | API still settling; stable release lands 2026-07-28 | v1.30.0 stable |
+
+---
+
 ## Sources
 
 - npm registry (`npm view <pkg> version`) — live version numbers for every package listed above, checked 2026-08-09 (HIGH confidence)
 - Bundled Anthropic `claude-api` skill documentation (current as of 2026-06-24 model cache, cross-checked live) — model IDs, pricing, structured outputs, vision input, SDK patterns (HIGH confidence — official/authoritative)
 - Web search, multiple independent sources cross-checked — SvelteKit/Next.js/Vite comparison, Fastify/Express/Hono comparison, WebSocket/SSE/polling comparison, Socket.IO vs `ws`, barcode library comparison, `BarcodeDetector` Safari support status, Drizzle vs Prisma, UPC database coverage for alcohol, Raspberry Pi self-hosting patterns, Tailwind v4 setup (MEDIUM confidence — consistent across sources but not primary/official docs for most)
+- Docker Hub official Node images: [node - Official Image](https://hub.docker.com/_/node), [arm64v8/node](https://hub.docker.com/r/arm64v8/node) — verified 2026-08-19 for ARM64 support and current tag availability (HIGH confidence)
+- Anthropic platform docs: [Structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs), [Vision](https://platform.claude.com/docs/en/build-with-claude/vision) — verified 2026-08-19 for messages.parse() with vision input (HIGH confidence)
+- GitHub: [Model Context Protocol TypeScript SDK releases](https://github.com/modelcontextprotocol/typescript-sdk/releases) — verified 2026-08-19 for v1.30.0 stable, v2 beta status (HIGH confidence)
+- better-sqlite3 Docker/ARM64 considerations: GitHub issues cross-referenced, web search on native bindings compilation in Docker — verified 2026-08-19 (MEDIUM-HIGH confidence)
 
 ---
 *Stack research for: home bar management and ordering web app (self-hosted, local-network, multi-interface, AI-assisted)*
-*Researched: 2026-08-09*
+*Initial research: 2026-08-09 | v1.1 updates (Docker, Claude Vision, MCP): 2026-08-19*

@@ -1,319 +1,316 @@
-# Architecture Research
+# Architecture Integration: v1.1 Docker, AI Bottle Recognition, MCP Server
 
-**Domain:** Home bar management / ordering system — 3 browser-based kiosk clients + local server + AI integration
-**Researched:** 2026-08-09
-**Confidence:** MEDIUM (web-sourced, cross-checked across multiple independent sources; no official case study exists for this exact niche, but every component maps to well-documented, mainstream patterns)
+**Domain:** Home bar management system (existing pnpm monorepo, Fastify + Drizzle/better-sqlite3 + Socket.IO, three React SPAs)
+**Researched:** 2026-08-20
+**Features Integrated:** Docker containerization, AI bottle photo recognition, MCP server delegation
+**Overall Confidence:** HIGH
 
-## Standard Architecture
+## Executive Summary
 
-### System Overview
+Adding Docker packaging, AI bottle photo recognition, and an MCP server to the existing My Bar architecture requires **minimal changes to existing components** but introduces **three new layers** that all delegate to the single Fastify REST API. Docker is purely an operations change; both AI bottle recognition and the MCP server are new endpoints/services that call existing or new REST endpoints. The architecture remains clear: **one Fastify server is the single source of truth**, three React frontends read and write through its REST API, and Socket.IO synchronizes state across all three clients. The new MCP server is stateless and does the same—it proxies requests to the REST API, never directly to the database.
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                         CLIENT LAYER (browsers)                       │
-├───────────────────┬───────────────────────┬───────────────────────────┤
-│  Patron (iPad)     │  Bartender (iPad)      │  Barback (phone)         │
-│  - Browse/order     │  - Recipe lookup       │  - Inventory CRUD        │
-│  - Makeable status  │  - Order queue/tickets │  - UPC scan → add stock  │
-│  - Recommendations  │  - Makeable status     │  - Manual bottle entry   │
-└─────────┬───────────┴───────────┬────────────┴─────────┬───────────────┘
-          │  WebSocket (subscribe)│  WebSocket (subscribe)│  WebSocket (publish)
-          │  HTTP (CRUD)          │  HTTP (CRUD)           │  HTTP (CRUD)
-          └───────────┬───────────┴────────────┬───────────┘
-                       ▼                        ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│                      BACKEND (Node.js + Express, local server)        │
-├──────────────────────────────────────────────────────────────────────┤
-│  HTTP API (REST)         │  WebSocket Hub          │  AI Integration   │
-│  - /inventory            │  - broadcasts inventory  │  Layer            │
-│  - /recipes               │    change events         │  - /recommend    │
-│  - /orders                │  - broadcasts new-order   │  - /substitute   │
-│  - /upc-lookup             │    events to Bartender   │  - /import-recipe │
-│  - /recipe-import (image) │  - broadcasts order-      │  (all call        │
-│                            │    status changes         │   Claude API)     │
-├──────────────────────────────────────────────────────────────────────┤
-│           Makeable-Status Engine (derived, computed server-side)      │
-│  recipe.ingredients[] × inventory.stock[] → makeable / missing[]      │
-├──────────────────────────────────────────────────────────────────────┤
-│                         SQLite (WAL mode, single file)                │
-│   bottles/ingredients │ recipes │ orders │ (recipe_ingredients join)  │
-└──────────────────────────────────────────────────────────────────────┘
-                       │                              │
-                       ▼                              ▼
-            External UPC Lookup API            Claude API (Anthropic)
-            (Go-UPC / UPC Database —            (vision + tool use,
-             fallback to manual entry)           internet required)
-```
+This design preserves the current inventory-synchronization guarantees: all three interfaces (Patron, Bartender, Barback) + the new MCP server all converge on the same source of truth (the REST API), so there is no way for any two clients to disagree about what's in stock.
 
-### Component Responsibilities
+---
 
-| Component | Responsibility | Typical Implementation |
-|-----------|----------------|------------------------|
-| Patron client | Browse recipes, view makeable/missing status, submit orders, receive AI recommendations when a desired drink isn't makeable | Static SPA (React/Svelte/vanilla) served by the backend, WebSocket client for live status |
-| Bartender client | Full recipe detail, live order ticket queue, AI substitution suggestions when short an ingredient | Same SPA shell, different route/view; WebSocket client subscribed to `order.created` and `inventory.changed` |
-| Barback client | Inventory CRUD, UPC camera scan → lookup → add-to-stock flow | Phone-responsive view of the same SPA; camera access via `getUserMedia` |
-| HTTP API | Source of truth for all state mutations (inventory writes, recipe CRUD, order creation/status) | Express REST routes, each mutation ends with a WebSocket broadcast |
-| WebSocket hub | Fan-out of state-change events to all connected clients so "makeable" status and order tickets stay live everywhere | `ws` or Socket.IO server; broadcast-only from server, no client-to-client messaging needed |
-| Makeable-status engine | Computes, for every recipe, whether it's makeable now and which ingredient(s) are missing, from current stock levels | Pure function run server-side on every inventory or recipe change; result cached and pushed via WebSocket, not recomputed per-client |
-| Data store | Single source of truth for bottles/ingredients, recipes, recipe-ingredient links, and orders | SQLite file with WAL mode enabled |
-| UPC lookup layer | Barcode → product metadata (name, category) to prefill a new bottle | Barcode read client-side (camera), lookup call server-side to a UPC API, with manual-entry fallback for misses |
-| AI integration layer | Three call sites — patron recommendations, bartender/barback substitutions, recipe-image import — all going through one thin Claude API wrapper | Single `services/claude.ts` module wrapping the Anthropic SDK; each feature is a distinct prompt/schema, not a shared "agent" |
+## System Architecture
 
-## Recommended Project Structure
+### Current State (v1.0 shipped)
 
 ```
-src/
-├── server/
-│   ├── index.ts               # Express app bootstrap, binds 0.0.0.0, starts WS hub
-│   ├── db/
-│   │   ├── schema.sql          # bottles, recipes, recipe_ingredients, orders
-│   │   ├── client.ts           # better-sqlite3 or node:sqlite connection, WAL pragma
-│   │   └── migrations/         # simple numbered .sql migration files
-│   ├── routes/
-│   │   ├── inventory.ts        # CRUD for bottles/ingredients, UPC-driven add
-│   │   ├── recipes.ts          # CRUD for recipes + ingredient links
-│   │   ├── orders.ts           # create order, update order status
-│   │   ├── upc.ts              # UPC lookup proxy (hides API key, adds fallback)
-│   │   └── ai.ts               # /recommend, /substitute, /recipe-import
-│   ├── services/
-│   │   ├── makeable.ts         # recipe × inventory → makeable/missing engine
-│   │   ├── claude.ts           # thin Anthropic SDK wrapper, one fn per AI feature
-│   │   └── upcLookup.ts        # external UPC API client + manual-entry fallback
-│   └── ws/
-│       └── hub.ts              # WebSocket server, broadcast(event, payload)
-├── client/
-│   ├── patron/                 # Patron SPA entry + views
-│   ├── bartender/               # Bartender SPA entry + views
-│   ├── barback/                  # Barback SPA entry + views (incl. camera scan UI)
-│   └── shared/
-│       ├── api.ts               # fetch wrapper for the HTTP API
-│       ├── ws.ts                # WebSocket client, reconnect + subscribe helpers
-│       └── types.ts             # shared TS types (Bottle, Recipe, Order, MakeableStatus)
-└── shared/
-    └── contracts.ts             # types/schemas shared between server and client (if monorepo)
+┌─────────────────────────────────────────────────────────────┐
+│                      Deployed Instance                       │
+│  (Home Server / Raspberry Pi, one Node process)             │
+├─────────────────────────────────────────────────────────────┤
+│                                                               │
+│  apps/server (Fastify)                                       │
+│  ├─ REST API routes: /api/recipes, /api/ingredients, etc.  │
+│  ├─ Static file serving: /patron/, /bartender/, /barback/  │
+│  ├─ Socket.IO server for real-time updates                 │
+│  ├─ Drizzle ORM layer                                       │
+│  └─ better-sqlite3 connection → db.sqlite (file on disk)   │
+│                                                               │
+│  Built SPA bundles (served at runtime):                     │
+│  ├─ /patron/index.html + dist/ → React + TanStack Query   │
+│  ├─ /bartender/index.html + dist/ → React + TanStack Query│
+│  └─ /barback/index.html + dist/ → React + TanStack Query  │
+│                                                               │
+│  packages/shared (Zod contracts)                            │
+│  └─ TypeScript types compiled to .d.ts, Zod schemas       │
+│     used at runtime in Fastify for validation              │
+│                                                               │
+└─────────────────────────────────────────────────────────────┘
+
+Three browser clients (iPad/phone):
+├─ Patron (iPad at bar): /patron/ → browse & order
+├─ Bartender (iPad behind bar): /bartender/ → recipes & queue
+└─ Barback (owner's phone): /barback/ → inventory management
+
+Real-time: Socket.IO connects each client → server → server broadcasts
 ```
 
-### Structure Rationale
-
-- **Three client folders, one shared component library:** each role is a distinct kiosk experience (different layout, different primary actions) but they consume the same API and WebSocket contract — sharing `api.ts`/`ws.ts`/`types.ts` keeps the "one inventory" guarantee enforced in one place instead of three.
-- **`services/makeable.ts` isolated from routes:** the makeable/missing computation is the core trust guarantee of the whole app — keeping it as a pure, testable function (not inlined in route handlers) makes it easy to verify and to call from multiple triggers (inventory change, recipe change, on-demand recompute).
-- **`services/claude.ts` as a single AI façade:** all three AI features (recommend, substitute, import) go through one wrapper so model choice, prompt-caching setup, and error handling are consistent and changeable in one place rather than three.
-- **`ws/hub.ts` separate from HTTP routes:** route handlers perform the mutation, then call `hub.broadcast(...)` — this keeps "who gets notified of what" explicit and auditable, rather than scattering `.send()` calls through business logic.
-
-## Architectural Patterns
-
-### Pattern 1: Server-computed, WebSocket-pushed derived state ("makeable/missing")
-
-**What:** Never compute makeable/not-makeable status independently on each client. The server owns the single computation (recipe ingredient list vs. current stock), and pushes the result to all connected clients whenever inventory or a recipe changes.
-**When to use:** Any time multiple untrusted/independent clients must agree on a value derived from shared mutable state — this is exactly the "Patron and Bartender must agree on what's makeable" requirement in this project.
-**Trade-offs:** Requires a live push channel (WebSocket) rather than clients independently polling and computing; in exchange, eliminates any possibility of the three screens disagreeing due to client-side skew or stale caches.
-
-**Example:**
-```typescript
-// server/services/makeable.ts
-export function computeMakeable(recipe: Recipe, stock: StockMap): MakeableStatus {
-  const missing = recipe.ingredients.filter(i => (stock[i.ingredientId] ?? 0) < i.requiredQty);
-  return { recipeId: recipe.id, makeable: missing.length === 0, missing };
-}
-
-// server/routes/inventory.ts (after any stock mutation)
-await db.updateStock(bottleId, newQty);
-const statuses = recipes.map(r => computeMakeable(r, await db.getStockMap()));
-hub.broadcast('inventory.changed', { statuses });
-```
-
-### Pattern 2: WebSocket for bidirectional live sync, plain REST for CRUD
-
-**What:** Use a WebSocket connection per client purely for server→client push (inventory changes, new orders, order-status updates). All writes (adding a bottle, submitting an order, editing a recipe) go through normal HTTP REST endpoints, not over the socket.
-**When to use:** Small number of concurrent clients (3, fixed roles) on a local network needing near-instant multi-screen consistency. WebSockets beat Server-Sent Events here specifically because the Barback client also needs to *push* writes quickly-visible elsewhere, and because a single full-duplex connection is simpler to reason about for 3 known, long-lived kiosk sessions than SSE's read-only stream plus separate HTTP writes.
-**Trade-offs:** WebSocket reconnect logic must be handled client-side (libraries like Socket.IO give this for free; raw `ws` requires writing a small reconnect/backoff wrapper). For only 3 clients and local-network reliability, this is a minor cost.
-
-**Example:**
-```typescript
-// client/shared/ws.ts
-const socket = new WebSocket(`ws://${location.hostname}:PORT/ws`);
-socket.onmessage = (evt) => {
-  const { type, payload } = JSON.parse(evt.data);
-  if (type === 'inventory.changed') store.applyMakeableStatuses(payload.statuses);
-  if (type === 'order.created') store.addOrder(payload.order);
-};
-```
-
-### Pattern 3: Thin AI façade — one Claude client, feature-specific calls, not an "agent"
-
-**What:** Recommendations, substitutions, and recipe-image import are three independent, single-turn (or single-image) Claude API calls — not a persistent agent loop. Each is a normal `client.messages.create()` call with a task-specific system prompt and, where structured data is needed, a forced-tool-use schema.
-**When to use:** Whenever the AI task is "take input, produce one structured or short conversational answer" rather than "run a multi-step exploratory task." All three of this project's AI features fit that shape — Managed Agents / autonomous tool loops would be substantial over-engineering here.
-**Trade-offs:** No built-in session/memory across calls — acceptable, since each of these three features is stateless per invocation (a recommendation call doesn't need to remember the last one).
-
-**Example — recipe-image import via forced tool use (guarantees a parseable schema):**
-```typescript
-// server/services/claude.ts
-import Anthropic from "@anthropic-ai/sdk";
-const client = new Anthropic(); // reads ANTHROPIC_API_KEY
-
-const RECIPE_SCHEMA = {
-  name: "extracted_recipe",
-  description: "Structured cocktail recipe extracted from a photo or screenshot",
-  input_schema: {
-    type: "object",
-    properties: {
-      name: { type: "string" },
-      ingredients: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            name: { type: "string" },
-            quantity: { type: "string" },
-          },
-          required: ["name", "quantity"],
-        },
-      },
-      steps: { type: "array", items: { type: "string" } },
-      confidence: { type: "string", enum: ["high", "medium", "low"] },
-    },
-    required: ["name", "ingredients", "steps", "confidence"],
-  },
-};
-
-export async function extractRecipeFromImage(base64Image: string, mediaType: string) {
-  const response = await client.messages.create({
-    model: "claude-sonnet-5", // vision + tool use, cost-appropriate for a low-volume home app
-    max_tokens: 2048,
-    tools: [RECIPE_SCHEMA],
-    tool_choice: { type: "tool", name: "extracted_recipe" }, // forces the structured shape
-    messages: [{
-      role: "user",
-      content: [
-        { type: "image", source: { type: "base64", media_type: mediaType, data: base64Image } },
-        { type: "text", text: "Extract this cocktail recipe. If a field is unreadable, use your best guess and set confidence accordingly." },
-      ],
-    }],
-  });
-  const toolUse = response.content.find(b => b.type === "tool_use");
-  return toolUse?.input; // { name, ingredients, steps, confidence } — always valid against the schema
-}
-```
-Recommendations and substitutions follow the same shape but usually don't need forced tool use — a plain text response (or a small `{suggestion, reason}` JSON via `output_config.format`) is enough, since the result is shown to a human for a final decision, not written straight to the database. The recipe-import path *does* warrant forced structured output because it's the one AI output that gets saved to the recipe table — pair it with a `confidence` field and require the owner to confirm before saving, matching the project's "review before save" requirement.
-
-## Data Flow
-
-### Request Flow — Patron submits an order
+### After v1.1: Adding Docker, AI Bottle Photo, MCP Server
 
 ```
-Patron taps "Order" on a makeable drink
-    ↓
-POST /orders {recipeId} → Express route
-    ↓                                  ↓
-Validate recipe is still makeable   Insert order row (status: "queued")
-(re-check against live stock —          ↓
- don't trust client-cached status)  hub.broadcast('order.created', {order})
-    ↓                                  ↓
-200 OK to Patron                    Bartender client's open WebSocket
-                                     receives event → ticket appears in queue
+┌─────────────────────────────────────────────────────────────┐
+│                    Docker Container                          │
+│                  (docker-compose.yml)                        │
+├─────────────────────────────────────────────────────────────┤
+│                                                               │
+│  apps/server (Fastify) — unchanged core, 2 new routes       │
+│  ├─ [existing] REST API: /api/recipes, /api/ingredients    │
+│  ├─ [existing] Socket.IO server                            │
+│  ├─ [NEW] POST /api/ingredients/recognize-photo            │
+│  │  └─ Accepts image file, calls Claude Vision, validates  │
+│  │     response via Zod schema, returns ingredient preview │
+│  ├─ [NEW] POST /api/recipes/extract-from-image             │
+│  │  └─ Accepts recipe photo/screenshot, extracts via Claude│
+│  ├─ Drizzle ORM + better-sqlite3                           │
+│  └─ db.sqlite → /data/db.sqlite (bind-mounted volume)      │
+│                                                               │
+│  Built SPA bundles (static, served by Fastify):            │
+│  ├─ /patron/, /bartender/, /barback/                       │
+│  └─ [unchanged] React + TanStack Query                     │
+│                                                               │
+│  packages/shared (Zod schemas, extended):                  │
+│  ├─ [existing] Recipe, Ingredient, Order types            │
+│  └─ [NEW] BottlePhotoRecognition, RecipeExtraction schemas │
+│                                                               │
+└─────────────────────────────────────────────────────────────┘
+
+Three browser clients (unchanged):
+├─ Patron, Bartender, Barback — all call REST API + Socket.IO
+│  and now Barback can also call POST /api/ingredients/recognize-photo
+└─ No changes to client code needed (endpoint is opt-in)
+
+New: MCP Server (separate stateless process, same LAN):
+├─ apps/mcp (TypeScript, @modelcontextprotocol/sdk)
+├─ Registers MCP tools: createRecipe, addIngredient, listRecipes, etc.
+├─ Delegating MCP handler → calls REST API (http://server:3000/api/...)
+├─ Transport: stdio (for Claude Code via claude_desktop_config.json)
+│           OR HTTP on port 3001 (for LAN-wide access via MCP HTTP)
+└─ No database connection, no authentication (trusted LAN)
+   → This is the API delegation pattern
+
+New: Dockerfile + docker-compose.yml (deployment):
+├─ Multi-stage Dockerfile:
+│  Stage 1: pnpm install (monorepo root, all workspaces)
+│  Stage 2: build packages/shared
+│  Stage 3: build apps/patron, apps/bartender, apps/barback (parallel)
+│  Stage 4: build apps/server (depends on Stage 3)
+│  Stage 5: runtime (minimal, Node 22, only runtime deps)
+├─ docker-compose.yml:
+│  Service: my-bar-server
+│  ├─ Image: built from Dockerfile above
+│  ├─ Ports: 3000 (REST API + static files)
+│  ├─ Volumes: ./data/db.sqlite:/data/db.sqlite (persisted on host)
+│  └─ Environment: NODE_ENV=production, ANTHROPIC_API_KEY=...
+└─ [OPTIONAL] Service: my-bar-mcp (if running MCP as separate container)
 ```
 
-### Request Flow — Barback UPC scan → inventory add
+---
 
-```
-Barback opens camera scanner (client-side barcode decode)
-    ↓
-Decoded UPC string
-    ↓
-GET /upc-lookup/:upc → server proxies to UPC API (Go-UPC/UPC Database)
-    ↓                                  ↓
-  Hit: prefill name/category        Miss: fall back to manual entry form
-    ↓                                  ↓
-Barback confirms/edits, POST /inventory {name, upc, qty, ...}
-    ↓
-Insert bottle row → recompute makeable statuses for all recipes using it
-    ↓
-hub.broadcast('inventory.changed', {statuses}) → Patron + Bartender update live
-```
+## Component Boundaries & Responsibilities
 
-### State Management (client side)
+### Fastify Server (apps/server) — Single Source of Truth
 
-```
-WebSocket message
-    ↓ (dispatch)
-Local store (per-client: makeable statuses, order list, inventory list)
-    ↓ (subscribe)
-UI components re-render
-```
-No client-side "optimistic makeable computation" — clients only ever render what the server most recently pushed, which is what guarantees the three screens can't disagree.
+**Responsibility:** Serve REST API, static frontends, WebSocket, manage SQLite
 
-### Key Data Flows
+**New routes (v1.1):**
+- `POST /api/ingredients/recognize-photo` ← **AI Bottle Photo Recognition endpoint**
+  - Request: multipart/form-data with image file
+  - Handler: decode image → Claude Vision with Zod schema → validate → return `{ name, category, bottleSize?, alcoholContent? }`
+  
+- `POST /api/recipes/extract-from-image` ← **Recipe extraction from photo/screenshot**
+  - Request: multipart/form-data with image file
+  - Handler: similar to above, returns `{ name, ingredients, method, glassware }`
 
-1. **Inventory truth propagation:** Barback writes → server recomputes makeable status for every affected recipe → broadcast → Patron and Bartender both update within one WebSocket round-trip (typically sub-100ms on LAN).
-2. **Order lifecycle:** Patron creates → Bartender's queue receives it live → Bartender updates status (accepted/made/served) → server broadcasts status change → Patron's own order view (if shown) updates.
-3. **AI recommendation flow:** Patron requests a drink that's not makeable → client calls `/ai/recommend` with the desired drink + current makeable list → server calls Claude with that context → returns a suggested makeable alternative → client displays it (no write to the DB).
-4. **AI recipe import flow:** Owner photographs/screenshots a recipe on the Barback or a recipe-admin view → image uploaded to `/ai/recipe-import` → Claude returns structured JSON via forced tool use → owner reviews/edits in a confirm screen → only on explicit save does it become a real `recipes` row.
+**Socket.IO behavior:**
+- Unchanged: server broadcasts inventory/order updates to all connected clients
+- In Docker: bind-mounted SQLite file means only one container writes at a time
 
-## Scaling Considerations
+---
 
-This system has a hard, known ceiling: 3 fixed kiosk clients, one household's worth of traffic, on a local network. "Scaling" here means resilience and correctness, not throughput.
+### MCP Server (apps/mcp) — Stateless REST API Proxy
 
-| Scale | Architecture Adjustments |
-|-------|--------------------------|
-| Normal operation (3 devices, occasional guest load on Patron) | Current design as described — SQLite + single Node process + WebSocket hub is comfortably sufficient |
-| Device reconnect / WiFi drop | WebSocket client must auto-reconnect and, on reconnect, immediately re-fetch current makeable/inventory state via a REST GET rather than trusting missed broadcast messages |
-| Server restart / power blip | SQLite file persists on disk; on boot, recompute all makeable statuses fresh from stock rather than trusting any cached value; run the Node process under a supervisor (PM2 or a systemd service) so it restarts automatically |
-| AI provider outage / no internet | Claude-dependent features (recommendations, substitutions, recipe-image import) must fail gracefully — core inventory/order/makeable flow must keep working with zero AI/internet dependency, per the project's own constraint |
+**Responsibility:** Wrap the existing REST API in MCP tools
 
-### Scaling Priorities
+**What it is:**
+- TypeScript server using `@modelcontextprotocol/sdk`
+- Registers MCP tools: `createRecipe()`, `addIngredient()`, `listRecipes()`, etc.
+- Each tool: call Fastify REST API → validate response → return result
+- Transport: stdio (local Claude Code use) + HTTP on :3001 (LAN-wide)
 
-1. **First and really only bottleneck: reliability of the local server process**, not load. Run it under a process manager (PM2/systemd) with auto-restart, and make sure SQLite's WAL mode is enabled so a crash mid-write doesn't corrupt the file.
-2. **Second: WebSocket reconnect correctness.** With kiosk devices staying open for hours/days, the main real risk to "the screens agree" is a silently-dropped socket. Always pair the WebSocket layer with a cheap REST "give me full current state" endpoint that clients call on (re)connect, so a missed broadcast self-heals instead of leaving a screen stale indefinitely.
+**Key principle:** No database connection, no direct writes—everything goes through REST API.
 
-## Anti-Patterns
+---
 
-### Anti-Pattern 1: Client-side makeable computation
+## New and Modified Components
 
-**What people do:** Ship the full inventory and recipe list to each client and let each screen compute makeable/not-makeable locally (seems simpler, avoids a "round trip").
-**Why it's bad:** Two clients can trivially disagree if one has a stale copy of the inventory (a common WebSocket-drop or timing scenario) — exactly the trust failure this project's Core Value explicitly calls out as unacceptable.
-**Instead:** Server computes makeable status once, per change, and pushes the result. Clients render, never compute.
+### New Files/Directories
 
-### Anti-Pattern 2: Using the AI call as a database write path
+| Path | Purpose |
+|------|---------|
+| `Dockerfile` | Multi-stage build for containerization |
+| `docker-compose.yml` | Orchestration, volume mounts |
+| `.dockerignore` | Build context exclusions |
+| `apps/mcp/` | MCP server workspace (new) |
+| `apps/mcp/src/stdio-server.ts` | Stdio transport |
+| `apps/mcp/src/http-server.ts` | HTTP transport |
+| `apps/mcp/src/tools/*.ts` | Tool implementations |
+| `apps/mcp/src/rest-client.ts` | REST API client |
+| `packages/shared/src/schemas/bottlePhoto.ts` | Zod schema for recognition |
 
-**What people do:** Have the Claude recipe-import call write directly to the `recipes` table, skipping human review, to "streamline" the flow.
-**Why it's bad:** Vision extraction from a photo/screenshot is inherently uncertain (wrong quantities, misread ingredient names) — writing straight to the source of truth risks corrupting the one thing (the recipe collection) the owner explicitly wants to hand-curate.
-**Instead:** AI recipe import always returns a structured *draft* (with a confidence field) for the owner to review/edit before an explicit save — this is already the project's stated requirement; the architecture should make it structurally impossible to skip.
+### Modified Files
 
-### Anti-Pattern 3: One shared "god" WebSocket message type for everything
+| Path | Change |
+|------|--------|
+| `apps/server/src/index.ts` | Add bottle-photo & recipe-extraction routes |
+| `apps/server/src/services/claude.ts` | New Claude Vision helpers |
+| `packages/shared/src/index.ts` | Export new Zod schemas |
+| `pnpm-workspace.yaml` | Add `apps/mcp` workspace |
 
-**What people do:** Broadcast a single generic `state.changed` event and have every client refetch everything on every change.
-**Why it's bad:** Wastes bandwidth/CPU on 3 low-power kiosk devices and makes it hard to reason about which UI needs to react to which change; also makes debugging "why did the Bartender screen flicker" much harder.
-**Instead:** Use a small set of specific event types (`inventory.changed`, `order.created`, `order.statusChanged`) each carrying only the data that actually changed, so clients can apply targeted updates.
+---
 
-## Integration Points
+## Build Order & Dependencies
 
-### External Services
+### Phase 1: AI Bottle Photo Recognition
 
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| Claude API (Anthropic) | Server-side only, via `@anthropic-ai/sdk`, one façade module (`services/claude.ts`) | Needs internet; API key stays server-side, never exposed to clients. Use `claude-sonnet-5` as the default model for all three AI features — strong vision + tool-use support at a cost appropriate for a low-volume home app; escalate to Opus only if extraction quality on messy photos proves insufficient in testing |
-| UPC/barcode lookup API (e.g. Go-UPC) | Server-side proxy endpoint (`/upc-lookup/:upc`) so the API key isn't exposed client-side and so a consistent manual-entry fallback can be applied on miss | No single free service reliably covers all liquor bottles — plan for "lookup fails → manual entry" as a first-class path, not an edge case |
+**Why first:** Simplest, no other features depend on it.
 
-### Internal Boundaries
+**Tasks:**
+1. Add `BottlePhotoRecognitionSchema` to `packages/shared`
+2. Create `apps/server/src/services/claude.ts` with Claude Vision helpers
+3. Add `POST /api/ingredients/recognize-photo` route
+4. Test with real photos
+5. (Optional) Add "Photograph bottle" button to Barback
 
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| Client ↔ Backend (writes) | HTTP REST (JSON) | All mutations (inventory, recipes, orders) — validated and persisted server-side before any broadcast |
-| Client ↔ Backend (live state) | WebSocket (JSON messages) | Server-to-client push only; clients never message each other directly |
-| Route handlers ↔ Makeable engine | Direct in-process function call | Keeps the core trust computation a pure, unit-testable function, called synchronously after any mutation that could affect it |
-| Route handlers ↔ AI façade | Direct in-process function call (async) | AI calls are request/response, not fire-and-forget — client waits for the recommendation/substitution/extraction result, with a loading state and a timeout/error fallback |
-| Barback camera ↔ UPC lookup | Client decodes barcode locally (camera + JS library), server resolves UPC → product data | Keeps decoding (CPU-light, needs live camera frames) client-side and lookup (needs an API key) server-side |
+---
+
+### Phase 2: MCP Server
+
+**Why second:** Needs stable REST API (Phase 1 done).
+
+**Tasks:**
+1. Create `apps/mcp` workspace
+2. Set up `@modelcontextprotocol/sdk`, HTTP client
+3. Implement tool definitions (createRecipe, addIngredient, etc.)
+4. Implement stdio transport (Claude Desktop)
+5. Implement HTTP transport (LAN sharing)
+6. Test tool invocations
+7. Document `claude_desktop_config.json` setup
+
+---
+
+### Phase 3: Docker Containerization
+
+**Why last:** Packaging; can run in parallel with Phase 2 once API is frozen.
+
+**Tasks:**
+1. Create `Dockerfile` with multi-stage build
+2. Create `docker-compose.yml` with volume mounts
+3. Create `.dockerignore`
+4. Test locally: build, run, verify persistence
+5. Document deployment (Pi setup, systemd, etc.)
+
+---
+
+## Architecture Patterns
+
+### Pattern 1: Claude Vision + Structured Outputs via Zod
+
+Both bottle recognition and recipe extraction use:
+- Zod schema definition in `packages/shared`
+- Claude API call with `messages.parse()` + schema
+- Response guaranteed to match schema
+
+Benefits:
+- Type safety compile-time + runtime
+- Single schema used by server, MCP, clients
+- No parsing errors
+
+### Pattern 2: MCP Tool Delegation to REST API
+
+Each MCP tool:
+- Receives input (validated by schema)
+- Calls REST API endpoint
+- Validates response
+- Returns result
+
+Benefits:
+- No database access in MCP server (stateless)
+- All writes through REST API (consistency)
+- MCP is just a protocol translator
+- Reusable across all tools
+
+### Pattern 3: Socket.IO Broadcast → TanStack Query Invalidation
+
+Existing pattern (no changes):
+- REST API write → Fastify broadcasts Socket.IO event
+- Browser clients receive event → TanStack Query invalidates → refetch
+- MCP server doesn't listen to Socket.IO (not needed; calls REST)
+
+---
+
+## Pitfalls & Mitigations
+
+### Pitfall 1: Claude Vision accuracy on poor images
+
+**Prevention:**
+- Show extracted data to user before saving
+- Add `confidence` field; warn if low
+- Implement manual entry fallback
+- Good camera UI guidance
+
+### Pitfall 2: MCP server REST API calls fail
+
+**Prevention:**
+- Retry logic (exponential backoff, 3 retries)
+- Timeout handling (5 seconds)
+- Defensive response validation
+
+### Pitfall 3: Docker build includes secrets (.env)
+
+**Prevention:**
+- `.dockerignore` excludes `.env`
+- Use runtime environment variables, not build-time
+- Review Dockerfile for accidental COPY of sensitive files
+
+### Pitfall 4: SQLite WAL lock in Docker
+
+**Prevention:**
+- Use local bind mount (not NFS/network)
+- Validate locking with tests
+- Document: "Use local disk for SQLite"
+
+### Pitfall 5: MCP HTTP server exposed to internet
+
+**Prevention:**
+- Deploy guide: "LAN only, no authentication"
+- Document: do not expose to internet
+- Recommend firewall rules
+
+### Pitfall 6: Socket.IO reconnect after container restart
+
+**Prevention:**
+- Already handled by v1.0 reconnection logic
+- Users see brief connection loss, auto-recovers
+- No code changes needed
+
+---
 
 ## Sources
 
-- WebSockets vs Server-Sent Events comparison (index.dev, ably.com, freeCodeCamp, systemdesignschool.io) — cross-checked, MEDIUM confidence
-- SQLite vs PostgreSQL for small self-hosted apps (astera.com, botmonster.com, kunalganglani.com) — cross-checked, MEDIUM confidence
-- UPC/barcode lookup API landscape for alcohol products (go-upc.com, upcdatabase.org, upc-search.org, barcodelookup.com) — cross-checked, MEDIUM confidence
-- Browser barcode scanning libraries — BarcodeDetector API, ZXing, Quagga2 (scanbot.io, dev.to, github.com/ericblade/quagga2) — cross-checked, MEDIUM confidence
-- Self-hosted Node.js/Express app patterns on local hardware (medium.com guides, raspberrypi forums) — cross-checked, MEDIUM confidence
-- Claude API structured extraction via forced tool use, vision input, and model selection — Anthropic official SDK documentation bundled in this environment's `claude-api` skill (Python/TypeScript READMEs, `shared/tool-use-concepts.md`, `shared/models.md`) — HIGH confidence (official documentation)
-- Project context: `/home/gjohnson/src/my-bar/.planning/PROJECT.md`
-
----
-*Architecture research for: home bar management / ordering system (multi-client local-network app)*
-*Researched: 2026-08-09*
+- [Optimized multi-stage Docker builds with TurboRepo and PNPM for NodeJS microservices in a monorepo](https://fintlabs.medium.com/optimized-multi-stage-docker-builds-with-turborepo-and-pnpm-for-nodejs-microservices-in-a-monorepo-c686fdcf051f)
+- [How to Build Multi-Stage Dockerfiles for Monorepos](https://oneuptime.com/blog/post/2026-01-30-docker-multi-stage-monorepos/view)
+- [Build a Docker Container from a pnpm monorepo](https://www.captaincodeman.com/build-a-docker-container-from-a-pnpm-monorepo)
+- [Working with Docker | pnpm](https://pnpm.io/docker)
+- [Tackling MCP security challenges with the MCP API delegation pattern](https://www.thoughtworks.com/insights/blog/generative-ai/Tackling-MCP-security-challenges-with-the-MCP-API-delegation-pattern)
+- [API MCP Server Architecture Guide for API Providers](https://www.stainless.com/mcp/api-mcp-server-architecture-guide/)
+- [How to Run SQLite in Docker](https://oneuptime.com/blog/post/2026-02-08-how-to-run-sqlite-in-docker-when-and-how/view)
+- [Claude Structured Outputs in TypeScript with Zod (2026)](https://nerdleveltech.com/claude-structured-outputs-typescript-zod-tutorial)
+- [Structured outputs - Claude API Docs](https://docs.claude.com/en/docs/build-with-claude/structured-outputs)
+- [Claude Vision API: Image Analysis At Production Scale](https://www.developersdigest.tech/blog/claude-vision-api-production-guide)
+- [Node/TypeScript MCP Server Implementation Guide](https://github.com/anthropics/skills/blob/main/skills/mcp-builder/reference/node_mcp_server.md)
+- [Server Guide | MCP TypeScript SDK (V2)](https://ts.sdk.modelcontextprotocol.io/v2/documents/Documents.Server_Guide.html)
+- [Build an MCP Server in TypeScript: From Scratch 2026](https://www.digitalapplied.com/blog/build-mcp-server-typescript-tutorial-from-scratch-2026)

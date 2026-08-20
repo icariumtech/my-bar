@@ -1,167 +1,103 @@
 # Project Research Summary
 
-**Project:** my-bar — home bar management/ordering web app
-**Domain:** Self-hosted, local-network, multi-interface (Patron/Bartender/Barback), AI-assisted (Claude API) home bar system
-**Researched:** 2026-08-09
-**Confidence:** MEDIUM-HIGH
+**Project:** My Bar
+**Domain:** Home bar management and ordering system — self-hosted, local-network, multi-interface, real-time inventory, AI-assisted
+**Researched:** 2026-08-20 (v1.1 milestone: Docker, AI Bottle Photo Recognition, MCP Server)
+**Confidence:** HIGH (stack and patterns) / MEDIUM-HIGH (feature scope) / MEDIUM (Docker/MCP pitfalls need hands-on validation)
+
+---
 
 ## Executive Summary
 
-This is a three-role, local-network web app — a Patron ordering kiosk, a Bartender queue/recipe console, and a Barback mobile inventory tool — that sits at the intersection of three normally-separate product categories (consumer cocktail apps, restaurant KDS systems, and commercial bar-inventory software), none of which combine into one connected live-inventory system. That combination is the project's actual differentiator, not something to copy feature-for-feature from any single competitor. The core trust guarantee — "makeable/not-makeable must agree across all three screens" — is both the stated core value and the single biggest architectural risk in the research: it must be computed once, server-side, and pushed to clients via WebSocket, never computed independently per client from a potentially-stale cache.
+v1.0 shipped the core three-interface system (Patron ordering kiosk, Bartender recipe/queue console, Barback mobile inventory) unified by a single source-of-truth Fastify REST API and real-time sync via Socket.IO. v1.1 adds three features that all deliberately preserve that single-source-of-truth guarantee: Docker containerization for real deployment, AI bottle photo recognition (Claude Vision) replacing UPC scanning, and an MCP server so recipes/inventory can be managed via chat.
 
-The recommended approach is a TypeScript monorepo (pnpm workspaces) with a single Fastify + better-sqlite3 + Drizzle backend serving three plain Vite/React SPAs, using Socket.IO for push-only "something changed, refetch" signaling paired with TanStack Query as the actual data layer. This deliberately avoids SSR frameworks (SvelteKit/Next.js) and Postgres — both are overkill for a Raspberry-Pi-class device serving a handful of kiosk clients on a LAN. AI features (patron recommendations, bartender substitutions, recipe-photo import) are three independent, stateless Claude API calls behind a single server-side façade, never exposed client-side, and never a direct write path to the database — recipe-photo import in particular must always route through explicit human review before saving, per the project's own stated requirement.
+**Recommended approach:** All three v1.1 features are additive and delegate to the existing Fastify REST API rather than introducing new data paths. Docker containerization is pure packaging (multi-stage Dockerfile + compose.yml, no app code changes). AI bottle recognition adds one new endpoint using the same Claude Vision + Zod structured-output pattern already planned for AI recipe-photo import. The MCP server is a new, mostly-standalone process that calls the existing REST API — never the database directly — preserving the "REST is truth" architecture that makes the makeable-status guarantee trustworthy.
 
-The main risks are: (1) building sync as polling or client-side computation instead of server-authoritative WebSocket push, which breaks the core trust guarantee under real multi-client conditions; (2) treating camera barcode scanning and UPC lookup as guaranteed happy paths rather than best-effort accelerators with mandatory manual-entry fallback (critical since iPad/iPhone are Safari-based, where native `BarcodeDetector` is unsupported); (3) over-literal ingredient matching (exact name/unit equality) that makes genuinely makeable drinks show as not-makeable; and (4) treating Claude API calls as fast/reliable/synchronous in the core UX path when they are none of those things. All four are addressable by decisions already implied by the research (category-based ingredient modeling, boolean-not-volumetric makeable logic, additive/gracefully-degrading AI features) rather than requiring novel invention.
+**Key risks & mitigations:**
+- **better-sqlite3 native bindings on ARM64 in Docker:** pnpm 10+ blocks postinstall scripts by default, and Pi may lack prebuilt ARM64 binaries — enable build-from-source in `.npmrc`, include build tools in the Docker image, and test on real Pi hardware before shipping.
+- **SQLite WAL corruption with Docker bind mounts:** mount the entire `data/` directory (not just the `.db` file) so `.db-shm`/`.db-wal` live on the same persistent volume; avoid network filesystems.
+- **Claude Vision hallucination on bottle photos:** never auto-save — always show the extracted data for review/confirmation before writing, with a confidence signal and manual-entry fallback.
+- **MCP schema mismatch / unauthenticated write access:** validate every recipe/ingredient write against the live database (exact category/ingredient list), and keep the MCP server LAN-only per this project's existing no-auth trust model — document that boundary rather than trying to bolt on auth.
+
+---
 
 ## Key Findings
 
-### Recommended Stack
+### Stack Additions for v1.1
 
-Node.js 22 LTS + TypeScript 5 across the board, in a pnpm-workspace monorepo (`apps/patron`, `apps/bartender`, `apps/barback`, `apps/server`, `packages/shared`) so the three frontends and backend share one type-checked data model. Fastify + better-sqlite3 + Drizzle ORM form the backend (SQLite in WAL mode is sufficient and appropriate at this scale — a few hundred rows, single-digit concurrent clients; Postgres is explicitly not justified). Vite + React 19 + TanStack Query build all three frontends as plain client-rendered SPAs (not SvelteKit/Next.js — no SSR need, and SSR adds unwarranted resource cost on a Pi). Socket.IO handles push (with its built-in reconnect/heartbeat handling, important for kiosk devices that sleep/lock/roam wifi) while TanStack Query owns the actual client cache, refetching REST as the source of truth on each WS signal. html5-qrcode is required (not optional) for barcode scanning because the native `BarcodeDetector` API is unsupported on Safari/iOS entirely. `@anthropic-ai/sdk` + Zod handle Claude integration and structured-output schemas server-side only.
+- **Docker base image: `node:22-slim`** — official ARM64-native image, matches the existing Node 22 stack, small footprint. Use the *same* image for the build and runtime stages to avoid libc mismatches between build-time and run-time native bindings.
+- **better-sqlite3 on ARM64:** must compile its native `.node` binding **inside** the container for the target architecture — never copy a host-built `node_modules` in. Enable pnpm's `postinstall` scripts (blocked by default in pnpm 10+) via `.npmrc`, and include a build toolchain (or verify a prebuilt ARM64 binary exists for the pinned better-sqlite3 version) in the image.
+- **Claude Vision model: Sonnet 5** for bottle-photo → structured-JSON extraction — meaningfully more visual tokens/reliability than Haiku for this kind of multi-label recognition task, at negligible cost for this project's volume (≈$0.001/extraction). `messages.parse()` + Zod works identically for vision input as for text input — no new SDK pattern needed. Haiku 4.5 is a viable cheaper fallback if real-world accuracy testing shows it's sufficient.
+- **MCP TypeScript SDK: `@modelcontextprotocol/sdk` v1.30.0 (stable)** — v2 is beta/pre-GA, stick with v1 for now. **Transport: stdio** for the primary use case (Claude Code invoking it locally/via SSH) — simplest, no auth/TLS surface to manage. HTTP/SSE transport is only worth adding later if a second, non-Claude-Code MCP client needs LAN-wide access.
 
-**Core technologies:**
-- Fastify + better-sqlite3 + Drizzle ORM: lightweight, single-process, Pi-appropriate backend with type-safe SQL and zero extra server processes
-- Vite + React + TanStack Query: plain SPA bundler + battle-tested "REST is truth, WS says refetch" pattern, avoiding SSR overhead with no SEO need
-- Socket.IO: reconnect/heartbeat handling that raw `ws` would require hand-rolling, critical for kiosk devices that sleep and roam wifi
-- html5-qrcode: only viable in-browser scanner that works reliably on Safari/iPadOS, where native `BarcodeDetector` is entirely absent
-- `@anthropic-ai/sdk` + Zod: server-side-only Claude integration with structured outputs (`messages.parse()` + Zod schema) for recipe extraction
+### Feature Scope for v1.1
 
-### Expected Features
+**Docker Containerization**
+- Table stakes: multi-stage Dockerfile, `compose.yml`, persistent SQLite storage via bind mount, `restart: unless-stopped`.
+- Deliberately out of scope for this project's scale: TLS/reverse proxy, splitting into multiple containers, Kubernetes, multi-arch CI publishing, secrets baked into the image. (Matches the already-decided "same repo, no split deploy repo, no CI image publish" call made earlier in this milestone's planning.)
+- Rough complexity: small — this is packaging, not new functionality.
 
-The domain splits sharply by role: Patron ≈ consumer cocktail apps + self-order kiosks, Bartender ≈ lightweight KDS + recipe reference app, Barback ≈ scaled-down commercial bar-inventory tool. The algorithmic core is the "makeable-from-stock" logic: ship boolean presence matching + partial/"almost makeable" diff + category-based substitution matching (e.g., "orange liqueur" not "Cointreau") as v1. Explicitly do NOT attempt volumetric pour-depletion tracking — no researched competitor does this at this scale, and informal units (dash, splash) have no fixed volume even in professional bartending, making exact math meaningless and a near-certain rewrite trap.
+**AI Bottle Photo Recognition**
+- Table stakes: camera capture from the Barback client, a server-side Claude Vision call with structured output, a review-before-save step showing the extracted data in the add-ingredient form, and a manual-entry fallback if recognition fails or confidence is low.
+- Worth adding: a confidence signal and a "retry photo" affordance so a bad photo doesn't dead-end the flow into manual entry immediately.
+- Explicitly not needed: barcode/UPC handling of any kind (superseded), or any attempt to identify exact fill level/proof from the photo — name, category, and other clearly visible label details are enough to prefill the form.
 
-**Must have (table stakes):**
-- Barback: add/edit ingredient (name, category, boolean in-stock toggle) — everything else depends on this
-- Patron: browse by category, drink detail, makeable/not-makeable badge with missing-ingredient list
-- Order submission (optional "who's this for" field) to a live bartender queue
-- Bartender: full recipe detail, live queue with new→in-progress→done lifecycle
-- Kiosk-lock/fullscreen + idle timeout on Patron screen (unauthenticated wall-mounted tablet)
-- Manual recipe entry (owner needs to seed ~100 recipes regardless of what else ships)
-- Category-based substitution matching (Pattern 3) — cheap once taxonomy exists, needed for AI substitution quality
+**MCP Server**
+- Table stakes: recipe creation from a link/pasted text/video description, and ingredient/category add-edit tools — all going through the existing REST API, with a confirmation step before any write that a human should see (matches this project's existing "review before save" pattern from AI recipe-photo import).
+- Worth deferring past the first MCP pass: URL-scraping robustness for arbitrary recipe sites and YouTube transcript extraction are genuinely variable in reliability — start with "paste the text/description yourself, or give me a link and I'll try to fetch it" rather than building a bespoke scraper up front.
+- Architecture: standalone Node process (new workspace, e.g. `apps/mcp`), stdio transport, zero direct database access — every tool call goes through `/api/recipes`, `/api/ingredients`, `/api/categories`, `/api/glassware`.
 
-**Should have (competitive differentiators):**
-- AI recommendation when a desired drink can't be made (no researched competitor does live LLM reasoning here)
-- AI substitution suggestions from actual current stock (competitors only do static rule-based charts)
-- AI recipe-photo import (not found in any researched competitor)
-- In-browser camera UPC scanning without dedicated hardware
+### Architecture Integration
 
-**Defer (v2+):**
-- Coarse fractional stock level (full/¾/½/¼/empty) — only once boolean in/out proves insufficient
-- Auto-generated low-stock shopping list — depends on fractional stock levels existing first
-- Flavor-tag browsing/filtering — needs ~50+ recipes to matter
-- Explicitly not planned: volumetric depletion tracking, accounts/loyalty, payments/pricing, multi-station KDS, seeded cocktail database, allergen filtering, dedicated scanner hardware
+All three features integrate without touching the "REST is truth" architecture:
 
-### Architecture Approach
+- **Docker** is pure packaging: a multi-stage build that installs the pnpm workspace once, builds `packages/shared` then all three Vite SPAs then the server, and produces one runtime image that serves everything exactly as the Fastify process already does locally (static bundles + API + Socket.IO, no reverse proxy). No app-code changes required.
+- **AI bottle recognition** adds one new Fastify route (e.g. `POST /api/ingredients/recognize-photo`) that accepts an image from the Barback client, calls Claude server-side (the API key never reaches the browser, consistent with this project's existing constraint), and returns structured data for the client to prefill. This is the same Claude Vision + Zod pattern the already-planned AI recipe-photo-import feature will use — worth building the extraction helper once and reusing it for both.
+- **MCP server** is a stateless protocol translator: a new workspace that implements MCP tools which call the existing REST endpoints and return their results. No new business logic, no direct database access — mirrors janus-console's `mcp_server.py` pattern (a standalone process delegating everything to the main app's REST API), but in TypeScript to match this project's stack.
 
-Three browser SPA clients talk to one Node backend over two channels: HTTP REST for all writes (validated and persisted server-side before anything else happens) and WebSocket for server-to-client push only (clients never message each other). The backend owns a single "makeable-status engine" — a pure, testable function computing recipe-vs-stock status — that recomputes and broadcasts on every relevant mutation; clients only ever render what the server most recently pushed, never compute makeable status themselves. AI features live behind one façade module (`services/claude.ts`) as three independent, stateless, single-turn Claude calls (recommend, substitute, import) — not an agent loop — with recipe-image import specifically using forced tool-use/structured output and always requiring human review before it becomes a real database row.
-
-**Major components:**
-1. HTTP API (Fastify REST routes) — source of truth for all state mutations, each ending in a WebSocket broadcast
-2. WebSocket hub — broadcast-only fan-out of specific typed events (`inventory.changed`, `order.created`, `order.statusChanged`), never a generic "state.changed" catch-all
-3. Makeable-status engine — isolated pure function (recipe ingredients × inventory stock → makeable/missing), the core trust guarantee, called synchronously after any relevant mutation
-4. AI integration façade — single wrapper around `@anthropic-ai/sdk`, one function per feature, server-side only, API key never exposed to clients
-5. SQLite (WAL mode) — single-file store for bottles/ingredients, recipes, recipe_ingredients join, orders
+**Suggested build order within v1.1:** AI bottle recognition first (establishes the shared Claude Vision + Zod extraction pattern, no dependency on the other two), then the MCP server (can reuse that pattern for recipe extraction from text/links), then Docker last (pure packaging of whatever exists at that point — no reason to containerize before the other two features are done).
 
 ### Critical Pitfalls
 
-1. **Naive polling or client-side makeable computation breaks the single-source-of-truth guarantee** — always compute makeable status server-side once per change and broadcast; never let clients compute it locally from a cache.
-2. **Camera barcode scanning treated as a guaranteed happy path** — Safari/iPadOS has no native `BarcodeDetector` support; use html5-qrcode/ZXing with manual entry as the mandatory baseline, not a fallback bolted on after failure.
-3. **Ingredient/recipe matching too literal** (exact name/unit equality) — model ingredients as categories with brand-specific bottles linked underneath, normalize units to ml at entry time, and explicitly decide "not enough volume" is out of scope (presence-only, not quantity-tracked).
-4. **Claude API calls treated as fast/cheap/always-available in the core UX path** — AI features must be additive and gracefully degrading; core makeable/order logic must work 100% locally with zero AI/internet dependency, with explicit loading/error/fallback states.
-5. **AI recipe-photo parsing auto-saved without review** — structured output guarantees schema validity, not factual correctness; the review/confirm step (original photo shown alongside extracted fields) is a core safety mechanism, not optional polish, and must be in the MVP scope of that phase.
+1. **better-sqlite3 native bindings not compiled for the container's architecture (Docker).** pnpm 10+ blocks postinstall scripts by default, so the native `.node` binding may never get built inside the image. Enable postinstall scripts explicitly, include build tools in the Dockerfile, and test the actual built image on ARM64 (real Pi hardware or `docker buildx --platform linux/arm64`) before considering this done — don't assume x86 dev-machine success carries over.
+2. **SQLite WAL file corruption from a partial bind mount (Docker).** WAL mode uses sidecar `.db-shm`/`.db-wal` files for coordination; mounting only the `.db` file (not the whole `data/` directory) leaves those sidecars in the container's ephemeral layer, risking corruption on restart. Mount the entire data directory as one volume, and avoid network filesystems (NFS/CIFS) for the mount target.
+3. **Claude Vision rejects HEIC (iPhone default photo format) and can mis-orient converted images.** If the Barback client is used from an iPhone, photos may arrive as HEIC (unsupported by Claude Vision, which wants JPEG/PNG/GIF/WebP) or lose correct EXIF rotation on conversion. Convert client-side to JPEG with rotation preserved before upload.
+4. **Confident hallucination on bottle identification.** Claude can return a plausible-looking but wrong bottle identification with no explicit uncertainty flag. The review-before-save gate already planned for this feature is the correct mitigation — treat it as non-negotiable, not a nice-to-have.
+5. **MCP schema mismatch between unstructured recipe input and the app's structured schema.** Real-world recipes/videos describe ingredients in free text; the app requires referential integrity (ingredient/category IDs that actually exist). Validate every MCP-driven recipe creation against the live ingredient/category list before writing, and confirm with the user rather than silently creating orphaned or mismatched references.
+6. **Unauthenticated MCP write access with no guardrails.** This project's no-auth model is an accepted, deliberate constraint (LAN-only, trusted users) — but a write-capable MCP tool with no rate limiting or audit trail could still let a misfiring agent loop and create many duplicate/bad records. A lightweight safeguard (confirm-before-write, and/or a simple rate limit) is worth including even without full authentication.
 
-Two additional pitfalls worth carrying into infrastructure/backend phases: SD-card storage corruption risk on Raspberry Pi under sustained SQLite WAL writes (use external SSD + scheduled backups), and conflating "no auth" with "no server-side validation" (every write endpoint must validate regardless of login state, and AI-triggering endpoints specifically need rate-limiting to avoid cost spikes from a buggy client or curious guest).
+---
 
 ## Implications for Roadmap
 
-Based on research, suggested phase structure:
+The three already-drafted phases (5: Docker, 6: AI Bottle Photo Recognition, 7: MCP Server) map cleanly onto this research, with one adjustment worth considering: **build order**. The roadmap currently sequences Docker (5) → AI Bottle Recognition (6) → MCP Server (7), but this research suggests AI Bottle Recognition and MCP Server share a Claude Vision/structured-extraction pattern worth building once, and neither depends on Docker at all — Docker only depends on whatever code exists being ready to package. Consider building AI Bottle Recognition and/or MCP Server before Docker, or explicitly building the shared "Claude structured-extraction" helper as part of whichever ships first so the other can reuse it.
 
-### Phase 1: Data Layer & Sync Foundation
-**Rationale:** Pitfall 1 (state desync) is explicitly called out as an architectural-backbone risk that must not be bolted on after screens exist; the makeable-status engine and WebSocket broadcast pipeline is the dependency root for every other feature.
-**Delivers:** SQLite schema (bottles/ingredients, recipes, recipe_ingredients, orders) with WAL mode, Drizzle setup, Fastify server skeleton, WebSocket hub with typed events, and the core makeable-status engine as a pure/tested function.
-**Addresses:** Boolean in-stock toggle + ingredient CRUD, category taxonomy foundation (from FEATURES.md dependency graph)
-**Avoids:** Pitfall 1 (desync), Pitfall 8 (no-auth-as-no-validation) as a standing rule from day one
+**Suggested phase-level flags for planning:**
+- **Docker phase:** flag ARM64/Pi-hardware validation as a required verification step, not just a "should work" assumption — better-sqlite3 native bindings and WAL-on-bind-mount are both real, documented failure modes at this exact intersection (Node + SQLite + ARM64 + Docker).
+- **AI Bottle Recognition phase:** require the review-before-save UI as a hard requirement, not a stretch goal — confident hallucination is a documented Claude Vision failure mode, not a hypothetical.
+- **MCP Server phase:** require validation-against-live-data before any write, and decide explicitly whether a lightweight rate limit or confirmation step is in scope for v1.1 or deferred.
 
-### Phase 2: Barback Inventory Interface
-**Rationale:** Everything else (makeable logic, ordering, bartender queue) depends on trustworthy inventory data existing; the category taxonomy decision here is foundational and hard to retrofit per FEATURES.md dependency notes.
-**Delivers:** Barback mobile-responsive CRUD UI, manual ingredient entry (name/category/in-stock toggle) as the primary path, UPC camera scan via html5-qrcode as an accelerator with mandatory manual fallback, server-side UPC lookup proxy with graceful "not found" handling.
-**Uses:** html5-qrcode, Fastify UPC proxy endpoint
-**Implements:** UPC lookup layer, Barback client component from ARCHITECTURE.md
+**Genuinely open questions to resolve during requirements/planning (not answerable from research alone):**
+- Real-world Claude Vision accuracy on actual bottle photos (label wear, backlighting, generic/house-brand bottles) — no substitute for testing on real bottles once built.
+- Whether "send a link" for MCP recipe creation should attempt to fetch/parse the URL server-side, or simply ask the user to paste the relevant text — research suggests starting simple (paste text) and treating URL-fetching as a stretch goal, not a hard requirement.
 
-### Phase 3: Makeable Logic & Patron Interface
-**Rationale:** This is the project's stated Core Value; Pitfall 4 explicitly calls for a dedicated design pass using real early recipes as test cases, not synthetic examples, before building the UI on top.
-**Delivers:** Patterns 1-3 (boolean presence, partial/"almost" match, category-based substitution) fully implemented and broadcast live; Patron browse/detail views, makeable/not-makeable badges with missing-ingredient detail, kiosk-lock/fullscreen + idle timeout.
-**Addresses:** Patron table-stakes features, category-based substitution matching
-**Avoids:** Pitfall 4 (over-literal matching)
-
-### Phase 4: Ordering & Bartender Queue
-**Rationale:** Depends on makeable logic being solid (Phase 3) since the bartender queue reuses the same shared matching logic per FEATURES.md — "do not duplicate the algorithm."
-**Delivers:** Order submission from Patron (with optional "who's this for" field) into a live bartender queue; ticket lifecycle (new→in-progress→done); elapsed-time indicator; bartender recipe detail view and search/filter.
-**Uses:** WebSocket hub `order.created`/`order.statusChanged` events
-**Implements:** Order lifecycle data flow from ARCHITECTURE.md
-
-### Phase 5: AI Features (Recommendations, Substitutions, Recipe Import)
-**Rationale:** FEATURES.md explicitly recommends deferring these until the manual/deterministic flows they sit on top of are proven trustworthy — "an AI recommendation on top of buggy matching logic will just erode trust faster." Each AI feature also needs its own error/latency/cost-handling design per Pitfall 5.
-**Delivers:** Server-side Claude façade (`services/claude.ts`); patron recommendation and bartender substitution calls (additive, gracefully degrading); recipe-photo import with forced structured output and a mandatory review/confirm UI (original photo shown alongside extracted fields).
-**Addresses:** All three AI differentiator features from FEATURES.md
-**Avoids:** Pitfall 5 (AI treated as fast/reliable), Pitfall 6 (auto-saved AI output)
-
-### Phase 6: Deployment & Hardening
-**Rationale:** Infrastructure decisions (hardware, storage, backups, process supervision) are called out as needing explicit documentation before "going live," not implicit fallback to whatever hardware is on hand.
-**Delivers:** systemd service for process supervision, external SSD (not microSD) if on Raspberry Pi, scheduled SQLite backups, rate-limiting on AI-triggering endpoints, validation audit across all write endpoints.
-**Avoids:** Pitfall 7 (SD-card corruption), Pitfall 8 (no server-side validation)
-
-### Phase Ordering Rationale
-
-- Data layer and sync must come first because every other feature (makeable logic, orders, inventory) depends on the server-authoritative broadcast pipeline being correct from the start — retrofitting it later is explicitly flagged as HIGH recovery cost in PITFALLS.md.
-- Barback (inventory) precedes Patron (ordering) because makeable logic has nothing to compute against without inventory data, and the category taxonomy decided here shapes both matching quality and later AI prompt design.
-- Makeable logic + Patron precedes Bartender queue because the queue reuses the exact same matching computation — building it twice would violate the "one inventory, one truth" architecture.
-- All three AI features are grouped into one phase (rather than scattered across earlier phases) because FEATURES.md explicitly recommends validating the manual/deterministic flows first, and because they share one façade module and one set of error/latency/cost patterns per ARCHITECTURE.md and PITFALLS.md.
-- Deployment/hardening comes last but its decisions (storage, backups, supervision) should be documented early and revisited at each phase, not treated as pure afterthought — PITFALLS.md frames this as a standing rule more than a single phase.
-
-### Research Flags
-
-Phases likely needing deeper research during planning:
-- **Phase 2 (Barback inventory):** UPC lookup API selection/coverage for niche liquor products is a real, cross-checked gap (MEDIUM confidence only) — worth validating against the owner's actual bottle collection early, not assumed from vendor claims.
-- **Phase 3 (Makeable logic):** Unit normalization and category-taxonomy granularity is called out as foundational and hard to retrofit — worth a dedicated `--research-phase` pass on ingredient-substitution modeling patterns before implementation.
-- **Phase 5 (AI features):** Each of the three AI call sites (recommend, substitute, import) needs its own structured-output schema design, retry/backoff policy, and cost-guardrail research — PITFALLS.md explicitly flags this per AI-integration skill guidance.
-
-Phases with standard patterns (skip research-phase):
-- **Phase 1 (Data layer/sync):** WebSocket push + server-authoritative derived state is a well-documented, mainstream pattern (Fastify/Socket.IO/SQLite WAL) with HIGH-confidence stack sourcing.
-- **Phase 4 (Ordering/queue):** Standard KDS ticket-lifecycle pattern, well-precedented across restaurant self-order systems.
-- **Phase 6 (Deployment):** systemd/backup/storage guidance is standard sysadmin practice, not novel to this domain.
+---
 
 ## Confidence Assessment
 
-| Area | Confidence | Notes |
-|------|------------|-------|
-| Stack | HIGH | Package versions verified live against npm registry; Claude API/SDK details verified against current Anthropic docs; ecosystem/pattern claims (framework comparisons) cross-checked but web-sourced (MEDIUM within an overall HIGH-anchored file) |
-| Features | MEDIUM | Web search only, no official vendor docs or SDKs involved — this is a product/UX domain synthesis, cross-checked across multiple independent competitor sources per topic |
-| Architecture | MEDIUM | Web-sourced, cross-checked across multiple independent sources; no official case study for this exact niche exists, but every component maps to well-documented mainstream patterns; Claude API specifics HIGH (official SDK docs) |
-| Pitfalls | MEDIUM | Web-sourced, cross-checked; no official case study for this exact feature combination exists, but each individual pitfall (SQLite concurrency, Safari BarcodeDetector gaps, Claude rate limits) is independently well-documented |
+| Area | Confidence | Reasoning |
+|------|------------|-----------|
+| Stack | HIGH | Version-pinned choices cross-checked against npm registry and official docs |
+| Features | MEDIUM-HIGH | Scope and complexity estimates reasonable, but real-world accuracy (Vision) and reliability (MCP over home network) are untested |
+| Architecture | HIGH | All three features slot into the existing "REST is truth" pattern with no structural changes |
+| Pitfalls | MEDIUM | SQLite/Docker interaction risks are well-documented; Claude Vision and MCP-specific pitfalls are directionally correct but benefit from hands-on validation during implementation |
 
-**Overall confidence:** MEDIUM-HIGH
-
-### Gaps to Address
-
-- UPC/barcode database coverage for craft/niche liquor products is genuinely uncertain until tested against the owner's real ~50-100 bottle collection — treat the Phase 2 hit-rate as an early validation checkpoint, not an assumption.
-- Exact ingredient-category granularity (e.g., "orange liqueur" vs. "triple sec" vs. brand-pinned) is a product decision, not purely technical — resolve with the owner during Phase 3 discussion, using early real recipes as test cases per Pitfall 4.
-- Whether "not enough volume" should ever count as not-makeable (vs. staying purely presence-based) is flagged in PITFALLS.md as a product decision to make explicitly before building matching logic — currently research recommends presence-only for v1, but confirm with the owner.
-- Actual hardware target (Raspberry Pi model, SD card vs. SSD) isn't yet finalized in PROJECT.md context available to this research — Phase 6 planning should confirm this before committing to specific deployment guidance.
+---
 
 ## Sources
 
-### Primary (HIGH confidence)
-- npm registry live version checks (2026-08-09) — all core package versions
-- Bundled Anthropic `claude-api` skill documentation — model IDs, pricing, structured outputs, vision input, SDK patterns, rate limits, error handling
-- Anthropic official docs (platform.claude.com) — structured outputs, rate limits, API errors
-
-### Secondary (MEDIUM confidence)
-- Web search, cross-checked across multiple independent sources — SvelteKit/Next.js/Vite comparisons, Fastify/Express comparisons, WebSocket/SSE/polling comparisons, Socket.IO vs `ws`, barcode library comparisons and Safari `BarcodeDetector` support status, Drizzle vs Prisma, UPC database coverage for alcohol, Raspberry Pi self-hosting and SD-card corruption patterns, SQLite WAL/concurrency behavior, competitor feature analysis (WISK, Backbar, BinWise, Mixel, Cocktail Party, My Cocktail Bar, and others — see FEATURES.md for full list), kiosk-mode/guided-access patterns, cocktail measurement/substitution conventions
-
-### Tertiary (LOW confidence)
-- None flagged — all findings were cross-checked across at least two independent sources per topic
-
----
-*Research completed: 2026-08-09*
-*Ready for roadmap: yes*
+- npm registry (`@modelcontextprotocol/sdk` version history), Docker Hub (`node:22-slim`, ARM64 image tags)
+- Anthropic Platform Docs — structured outputs (`messages.parse()` + Zod), Vision API, current model recommendations
+- Official SQLite documentation on WAL mode and known corruption modes (partial bind mounts, network filesystems)
+- GitHub issues — better-sqlite3 native binding builds under pnpm 10+ postinstall restrictions, ARM64 compilation
+- janus-console (`mcp_server.py`) and janus-deploy (`compose.yml`) — sibling-project reference patterns for MCP server delegation and Docker Compose homelab deployment, already reviewed directly in this project's own repo tree
