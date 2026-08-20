@@ -37,24 +37,55 @@ COPY . .
 # apps/*/dist monorepo-relative layout the runtime expects.
 RUN pnpm -r build
 
-# Drops devDependencies (vite, typescript, vitest) before the runtime copy
-# (PITFALLS.md Pitfall 8). CI=true suppresses pnpm's interactive "confirm
-# modules purge" prompt, which otherwise aborts with
-# ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY in a non-interactive RUN shell.
-RUN CI=true pnpm prune --prod
-
 FROM node:22-slim AS runtime
+
+# Same fallback as the builder stage: better-sqlite3 (a real @my-bar/server
+# runtime dependency) may need to compile its native binding from source in
+# this stage too if no prebuilt matches this platform/Node ABI (PITFALLS.md
+# Pitfall 1).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN corepack enable && corepack prepare pnpm@11.17.0 --activate
 
 ENV NODE_ENV=production
 
 WORKDIR /app
 
-# Wholesale copy — do not cherry-pick individual subdirectories, since
-# pnpm's workspace node_modules is a tree of relative symlinks that breaks
-# if only some directories are copied. This also preserves the exact
-# monorepo-relative layout apps/server/src/index.ts expects at runtime
-# (path.join(__dirname, '../../barback/dist') etc.).
-COPY --from=builder /app /app
+# A fresh --prod install directly in the runtime stage, not a prune-and-copy
+# of the builder's node_modules. `pnpm prune --prod` followed by copying the
+# workspace's symlink tree across stages proved fragile in practice — it
+# dropped `fastify` (a real @my-bar/server prod dependency) at runtime with
+# ERR_MODULE_NOT_FOUND, caught on first real deployment. A fresh filtered
+# install avoids relying on prune's cross-stage symlink integrity entirely.
+# --filter @my-bar/server... installs only @my-bar/server and its workspace
+# dependency chain (@my-bar/shared) — not barback/patron/bartender's
+# devDependency-heavy React/Vite toolchains, which the running container
+# never needs (their build output is static files, already produced in the
+# builder stage). All manifests are copied (not just server's) because
+# pnpm-lock.yaml's importers section expects every workspace package listed
+# there to have a package.json on disk.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/server/package.json ./apps/server/package.json
+COPY apps/barback/package.json ./apps/barback/package.json
+COPY apps/patron/package.json ./apps/patron/package.json
+COPY apps/bartender/package.json ./apps/bartender/package.json
+COPY packages/shared/package.json ./packages/shared/package.json
+
+RUN pnpm install --prod --frozen-lockfile --filter @my-bar/server...
+
+# Only the built artifacts the running server actually needs: its own dist,
+# the three frontend SPA bundles it serves via @fastify/static, and the
+# @my-bar/shared package's compiled output (its package.json "main" points
+# at ./dist/index.js, resolved through the workspace symlink pnpm install
+# just created above).
+COPY --from=builder /app/apps/server/dist ./apps/server/dist
+COPY --from=builder /app/apps/barback/dist ./apps/barback/dist
+COPY --from=builder /app/apps/patron/dist ./apps/patron/dist
+COPY --from=builder /app/apps/bartender/dist ./apps/bartender/dist
+COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
 
 EXPOSE 3000
 
