@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 3
+open_count: 4
 waived_count: 0
 fixed_count: 0
-total_count: 3
-last_updated: 2026-08-20T17:07:19.922Z
+total_count: 4
+last_updated: 2026-08-20T17:15:16.193Z
 ---
 
 # Broken Windows Ledger
@@ -18,6 +18,7 @@ last_updated: 2026-08-20T17:07:19.922Z
 | 1 | 04 | unrun-verify | apps/patron/src/hooks/useFullscreen.ts |  | Real-iPad Safari human-check for 04-05 Task 2 (fullscreen entry, wake-lock, 90s idle return-to-grid) not run — jsdom mocks only; needs a physical-device pass before kiosk deployment | open |  | 2026-08-18T18:03:37.586Z |  |
 | 2 | quick | unrun-verify | apps/bartender/src/components/OrdersTab.tsx |  | 260819-l5f Task 2 checkpoint (visual side-by-side Orders vs Recipes card parity) self-verified via structural DOM parity check only — no headless-browser tooling available; recommend a quick manual dev-server spot-check | open |  | 2026-08-19T20:22:21.359Z |  |
 | 3 | 05 | unrun-verify | compose.yml |  | Task 1's docker compose build/up smoke test could not be run — docker CLI not installed in this sandboxed executor environment; requires a human to run the full build->up->curl-all-surfaces->recreate->verify-persistence cycle before shipping | open |  | 2026-08-20T17:07:19.922Z |  |
+| 4 | 05 | unrun-verify | .github/workflows/docker-publish.yml |  | CI workflow structure statically verified (grep + YAML parse) but never triggered by a real GitHub Actions run - no runner/GHCR credentials available in this sandbox; human should confirm first real push-to-main publish and first real PR build-no-push | open |  | 2026-08-20T17:15:16.193Z |  |
 
 ````json
 [
@@ -55,6 +56,18 @@ last_updated: 2026-08-20T17:07:19.922Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-08-20T17:07:19.922Z",
+    "resolved_at": null
+  },
+  {
+    "id": 4,
+    "kind": "unrun-verify",
+    "phase": "05",
+    "file": ".github/workflows/docker-publish.yml",
+    "line": null,
+    "description": "CI workflow structure statically verified (grep + YAML parse) but never triggered by a real GitHub Actions run - no runner/GHCR credentials available in this sandbox; human should confirm first real push-to-main publish and first real PR build-no-push",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-08-20T17:15:16.193Z",
     "resolved_at": null
   }
 ]
