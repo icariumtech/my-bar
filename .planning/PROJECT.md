@@ -24,10 +24,11 @@ The inventory must be the single source of truth: at any moment, the Patron and 
 
 ### Active
 
-- [ ] UPC barcode scanning via device camera (browser-based) to add bottles to inventory without manual typing
+- [ ] AI-assisted bottle photo recognition: owner photographs a bottle from their phone, Claude Vision identifies it (name, category, and other identifiable details) and prefills the add-ingredient form for review/confirmation before saving — replaces UPC barcode scanning
 - [ ] AI-assisted patron recommendations: when a requested/desired drink can't be made, suggest a makeable alternative the patron would likely enjoy, using Claude API
 - [ ] AI-assisted substitution suggestions for the bartender/barback: when a recipe is missing an ingredient, suggest a reasonable substitution from what's in stock
 - [ ] AI-assisted recipe import: photograph or screenshot a recipe, Claude extracts structured recipe data (name, ingredients, steps) for user review/confirmation before saving
+- [ ] Containerized deployment: Dockerfile + docker compose file so the server (and all three built frontend bundles) can run as a single container on the home server/Pi
 
 ### Out of Scope
 
@@ -35,12 +36,13 @@ The inventory must be the single source of truth: at any moment, the Patron and 
 - Payments / billing — friends and family, not a commercial bar
 - Seeded/imported open cocktail dataset (e.g. TheCocktailDB) — owner wants to build their own curated recipe collection, possibly revisit later if manual entry proves too slow
 - Dedicated physical barcode scanner hardware — camera-based scanning in-browser covers this; revisit only if camera scanning proves unreliable
+- UPC barcode scanning / UPC database lookup — most UPC databases with usable alcohol coverage are paid/rate-limited; replaced with AI photo-based bottle recognition (Claude Vision), which needs no third-party database at all
 
 ## Context
 
 - Reference design: two photos of an existing tablet cocktail-menu app (dark navy background, orange neon accents, left icon rail for categories like Cocktails/Wine/Beer/Spirits/Luxury, drink cards with name/price/flavor-tag triplet, tap-through detail view with photo, description, and origin story). This is the direct visual/UX reference for the Patron interface.
 - Collection size: roughly medium — ~50-100 bottles/ingredients, ~100+ cocktail recipes expected over time.
-- Hardware: Patron interface on an iPad (likely wall-mounted or bar-mounted), Bartender interface on a second iPad behind the bar, Barback/inventory tasks (including UPC scanning) done from the owner's phone. All interfaces are browser-based to stay flexible across these devices.
+- Hardware: Patron interface on an iPad (likely wall-mounted or bar-mounted), Bartender interface on a second iPad behind the bar, Barback/inventory tasks (including AI-assisted bottle photo capture) done from the owner's phone. All interfaces are browser-based to stay flexible across these devices.
 - AI: Claude API is the chosen provider for all AI-assisted features (recommendations, substitutions, recipe-image parsing).
 - Deployment: intended to run on a local home server (e.g. always-on PC, NAS, or Raspberry Pi) on the home network — no dependency on internet access for core features to work; AI features will need internet access for the Claude API specifically.
 
@@ -55,7 +57,7 @@ The inventory must be the single source of truth: at any moment, the Patron and 
 
 - **Tech stack**: Browser-based UI across all three interfaces (iPad Safari + phone browser) — no native app builds
 - **Network**: Runs on local home network; local server must be reachable from all three devices without needing internet, except for AI calls
-- **AI provider**: Claude API only, for recommendations, substitutions, and recipe-image parsing
+- **AI provider**: Claude API only, for recommendations, substitutions, recipe-image parsing, and bottle-photo recognition
 - **Access model**: No authentication anywhere — must not require login friction for guests using the Patron screen
 
 ## Key Decisions
@@ -65,8 +67,9 @@ The inventory must be the single source of truth: at any moment, the Patron and 
 | Three separate interfaces (Patron, Bartender, Barback) sharing one inventory backend | Matches the three real roles/devices in use; keeps each screen focused on its job | ✓ Good — shipped v1.0, all three apps share one Fastify/SQLite backend cleanly |
 | No user accounts/login | Home network, trusted friends/family, no commercial concerns | ✓ Good — kiosk-style access worked as intended, no friction reported |
 | Build recipe collection manually (no seeded dataset) | Owner wants a curated, personal recipe set rather than a generic imported database | ✓ Good — Validated in Phase 2 |
-| Camera-based UPC scanning in-browser, no dedicated scanner hardware | Avoids extra hardware purchase/setup; modern phone/tablet cameras handle this well | — Pending (deferred to v1.x, not built in v1.0) |
-| Claude API for all AI features | Chosen provider for recommendations, substitutions, and recipe photo/screenshot parsing | — Pending (deferred to v1.x, not built in v1.0) |
+| Camera-based UPC scanning in-browser, no dedicated scanner hardware | Avoids extra hardware purchase/setup; modern phone/tablet cameras handle this well | ⚠️ Revisit — superseded before build: most UPC databases with usable alcohol coverage are paid/rate-limited, so this was replaced with AI photo-based bottle recognition instead of ever being built |
+| AI photo-based bottle recognition (Claude Vision) replaces UPC scanning for adding inventory | UPC database coverage for alcohol is poor and mostly paywalled; Claude Vision needs no third-party database and the app already uses Claude for recipe-photo parsing, so this reuses an established pattern | — Pending (planned for v1.x) |
+| Claude API for all AI features | Chosen provider for recommendations, substitutions, recipe photo/screenshot parsing, and bottle-photo recognition | — Pending (deferred to v1.x, not built in v1.0) |
 | Local home server deployment | No need for internet dependency on core features; keeps data private and on-premises | ✓ Good — no internet dependency for any core v1.0 feature |
 | Patron order flow supports both browsing-only and full order submission to bartender queue | Owner wants flexibility — sometimes just look up a drink, sometimes place a real order | ✓ Good — Validated in Phase 4 |
 | Recipe ingredient lines can lock to one specific, non-substitutable ingredient (not just a category) | Booze categories are naturally substitutable, but mixers like lemon vs. lime juice are not — a plain category match was too coarse | ✓ Good — Validated in Phase 2.1, tri-state (green/yellow/red) makeable status works as intended |
