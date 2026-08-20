@@ -38,8 +38,10 @@ COPY . .
 RUN pnpm -r build
 
 # Drops devDependencies (vite, typescript, vitest) before the runtime copy
-# (PITFALLS.md Pitfall 8).
-RUN pnpm prune --prod
+# (PITFALLS.md Pitfall 8). CI=true suppresses pnpm's interactive "confirm
+# modules purge" prompt, which otherwise aborts with
+# ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY in a non-interactive RUN shell.
+RUN CI=true pnpm prune --prod
 
 FROM node:22-slim AS runtime
 
