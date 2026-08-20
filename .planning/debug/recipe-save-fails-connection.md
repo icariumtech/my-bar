@@ -1,8 +1,8 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "DATA_START\nfail, when I try to save a recipe I get an error \"Couldn't save recipe - check your connection and try again.\"\nDATA_END"
 created: 2026-08-11T00:00:00Z
-updated: 2026-08-11T15:45:00Z
+updated: 2026-08-19T00:00:00Z
 ---
 
 ## Current Focus
@@ -99,4 +99,6 @@ started: Fresh feature, Phase 02, never previously working (discovered during ma
 root_cause: "apps/barback/src/components/UnitDropdown.tsx does not accept or forward the `value`/`onChange` props that antd's Form.Item injects into it — it renders a bare, prop-less `<Select>` instead of a controlled component wired to the surrounding Form. As a result every ingredient line's `unit` field is always submitted as `undefined` regardless of what the user visually picks in the dropdown. The shared Zod contract (packages/shared/src/recipe.ts: `recipeIngredientInput.unit: z.enum([...])`, required/non-optional) rejects this, so POST /api/recipes (and PATCH) returns 400 Bad Request on every recipe save that includes an ingredient line — which is unconditionally required (recipeInput.ingredients.min(1)), so the bug is 100% reproducible on every create attempt. Contributing/secondary: apps/barback/src/api/client.ts's apiFetch() discards the server's actual `{error: string}` response body on any non-2xx response and throws a generic Error, and RecipeForm.tsx's Alert always shows the same static 'Couldn't save recipe — check your connection and try again.' text regardless of the real cause — which is why a pure client-side data-binding bug surfaces to the user as a misleading connection-sounding error rather than a validation message. GlasswareSelector.tsx (apps/barback/src/components/GlasswareSelector.tsx) has the structurally identical value/onChange-forwarding defect, but since glasswareId is optional it does not block the minimal repro — it will surface as a second bug the moment someone tries to actually save a recipe WITH a glassware selected."
 fix:
 verification:
-files_changed: []
+fix: "Fixed in commit 46f4cbf (plan 02-07): UnitDropdown and GlasswareSelector now accept and forward value/onChange props to the wrapped antd Select, matching the direct-binding pattern used elsewhere in IngredientListForm."
+verification: "Verified live in apps/barback/src/components/UnitDropdown.tsx — `export function UnitDropdown({ value, onChange }: UnitDropdownProps)` forwards both props to the underlying Select."
+files_changed: ["apps/barback/src/components/UnitDropdown.tsx", "apps/barback/src/components/GlasswareSelector.tsx"]

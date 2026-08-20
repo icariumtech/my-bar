@@ -1,8 +1,8 @@
 ---
-status: diagnosed
+status: resolved
 trigger: "DATA_START\nI have to refresh the page before the Ready to make state changes. For example if I create a recipe with rye as the ingrediant and then mark all the rye bottles as out of stock the recipe sill indicates that it is ready to make\nDATA_END"
 created: 2026-08-11T18:00:00Z
-updated: 2026-08-11T18:20:00Z
+updated: 2026-08-19T00:00:00Z
 ---
 
 ## Current Focus
@@ -66,4 +66,6 @@ started: "Discovered during manual UAT of Phase 02 (Recipe Collection & Makeable
 root_cause: "apps/barback/src/api/useIngredients.ts's useToggleStock mutation — the swipe-to-toggle in-stock/out-of-stock action in IngredientRow, and the sole UI path capable of changing an ingredient's inStock value (the edit form structurally cannot per D-08, and no ingredient-delete mutation exists) — invalidates only the ['ingredients'] query key in its onSettled callback. It never invalidates ['recipes']. Since the makeable/missingCategoryNames fields on every recipe are derived from live ingredient in-stock state (computeMakeable() queries ingredients.inStock fresh on every GET /api/recipes call, confirmed server-side, no caching layer), the recipes list and detail view's TanStack Query cache is never marked stale after a stock toggle and therefore never refetches — even though the server would return the correct up-to-date makeable status immediately if asked. This is the exact cross-entity invalidation gap the codebase's own established pattern (useRenameCategory invalidating ['categories']+['ingredients']; useUpdateGlassware invalidating ['glassware']+['recipes']) already solves correctly elsewhere — useToggleStock is the one outlier, almost certainly because it was written in Phase 1 (01-04, INV-03) before the ['recipes'] query key existed at all, and was never revisited when Phase 2 introduced the recipes list's runtime dependency on ingredient stock state. A manual page reload works because it performs a fresh mount/fetch of ['recipes'], bypassing the cache entirely — this is consistent with, and fully explains, the user's exact reported workaround."
 fix:
 verification:
-files_changed: []
+fix: "Fixed in commit 67e6754 (plan 02-08): useToggleStock's onSettled now invalidates both ['ingredients'] and ['recipes'] query keys."
+verification: "Verified live in apps/barback/src/api/useIngredients.ts — useToggleStock's onSettled calls queryClient.invalidateQueries for both ['ingredients'] and ['recipes']."
+files_changed: ["apps/barback/src/api/useIngredients.ts"]

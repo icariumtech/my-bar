@@ -2,10 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 04
-status: completed
+status: Awaiting next milestone
 stopped_at: Completed quick task 260819-l5f
-last_updated: "2026-08-19T20:22:47.095Z"
+last_updated: "2026-08-20T01:16:37.393Z"
 last_activity: 2026-08-19
 last_activity_desc: "Completed quick task 260818-uz8: Fix Bartender Orders Done-clearing bug and Card redesign"
 progress:
@@ -13,6 +12,7 @@ progress:
   completed_phases: 5
   total_plans: 31
   completed_plans: 31
+current_phase: 04
 current_phase_name: bartender-console-order-workflow
 ---
 
@@ -27,12 +27,10 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 
 ## Current Position
 
-Phase: 04
-Plan: Not started
-Status: All phases complete
-Last activity: 2026-08-19 — Completed quick task 260818-uz8
-
-Progress: [██████████] 100%
+Phase: Milestone v1.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-08-19 — Milestone v1.0 completed and archived
 
 ## Performance Metrics
 
@@ -160,14 +158,20 @@ None yet.
 
 ## Deferred Items
 
-Items acknowledged and carried forward from previous milestone close:
+Items acknowledged and deferred at milestone close on 2026-08-19:
 
-| Category | Item | Status | Deferred At |
-|----------|------|--------|-------------|
-| *(none)* | | | |
+| Category | Item | Status |
+|----------|------|--------|
+| debug | recipe-save-fails-connection | resolved (fix verified live: 46f4cbf) |
+| debug | stale-makeable-badge | resolved (fix verified live: 67e6754) |
+| tech_debt | Phase 01: `pnpm --filter server test` intermittent WAL-lock race between parallel test workers sharing the production db-file's module-level `sqlite.pragma('journal_mode = WAL')` call. Non-blocking (confirmed passing 3/3 during 01-03); suggested fix is a lazy db connection in `apps/server/src/db/client.ts`. | open — deferred |
 
 ## Session Continuity
 
 Last session: 2026-08-19T20:22:28.013Z
 Stopped at: Completed quick task 260819-l5f
 Resume file: None
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone

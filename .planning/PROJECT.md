@@ -20,10 +20,10 @@ The inventory must be the single source of truth: at any moment, the Patron and 
 - [x] Makeable/not-makeable status surfaced on Patron and Bartender screens — Patron's 2-state collapse validated in Phase 3; Bartender's full tri-state (green/yellow/red) validated in Phase 4
 - [x] Runs on a local home server on the home network; no login/accounts — open kiosk-style access for all three interfaces — Patron kiosk lockdown (fullscreen, wake-lock, 90s inactivity timeout back to browse grid) validated in Phase 4; Bartender/Barback already open-access with no lockdown needed
 
+- [x] Live shared inventory across all three interfaces via Socket.IO push + TanStack Query invalidation — inventory changes and order status changes propagate without manual refresh — Validated in Phase 3 (SYNC-01) and Phase 4 (SYNC-02)
+
 ### Active
 
-- [ ] Barback interface (phone-first, responsive): inventory tracking — add/edit bottles and ingredients, see stock levels
-- [ ] Live shared inventory: all three interfaces reflect the same real-time stock state
 - [ ] UPC barcode scanning via device camera (browser-based) to add bottles to inventory without manual typing
 - [ ] AI-assisted patron recommendations: when a requested/desired drink can't be made, suggest a makeable alternative the patron would likely enjoy, using Claude API
 - [ ] AI-assisted substitution suggestions for the bartender/barback: when a recipe is missing an ingredient, suggest a reasonable substitution from what's in stock
@@ -44,6 +44,13 @@ The inventory must be the single source of truth: at any moment, the Patron and 
 - AI: Claude API is the chosen provider for all AI-assisted features (recommendations, substitutions, recipe-image parsing).
 - Deployment: intended to run on a local home server (e.g. always-on PC, NAS, or Raspberry Pi) on the home network — no dependency on internet access for core features to work; AI features will need internet access for the Claude API specifically.
 
+### v1.0 Shipped State (2026-08-19)
+
+- Codebase: pnpm monorepo — `apps/server` (Fastify + Drizzle/better-sqlite3 + Socket.IO), `apps/barback`, `apps/patron`, `apps/bartender` (React 19 + Vite + antd, dark theme), `packages/shared` (Zod contracts). ~15,900 LOC TypeScript across 338 commits over 10 days (2026-08-09 → 2026-08-19).
+- All 31 v1 requirements shipped and verified across 5 phases (4 integer + 1 inserted urgent phase, 31 plans, 69 tasks).
+- Known tech debt: an intermittent WAL-lock race in `pnpm --filter server test` (parallel test workers sharing the production db-file's module-level `journal_mode` pragma) — non-blocking, documented in STATE.md Deferred Items, fix is to make `apps/server/src/db/client.ts`'s db connection lazy.
+- Two debug sessions from Phase 2 (recipe-save 400 on every save; stale makeable badge after stock toggle) were root-caused during Phase 2 and fixed in later gap-closure plans (02-07, 02-08) — confirmed still fixed in the shipped code at milestone close.
+
 ## Constraints
 
 - **Tech stack**: Browser-based UI across all three interfaces (iPad Safari + phone browser) — no native app builds
@@ -55,14 +62,17 @@ The inventory must be the single source of truth: at any moment, the Patron and 
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Three separate interfaces (Patron, Bartender, Barback) sharing one inventory backend | Matches the three real roles/devices in use; keeps each screen focused on its job | — Pending |
-| No user accounts/login | Home network, trusted friends/family, no commercial concerns | — Pending |
-| Build recipe collection manually (no seeded dataset) | Owner wants a curated, personal recipe set rather than a generic imported database | Validated in Phase 2 |
-| Camera-based UPC scanning in-browser, no dedicated scanner hardware | Avoids extra hardware purchase/setup; modern phone/tablet cameras handle this well | — Pending |
-| Claude API for all AI features | Chosen provider for recommendations, substitutions, and recipe photo/screenshot parsing | — Pending |
-| Local home server deployment | No need for internet dependency on core features; keeps data private and on-premises | — Pending |
-| Patron order flow supports both browsing-only and full order submission to bartender queue | Owner wants flexibility — sometimes just look up a drink, sometimes place a real order | Validated in Phase 4 |
-| Recipe ingredient lines can lock to one specific, non-substitutable ingredient (not just a category) | Booze categories are naturally substitutable, but mixers like lemon vs. lime juice are not — a plain category match was too coarse | Validated in Phase 2.1 |
+| Three separate interfaces (Patron, Bartender, Barback) sharing one inventory backend | Matches the three real roles/devices in use; keeps each screen focused on its job | ✓ Good — shipped v1.0, all three apps share one Fastify/SQLite backend cleanly |
+| No user accounts/login | Home network, trusted friends/family, no commercial concerns | ✓ Good — kiosk-style access worked as intended, no friction reported |
+| Build recipe collection manually (no seeded dataset) | Owner wants a curated, personal recipe set rather than a generic imported database | ✓ Good — Validated in Phase 2 |
+| Camera-based UPC scanning in-browser, no dedicated scanner hardware | Avoids extra hardware purchase/setup; modern phone/tablet cameras handle this well | — Pending (deferred to v1.x, not built in v1.0) |
+| Claude API for all AI features | Chosen provider for recommendations, substitutions, and recipe photo/screenshot parsing | — Pending (deferred to v1.x, not built in v1.0) |
+| Local home server deployment | No need for internet dependency on core features; keeps data private and on-premises | ✓ Good — no internet dependency for any core v1.0 feature |
+| Patron order flow supports both browsing-only and full order submission to bartender queue | Owner wants flexibility — sometimes just look up a drink, sometimes place a real order | ✓ Good — Validated in Phase 4 |
+| Recipe ingredient lines can lock to one specific, non-substitutable ingredient (not just a category) | Booze categories are naturally substitutable, but mixers like lemon vs. lime juice are not — a plain category match was too coarse | ✓ Good — Validated in Phase 2.1, tri-state (green/yellow/red) makeable status works as intended |
+| Bottom tab bar + full-screen add/edit/detail flows replacing modal-on-modal navigation (Barback) | Stacked modals became unwieldy as Barback's flows grew; a persistent bottom tab bar with full-screen views is a clearer mobile navigation model | ✓ Good — Validated in Phase 2.1 |
+| Socket.IO for live cross-screen sync (inventory + order status) rather than polling | Kiosk iPads sleep/lock/roam wifi — Socket.IO's reconnect handling avoids silent staleness that plain polling risks | ✓ Good — Validated in Phase 3 (SYNC-01) and Phase 4 (SYNC-02) |
+| Patron screen runs kiosk-locked (fullscreen + wake-lock + inactivity timeout back to browse) | Wall-mounted, unauthenticated tablet needs to behave like an appliance, not a browser tab that can be backgrounded or left on a stale screen | ✓ Good — Validated in Phase 4 |
 
 ## Evolution
 
@@ -82,4 +92,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-18 — Phase 4 (Bartender Console & Order Workflow) complete, verified: 45/45 must-haves, 333/333 tests green*
+*Last updated: 2026-08-19 after v1.0 milestone*
