@@ -39,11 +39,12 @@ Full detail archived in `.planning/milestones/v1.0-ROADMAP.md`.
 
 **Notes**: Modeled on the janus-console/janus-deploy pattern — multi-stage Dockerfile: `node:22-slim` build stage produces the 3 Vite SPA bundles, then a `node:22-slim` runtime stage runs the Fastify server, which serves the bundles + API + Socket.IO in one process (no reverse proxy). No ARM-specific base image or cross-compilation handling needed. Same-repo layout (Dockerfile + `compose.yml` in `my-bar` itself, not a split deploy repo). Database persistence: bind-mount the whole host `./data` directory to `/app/data` (not a single `.db` file) and set `DB_PATH=/app/data/my-bar.db` — `apps/server/src/db/client.ts` already reads `DB_PATH` from env, so no app-code change is needed; this also keeps SQLite's WAL-mode `.db-shm`/`.db-wal` sidecar files on the same persisted volume as the `.db` file, avoiding partial-mount corruption. CI (DOCK-06): a GitHub Actions workflow builds and pushes the image to GHCR on pushes to main, mirroring janus-console's `docker-publish.yml` — `compose.yml` pulls the published image rather than building on-device.
 
-**Plans**: 0 plans
+**Plans**: 2 plans
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 5 to break down)
+- [ ] 05-01-PLAN.md — Containerize the full stack end-to-end (Dockerfile, compose.yml, health check, .env.example, data persistence)
+- [ ] 05-02-PLAN.md — README docs and GitHub Actions CI/GHCR publish
 
 ### Phase 6: AI Bottle Photo Recognition
 
