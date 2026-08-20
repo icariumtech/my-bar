@@ -1,0 +1,30 @@
+services:
+  app:
+    image: ghcr.io/icariumtech/my-bar:latest
+    build: .
+    restart: unless-stopped
+    ports:
+      # Hardcoded, no ${PORT} substitution (D-07) — no port remapping.
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      # Bind-mount the whole directory, never a single-file mount, so the
+      # .db-wal/.db-shm sidecars persist alongside the .db file
+      # (PITFALLS.md Pitfall 2, D-03).
+      - ./data:/app/data
+    healthcheck:
+      # node:22-slim ships neither curl nor wget, and adding either would
+      # grow the runtime image (PITFALLS.md Pitfall 8) — use Node's
+      # built-in global fetch instead.
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
