@@ -42,3 +42,15 @@ Plans:
 Plans:
 
 - [ ] TBD (run /gsd-plan-phase 6 to break down)
+
+### Phase 7: MCP Server for Recipe/Inventory Management
+
+**Goal:** Claude Code (or any MCP client) can manage the bar directly — send a recipe link or a YouTube video and have Claude create the recipe, or add/edit ingredients — without opening the Barback UI
+**Requirements**: TBD (defined during /gsd-new-milestone)
+**Depends on:** Phase 2 (Recipe Collection & Makeable Engine — needs the recipe API), Phase 1 (Barback Inventory Foundation — needs the ingredient API)
+**Notes:** Modeled on janus-console's `mcp_server.py`: a standalone MCP server (TypeScript SDK, since this stack is Node not Python) that delegates all writes/reads to the existing Fastify REST API rather than touching the DB directly — no new business logic, just an MCP tool surface over `/api/recipes`, `/api/ingredients`, `/api/categories`, `/api/glassware`. Runs unauthenticated on the trust-network model (same as the rest of the app — no login anywhere), reachable only from the home network / wherever Claude Code runs. Tool needs: create/edit a recipe from unstructured input (a URL, a pasted recipe, a video transcript/description) via Claude extracting structured recipe data — same structured-output pattern as the already-planned AI recipe-photo-import feature (Phase 6 territory) but text/URL-sourced instead of image-sourced; add/edit ingredients and categories; list current inventory and recipes for context.
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 7 to break down)

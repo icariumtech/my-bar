@@ -157,6 +157,7 @@ None yet.
 - Phase 02.1 inserted after Phase 2: Recipe UI cleanup (URGENT)
 - Phase 5 added: Docker Containerization (single-container deploy modeled on janus-console/janus-deploy, same-repo layout)
 - Phase 6 added: AI Bottle Photo Recognition (replaces UPC barcode scanning — UPC databases with usable alcohol coverage are mostly paid/rate-limited; reuses the Claude Vision + structured-output pattern already planned for recipe-photo import)
+- Phase 7 added: MCP Server for Recipe/Inventory Management (standalone MCP server delegating to the existing REST API, modeled on janus-console's mcp_server.py — lets Claude Code create recipes from links/videos and manage inventory directly)
 
 ## Deferred Items
 

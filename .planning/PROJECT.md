@@ -29,6 +29,7 @@ The inventory must be the single source of truth: at any moment, the Patron and 
 - [ ] AI-assisted substitution suggestions for the bartender/barback: when a recipe is missing an ingredient, suggest a reasonable substitution from what's in stock
 - [ ] AI-assisted recipe import: photograph or screenshot a recipe, Claude extracts structured recipe data (name, ingredients, steps) for user review/confirmation before saving
 - [ ] Containerized deployment: Dockerfile + docker compose file so the server (and all three built frontend bundles) can run as a single container on the home server/Pi
+- [ ] MCP server exposing the recipe/ingredient/category/glassware API to Claude Code (or any MCP client), so the owner can send a recipe link, pasted recipe, or YouTube video and have a recipe created, or add/edit ingredients, without opening the Barback UI
 
 ### Out of Scope
 
