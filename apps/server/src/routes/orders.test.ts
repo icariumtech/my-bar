@@ -484,7 +484,10 @@ describe('Socket.IO — orders:created, real client, real listening server', () 
     app.register(ordersRoutes, { prefix: '/api/orders', db: testDb.db })
     registerSocketHub(app)
 
-    await app.listen({ port: 0 })
+    // Explicit host avoids an IPv6-wildcard (::) bind on CI runners with
+    // IPV6_V6ONLY set — an unspecified host can leave a hardcoded 127.0.0.1
+    // client unable to reach the server at all, hanging instead of failing fast.
+    await app.listen({ port: 0, host: '127.0.0.1' })
     const address = app.server.address()
     if (address === null || typeof address === 'string') {
       throw new Error('Expected app.server.address() to return an AddressInfo')
