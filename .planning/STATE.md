@@ -1,19 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: Awaiting next milestone
-stopped_at: Completed quick task 260819-l5f
-last_updated: "2026-08-20T01:16:37.393Z"
+milestone: v1.1
+milestone_name: AI Vision & Deploy
+status: planning
+last_updated: "2026-08-20T02:18:42.836Z"
 last_activity: 2026-08-19
-last_activity_desc: "Completed quick task 260818-uz8: Fix Bartender Orders Done-clearing bug and Card redesign"
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 31
-  completed_plans: 31
-current_phase: 04
-current_phase_name: bartender-console-order-workflow
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -27,10 +24,10 @@ See: .planning/PROJECT.md (updated 2026-08-11)
 
 ## Current Position
 
-Phase: Milestone v1.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-08-19 — Milestone v1.0 completed and archived
+Status: Defining requirements
+Last activity: 2026-08-19 — Milestone v1.1 started
 
 ## Performance Metrics
 

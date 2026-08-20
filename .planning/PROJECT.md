@@ -8,6 +8,15 @@ My Bar is a home bar management and ordering system for a personal home bar, use
 
 The inventory must be the single source of truth: at any moment, the Patron and Bartender screens must correctly show which drinks are makeable right now, and which are missing ingredients — this is what makes the whole system trustworthy.
 
+## Current Milestone: v1.1 AI Vision & Deploy
+
+**Goal:** Ship containerized deployment, replace UPC scanning with AI photo-based bottle recognition, and add an MCP server so recipes and inventory can be managed via chat.
+
+**Target features:**
+- Docker Containerization — single-container deploy (multi-stage Dockerfile + compose.yml, same-repo, modeled on the janus-console pattern)
+- AI Bottle Photo Recognition — photograph a bottle, Claude Vision identifies it and prefills the add-ingredient form, fully replacing UPC scanning
+- MCP Server — standalone TypeScript MCP server delegating to the existing REST API, so recipes can be created from a link/pasted text/video and inventory can be managed via chat
+
 ## Requirements
 
 ### Validated
@@ -96,4 +105,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-19 after v1.0 milestone*
+*Last updated: 2026-08-20 — v1.1 milestone started*
