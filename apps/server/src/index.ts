@@ -29,6 +29,13 @@ export function buildApp() {
     })
   }
 
+  // Docker's compose.yml healthcheck: block polls this route on an
+  // interval (D-08) — keep the response minimal (status + timestamp only),
+  // never leak env vars, stack traces, or internal file/DB paths here.
+  app.get('/health', async () => {
+    return { status: 'ok', timestamp: new Date().toISOString() }
+  })
+
   // Registered BEFORE the route plugins below — order matters. Fastify
   // decorators set on the parent instance before a child plugin registers
   // are visible inside that child's handlers via Fastify's parent-to-child

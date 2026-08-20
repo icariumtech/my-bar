@@ -1,0 +1,14 @@
+**/node_modules
+**/dist
+data
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+.git
+.env
+.planning
+.github
+*.md
+**/*.test.ts
+**/*.test.tsx
