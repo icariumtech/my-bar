@@ -9,12 +9,12 @@ Requirements for the v1.1 milestone (Docker deployment, AI bottle photo recognit
 
 ### Docker Containerization
 
-- [ ] **DOCK-01**: The full stack (Fastify server + all three built frontend bundles) builds into a single Docker image via a multi-stage Dockerfile (`node:22-slim` for both build and runtime stages, matching janus-console's pattern — no ARM-specific handling needed)
-- [ ] **DOCK-02**: A `compose.yml` defines the service (port mapping, `restart: unless-stopped`, environment variables including `ANTHROPIC_API_KEY` and `DB_PATH`)
-- [ ] **DOCK-03**: The SQLite database persists across container restarts and image updates via a bind-mounted host directory (`./data` → `/app/data`, not a single `.db` file), matching `apps/server/src/db/client.ts`'s existing `DB_PATH` env var support and avoiding WAL sidecar-file corruption
-- [ ] **DOCK-04**: `.env.example` documents required and optional environment variables
-- [ ] **DOCK-05**: README documents first-time setup (`docker compose pull && docker compose up -d`) and update steps
-- [ ] **DOCK-06**: A GitHub Actions workflow builds the Docker image on every push/PR and pushes it to GHCR (`ghcr.io/icariumtech/my-bar`) on pushes to main, mirroring janus-console's `docker-publish.yml` — `compose.yml` pulls the published image rather than building on-device
+- [x] **DOCK-01**: The full stack (Fastify server + all three built frontend bundles) builds into a single Docker image via a multi-stage Dockerfile (`node:22-slim` for both build and runtime stages, matching janus-console's pattern — no ARM-specific handling needed)
+- [x] **DOCK-02**: A `compose.yml` defines the service (port mapping, `restart: unless-stopped`, environment variables including `ANTHROPIC_API_KEY` and `DB_PATH`)
+- [x] **DOCK-03**: The SQLite database persists across container restarts and image updates via a bind-mounted host directory (`./data` → `/app/data`, not a single `.db` file), matching `apps/server/src/db/client.ts`'s existing `DB_PATH` env var support and avoiding WAL sidecar-file corruption
+- [x] **DOCK-04**: `.env.example` documents required and optional environment variables
+- [x] **DOCK-05**: README documents first-time setup (`docker compose pull && docker compose up -d`) and update steps
+- [x] **DOCK-06**: A GitHub Actions workflow builds the Docker image on every push/PR and pushes it to GHCR (`ghcr.io/icariumtech/my-bar`) on pushes to main, mirroring janus-console's `docker-publish.yml` — `compose.yml` pulls the published image rather than building on-device
 
 ### AI Bottle Photo Recognition
 
@@ -77,12 +77,12 @@ Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DOCK-01 | Phase 5 | Pending |
-| DOCK-02 | Phase 5 | Pending |
-| DOCK-03 | Phase 5 | Pending |
-| DOCK-04 | Phase 5 | Pending |
-| DOCK-05 | Phase 5 | Pending |
-| DOCK-06 | Phase 5 | Pending |
+| DOCK-01 | Phase 5 | Complete |
+| DOCK-02 | Phase 5 | Complete |
+| DOCK-03 | Phase 5 | Complete |
+| DOCK-04 | Phase 5 | Complete |
+| DOCK-05 | Phase 5 | Complete |
+| DOCK-06 | Phase 5 | Complete |
 | BOTTLE-01 | Phase 6 | Pending |
 | BOTTLE-02 | Phase 6 | Pending |
 | BOTTLE-03 | Phase 6 | Pending |

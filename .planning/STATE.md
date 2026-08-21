@@ -2,35 +2,35 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: AI Vision & Deploy
-current_phase: 05
-current_phase_name: docker-containerization
-status: executing
+current_phase: 6
+current_phase_name: AI Bottle Photo Recognition
+status: planning
 stopped_at: Phase 5 context gathered
-last_updated: "2026-08-20T17:01:46.745Z"
+last_updated: "2026-08-21T03:23:15.255Z"
 last_activity: 2026-08-20
 last_activity_desc: v1.1 ROADMAP.md created (Phases 5-7 defined, 17/17 requirements mapped)
 progress:
   total_phases: 1
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 0
+  completed_plans: 2
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-08-20)
+See: .planning/PROJECT.md (updated 2026-08-21)
 
 **Core value:** The inventory must be the single source of truth: at any moment, the Patron and Bartender screens must correctly show which drinks are makeable right now, and which are missing ingredients.
-**Current focus:** Phase 05 — docker-containerization
+**Current focus:** Phase 6 — ai-bottle-photo-recognition
 
 ## Current Position
 
-Phase: 05 (docker-containerization) — EXECUTING
-Plan: 1 of 2
-Status: Executing Phase 05
-Last activity: 2026-08-20 — Phase 05 execution started
+Phase: 6 — AI Bottle Photo Recognition
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-08-20 — Phase 5 complete, transitioned to Phase 6
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -38,7 +38,7 @@ Progress: [░░░░░░░░░░] 0%
 
 **Velocity:**
 
-- Total plans completed: 31
+- Total plans completed: 33
 - Average duration: - min
 - Total execution time: 0 hours
 
@@ -51,7 +51,7 @@ Progress: [░░░░░░░░░░] 0%
 | 02.1 | 7 | - | - |
 | 3 | 5 | - | - |
 | 04 | 5 | - | - |
-| 5 | TBD | - | - |
+| 5 | 2 | - | - |
 | 6 | TBD | - | - |
 | 7 | TBD | - | - |
 
@@ -120,6 +120,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Quick 260818-uz8]: Fixed Bartender Orders Done-clearing bug (missing client-side status filter, visibleBatches excludes status==='done') and redesigned OrdersTab/RecipesTab onto antd Card rows with ingredient names, matching apps/barback's dark bar-surface convention
 - [Phase ?]: [Quick 260819-l5f]: MakeableStatusBadge moved onto OrdersTab's top row (paired with name) to match RecipesTab's top row exactly; elapsed time + patronNames consolidated into one new secondary metadata row with ml-auto keeping elapsed time right-aligned
 - [Roadmap v1.1]: 17 v1.1 requirements (DOCK-01..06, BOTTLE-01..05, MCP-01..06) mapped 1:1 across Phases 5 (Docker), 6 (AI Bottle Photo Recognition), 7 (MCP Server) — 100% coverage, no orphans. Phase numbering continues from v1.0 (5-7, no reset). Phase 6 and 7 depend only on v1.0's Phase 1/2 REST APIs, not on each other or on Phase 5; Phase 6 ships first and establishes a reusable Claude Vision/structured-extraction + Zod pattern Phase 7's MCP-02 can reuse.
+- [Phase 5]: Docker Containerization shipped and verified live (10/10 UAT, threats_open: 0). Three real bugs found only on live deployment (Docker unavailable in the planning/execution sandbox) and fixed post-plan: (1) `pnpm prune --prod` + cross-stage `node_modules` copy dropped `fastify` at runtime — replaced with a fresh `pnpm install --prod --filter @my-bar/server...` in the runtime stage; (2) fresh `./data` left an empty, un-migrated SQLite file ("Couldn't load inventory") — `docker-entrypoint.sh` now auto-runs `drizzle-kit push --force` only when the DB has zero tables; (3) CI test-server sockets bound with no explicit host, risking an IPv6-only bind on the GitHub Actions runner while the test client hardcoded `127.0.0.1` — fixed with explicit `host: '127.0.0.1'`. Also corrected: production deploy target is an Ubuntu VM on Proxmox (via Dockge), not a Raspberry Pi as earlier docs assumed — no ARM/cross-compile handling needed.
 
 ### Pending Todos
 
@@ -178,10 +179,10 @@ Items acknowledged and deferred at milestone close on 2026-08-19:
 
 ## Session Continuity
 
-Last session: 2026-08-20T16:05:07.039Z
-Stopped at: Phase 5 context gathered
-Resume file: /home/gjohnson/src/my-bar/.planning/phases/05-docker-containerization/05-CONTEXT.md
+Last session: 2026-08-21T03:30:00Z
+Stopped at: Phase 5 complete, ready to plan Phase 6
+Resume file: None
 
 ## Operator Next Steps
 
-- Run `/gsd-plan-phase 5` to break down Docker Containerization into plans (or `/gsd-mvp-phase 5` for vertical-slice planning, matching v1.0's mode)
+- Run `/gsd-discuss-phase 6` or `/gsd-plan-phase 6` to start AI Bottle Photo Recognition

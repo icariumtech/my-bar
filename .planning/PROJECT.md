@@ -30,6 +30,7 @@ The inventory must be the single source of truth: at any moment, the Patron and 
 - [x] Runs on a local home server on the home network; no login/accounts — open kiosk-style access for all three interfaces — Patron kiosk lockdown (fullscreen, wake-lock, 90s inactivity timeout back to browse grid) validated in Phase 4; Bartender/Barback already open-access with no lockdown needed
 
 - [x] Live shared inventory across all three interfaces via Socket.IO push + TanStack Query invalidation — inventory changes and order status changes propagate without manual refresh — Validated in Phase 3 (SYNC-01) and Phase 4 (SYNC-02)
+- [x] Containerized deployment: Dockerfile + docker compose file so the server (and all three built frontend bundles) run as a single container on the home server — Validated in Phase 5; deployed and confirmed live on the actual production target (Ubuntu VM on Proxmox) via 10/10 passing UAT tests, including a real container recreate persistence check and a real GHCR CI publish
 
 ### Active
 
@@ -37,7 +38,6 @@ The inventory must be the single source of truth: at any moment, the Patron and 
 - [ ] AI-assisted patron recommendations: when a requested/desired drink can't be made, suggest a makeable alternative the patron would likely enjoy, using Claude API
 - [ ] AI-assisted substitution suggestions for the bartender/barback: when a recipe is missing an ingredient, suggest a reasonable substitution from what's in stock
 - [ ] AI-assisted recipe import: photograph or screenshot a recipe, Claude extracts structured recipe data (name, ingredients, steps) for user review/confirmation before saving
-- [ ] Containerized deployment: Dockerfile + docker compose file so the server (and all three built frontend bundles) can run as a single container on the home server/Pi
 - [ ] MCP server exposing the recipe/ingredient/category/glassware API to Claude Code (or any MCP client), so the owner can send a recipe link, pasted recipe, or YouTube video and have a recipe created, or add/edit ingredients, without opening the Barback UI
 
 ### Out of Scope
@@ -54,7 +54,7 @@ The inventory must be the single source of truth: at any moment, the Patron and 
 - Collection size: roughly medium — ~50-100 bottles/ingredients, ~100+ cocktail recipes expected over time.
 - Hardware: Patron interface on an iPad (likely wall-mounted or bar-mounted), Bartender interface on a second iPad behind the bar, Barback/inventory tasks (including AI-assisted bottle photo capture) done from the owner's phone. All interfaces are browser-based to stay flexible across these devices.
 - AI: Claude API is the chosen provider for all AI-assisted features (recommendations, substitutions, recipe-image parsing).
-- Deployment: intended to run on a local home server (e.g. always-on PC, NAS, or Raspberry Pi) on the home network — no dependency on internet access for core features to work; AI features will need internet access for the Claude API specifically.
+- Deployment: runs on a local home server on the home network — no dependency on internet access for core features to work; AI features will need internet access for the Claude API specifically. Confirmed production target (as of Phase 5): an Ubuntu VM on a Proxmox host, managed via Dockge — not a Raspberry Pi, despite "Pi" being used as shorthand in earlier planning docs (ROADMAP.md/CLAUDE.md). This means no ARM64/cross-compilation concerns; the single-arch `linux/amd64` GHCR image already matches the deploy target.
 
 ### v1.0 Shipped State (2026-08-19)
 
@@ -86,6 +86,10 @@ The inventory must be the single source of truth: at any moment, the Patron and 
 | Bottom tab bar + full-screen add/edit/detail flows replacing modal-on-modal navigation (Barback) | Stacked modals became unwieldy as Barback's flows grew; a persistent bottom tab bar with full-screen views is a clearer mobile navigation model | ✓ Good — Validated in Phase 2.1 |
 | Socket.IO for live cross-screen sync (inventory + order status) rather than polling | Kiosk iPads sleep/lock/roam wifi — Socket.IO's reconnect handling avoids silent staleness that plain polling risks | ✓ Good — Validated in Phase 3 (SYNC-01) and Phase 4 (SYNC-02) |
 | Patron screen runs kiosk-locked (fullscreen + wake-lock + inactivity timeout back to browse) | Wall-mounted, unauthenticated tablet needs to behave like an appliance, not a browser tab that can be backgrounded or left on a stale screen | ✓ Good — Validated in Phase 4 |
+| Multi-stage Dockerfile: fresh `pnpm install --prod --filter` in the runtime stage, not `pnpm prune --prod` + cross-stage `node_modules` copy | The prune+copy approach (original Phase 5 plan) silently dropped `fastify` at runtime on first real deployment (`ERR_MODULE_NOT_FOUND`) — pnpm's workspace symlink tree didn't survive the prune+copy reliably. A fresh scoped install in the runtime stage avoids the whole class of cross-stage symlink-integrity risk | ✓ Good — fixed and confirmed working via live Dockge deployment |
+| `docker-entrypoint.sh` auto-runs `drizzle-kit push --force` on container start, but only when the database has zero tables | A fresh `docker compose up -d` created an empty SQLite file but never initialized its schema — every query failed ("Couldn't load inventory"). Scoped strictly to the empty-DB case so it never risks altering/losing data on an already-initialized deployment; schema evolution on existing data stays a manual step, same as local dev | ✓ Good — fixed and confirmed working live; new image self-initializes on a genuinely fresh deploy |
+| CI test-server sockets bind explicitly to `host: '127.0.0.1'` | `app.listen({ port: 0 })` with no host can bind IPv6-only on a GitHub Actions runner while the test client hardcodes `127.0.0.1`, hanging past any hook timeout instead of failing fast — root cause of the first two failed CI runs | ✓ Good — fixed, CI green since |
+| Production deploy target is an Ubuntu VM on Proxmox, not a Raspberry Pi | User corrected this directly after Phase 5 shipped; earlier planning docs used "Pi" as shorthand from the janus-console pattern this phase was modeled on | ✓ Confirmed — no ARM/cross-compile handling needed, matches the single-arch amd64 image already built |
 
 ## Evolution
 
@@ -105,4 +109,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-08-20 — v1.1 milestone started*
+*Last updated: 2026-08-21 after Phase 5*

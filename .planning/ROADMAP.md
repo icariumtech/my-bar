@@ -20,7 +20,7 @@ Full detail archived in `.planning/milestones/v1.0-ROADMAP.md`.
 
 </details>
 
-- [ ] **Phase 5: Docker Containerization** - Single-container deploy so the full stack runs on the home server/Pi via `docker compose up`
+- [x] **Phase 5: Docker Containerization** - Single-container deploy so the full stack runs on the home server/Pi via `docker compose up` (completed 2026-08-20)
 - [ ] **Phase 6: AI Bottle Photo Recognition** - Owner photographs a bottle and Claude Vision prefills the add-ingredient form, replacing UPC scanning entirely
 - [ ] **Phase 7: MCP Server for Recipe/Inventory Management** - Claude Code (or any MCP client) manages recipes/inventory via chat, delegating to the existing REST API
 
@@ -106,6 +106,6 @@ Phases execute in numeric order: 1 → 2 → 2.1 → 3 → 4 → 5 → 6 → 7
 | 02.1. Recipe UI cleanup (INSERTED) | v1.0 | 7/7 | Complete | 2026-08-12 |
 | 3. Patron Browse Experience | v1.0 | 5/5 | Complete | 2026-08-12 |
 | 4. Bartender Console & Order Workflow | v1.0 | 5/5 | Complete | 2026-08-18 |
-| 5. Docker Containerization | v1.1 | 2/2 | In Progress|  |
+| 5. Docker Containerization | v1.1 | 2/2 | Complete    | 2026-08-20 |
 | 6. AI Bottle Photo Recognition | v1.1 | 0/TBD | Not started | - |
 | 7. MCP Server for Recipe/Inventory Management | v1.1 | 0/TBD | Not started | - |
