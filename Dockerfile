@@ -76,6 +76,15 @@ COPY packages/shared/package.json ./packages/shared/package.json
 
 RUN pnpm install --prod --frozen-lockfile --filter @my-bar/server...
 
+# drizzle-kit as a standalone global CLI (npm, not pnpm) — deliberately NOT
+# added to @my-bar/server's pnpm-managed dependency graph. It's a devDependency
+# there for local `pnpm db:push`, and pulling it in via pnpm would drag in
+# devDependency-tier resolution for the whole filtered install; a global npm
+# install keeps it isolated and this stage's pnpm install --prod above still
+# excludes every other devDependency. Version pinned to match
+# apps/server/package.json's devDependencies.drizzle-kit.
+RUN npm install -g drizzle-kit@0.31.10
+
 # Only the built artifacts the running server actually needs: its own dist,
 # the three frontend SPA bundles it serves via @fastify/static, and the
 # @my-bar/shared package's compiled output (its package.json "main" points
@@ -87,6 +96,15 @@ COPY --from=builder /app/apps/patron/dist ./apps/patron/dist
 COPY --from=builder /app/apps/bartender/dist ./apps/bartender/dist
 COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
 
+# Schema source drizzle-kit needs at container startup (see
+# docker-entrypoint.sh) — schema.ts has no local imports (drizzle-orm/
+# sqlite-core only), so this is the complete set of source files required.
+COPY apps/server/drizzle.config.ts ./apps/server/drizzle.config.ts
+COPY apps/server/src/db/schema.ts ./apps/server/src/db/schema.ts
+
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
+
 EXPOSE 3000
 
-CMD ["node", "apps/server/dist/index.js"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
